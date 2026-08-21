@@ -98,7 +98,7 @@ test_hook_exit_code() {
     fi
 }
 
-# test_hook_abandoned_stdin <name> <hook-script> <description>
+# test_hook_abandoned_stdin <name> <hook-script> <description> [bound-ms]
 # Invoke hook with stdin attached to an open pipe with NO writer and NO EOF
 # (simulates orphaned tool call). Assert: exit 0 + return within guard window.
 # WHY workflow-checkpoint is reliably the slowest of the six, and why that is a
@@ -108,9 +108,16 @@ test_hook_exit_code() {
 # &, --max-time 5, output discarded and never waited on — the harness times a
 # foreground child, so that call cannot enter the measurement at all. Its tail is
 # 491 lines forking git/grep/find/ls children against post-commit-cleanup.sh's 110.
-GUARD_WINDOW_MS="$GF_HOOK_STDIN_GUARD_MS"
+# GUARD_WINDOW_MS (the default when the optional 4th arg is omitted) sources
+# GF_FAST_STDIN_GUARD_MS (tests/lib/timing-bounds.sh), not the production
+# GF_HOOK_STDIN_GUARD_MS bound — five of the six calls in § 7 below run with
+# GF_STDIN_TIMEOUT_OVERRIDE exported (hooks/lib/stdin-read.sh), so each of
+# those hooks' internal stdin-read timeout is ~2s, not the production 5s. The
+# sixth call passes GF_HOOK_STDIN_GUARD_MS explicitly and runs without the
+# override — see the § 7 header comment for why.
+GUARD_WINDOW_MS="$GF_FAST_STDIN_GUARD_MS"
 test_hook_abandoned_stdin() {
-    local name="$1" script="$2" desc="$3"
+    local name="$1" script="$2" desc="$3" bound_ms="${4:-$GUARD_WINDOW_MS}"
     local start_time end_time elapsed
 
     start_time=$(date +%s%3N)
@@ -125,10 +132,10 @@ test_hook_abandoned_stdin() {
         echo "FAIL: $name — $desc (abandoned stdin, exit $rc, expected 0)"; FAIL=$((FAIL+1))
     fi
 
-    if [ "$elapsed" -lt "$GUARD_WINDOW_MS" ]; then
-        echo "PASS: $name — $desc (abandoned stdin, returned in ${elapsed}ms, <${GUARD_WINDOW_MS}ms)"; PASS=$((PASS+1))
+    if [ "$elapsed" -lt "$bound_ms" ]; then
+        echo "PASS: $name — $desc (abandoned stdin, returned in ${elapsed}ms, <${bound_ms}ms)"; PASS=$((PASS+1))
     else
-        echo "FAIL: $name — $desc (abandoned stdin, took ${elapsed}ms, expected <${GUARD_WINDOW_MS}ms)"; FAIL=$((FAIL+1))
+        echo "FAIL: $name — $desc (abandoned stdin, took ${elapsed}ms, expected <${bound_ms}ms)"; FAIL=$((FAIL+1))
     fi
 }
 
@@ -273,7 +280,57 @@ test_hook_exit_code "post-commit-cleanup.sh/truncated" "$POSTCOMMIT_SCRIPT" "$GA
 # gf_read_stdin_timeout 5, which bounds the wait via `read -t 5 -d ''`.
 # This fixture invokes each hook with stdin attached to an open pipe with NO
 # writer and NO EOF, simulating a harness crash or timeout that leaves stdin
-# stranded. Assert: exit 0 + return within guard window (timeout 5s + overhead).
+# stranded. Assert: exit 0 + return within guard window.
+#
+# Five of the six hooks (observe.sh, agent-lifecycle.sh, session-start.sh,
+# pre-compact.sh, workflow-checkpoint.sh) run under GF_STDIN_TIMEOUT_OVERRIDE
+# (hooks/lib/stdin-read.sh consumes it in gf_read_stdin_timeout, replacing
+# the 5s argument with this value before normalization), so `read -t 5 -d ''`
+# becomes `read -t 2 -d ''` and each of those hooks' stdin read times out in
+# ~2s instead of 5s. Those five are asserted against GUARD_WINDOW_MS
+# (GF_FAST_STDIN_GUARD_MS). GF_STDIN_TIMEOUT_OVERRIDE is exported before
+# section 1 and unset before section 6 so no other part of this suite is
+# affected — production hooks never set this var (see the lib's own comment).
+#
+# The sixth, post-commit-cleanup.sh, deliberately runs WITHOUT the override —
+# production mode, `gf_read_stdin_timeout 5` unmodified — and is asserted
+# against GF_HOOK_STDIN_GUARD_MS (the production 65s bound) instead of
+# GUARD_WINDOW_MS. This is the only case in the suite that exercises the real
+# 5s stdin guard rather than the ~2s test-accelerated one; without it,
+# GF_HOOK_STDIN_GUARD_MS has zero consumers and the production stdin-guard
+# path — the one the 66-minute field orphan actually broke — carries no
+# regression coverage at all (code-lead round r3, finding R-9). It runs
+# post-commit-cleanup.sh specifically because that hook is the fastest of the
+# six (smallest hook, no network, nothing after the read, per the WHY comment
+# above test_hook_abandoned_stdin), which minimizes the fixed cost of running
+# one case in production mode instead of fast mode.
+#
+# falsifiability: hooks/ and this test file + tests/lib/timing-bounds.sh
+# copied whole to a scratch dir (relative sourcing paths preserved). In the
+# scratch copy only: gf_read_stdin_timeout's
+# `if [ -n "${GF_STDIN_TIMEOUT_OVERRIDE:-}" ]` branch forced to `if false`
+# (override silently ignored, hooks fall back to their normal 5s argument),
+# and GF_FAST_STDIN_GUARD_MS tightened to 4000 (the real bound — 15000 at
+# probe time, raised to 30000 on loaded-machine evidence; the probe pins its
+# own 4000ms scratch bound, so its conclusion is unaffected — has enough margin
+# to absorb the ~2s-vs-5s delta without flipping, so a tight bound is needed
+# to make the neutering observable). GF_HOOK_STDIN_GUARD_MS (65000) was left
+# untouched — neutering the override makes post-commit-cleanup.sh's call
+# identical to its already-production behavior, so there is nothing to flip
+# there; its assertion is the control. Re-running the scratch suite then
+# produced 5 FAILs — one "returned within guard window" assertion per
+# override-mode hook, each measured well over the 4000ms bound: observe.sh
+# 7012ms, agent-lifecycle.sh 8840ms, session-start.sh 7898ms, pre-compact.sh
+# 6438ms, workflow-checkpoint.sh 9596ms — while post-commit-cleanup.sh's
+# production-mode assertion stayed green at 7018ms against the untouched
+# 65000ms bound, confirming the guard-window pass in the real suite
+# (GF_FAST_STDIN_GUARD_MS, 15000 at probe time, now 30000) is not coincidental for the five
+# override-mode calls, and that the sixth call is genuinely exercising the
+# production path independent of the override. Scratch copy discarded
+# after. Production tree (this file and hooks/) untouched by the probe —
+# 2026-08-21.
+
+export GF_STDIN_TIMEOUT_OVERRIDE="$GF_FAST_STDIN_OVERRIDE_S"
 
 # ── 1. observe.sh with abandoned stdin ─────────────────────────────────────
 
@@ -300,10 +357,16 @@ test_hook_abandoned_stdin "pre-compact.sh/abandoned" "$COMPACT_SCRIPT" \
 test_hook_abandoned_stdin "workflow-checkpoint.sh/abandoned" "$CHECKPOINT_SCRIPT" \
     "abandoned stdin (no writer, no EOF)"
 
-# ── 6. post-commit-cleanup.sh with abandoned stdin ─────────────────────────
+# ── 6. post-commit-cleanup.sh with abandoned stdin — production mode ──────
+# Override unset BEFORE this call (not after, unlike calls 1-5): this is the
+# one production-mode case in the block, verifying the real `gf_read_stdin_timeout 5`
+# path — see the § 7 header comment above for why this call, alone, is not
+# fast-mode.
+
+unset GF_STDIN_TIMEOUT_OVERRIDE
 
 test_hook_abandoned_stdin "post-commit-cleanup.sh/abandoned" "$POSTCOMMIT_SCRIPT" \
-    "abandoned stdin (no writer, no EOF)"
+    "abandoned stdin, production guard (no writer, no EOF)" "$GF_HOOK_STDIN_GUARD_MS"
 
 # ============================================================================
 # § Cleanup and results

@@ -15,12 +15,17 @@
 # at least 2x the worst observed run on MSYS/Git-Bash, named *_MS, WHY stated.
 # Author generous, tighten on evidence. The two empirical bounds below were
 # first authored tight, both breached, and both now sit at 2x worst observed;
-# the third constant is provisional and carries its own caveat in place.
+# all three now carry dated empirical evidence (the fast-override bound was
+# validated, then raised on loaded-machine samples, 2026-08-21).
 
 # Hook-body-under-abandoned-pipe bound: a hook invoked with stdin attached to an
 # open pipe that has no writer and never sends EOF must return once its 5s stdin
-# guard fires. Covers test-check-commit.sh (cases 23, 25) and the six non-gating
-# hooks in test-class-split-invariant.sh — the same fixture class either way.
+# guard fires. Since M48c wired the fast override into the fixtures, this bound
+# has exactly ONE consumer: the production-mode post-commit-cleanup.sh case in
+# test-class-split-invariant.sh (the one abandoned-stdin call deliberately run
+# WITHOUT the override so the production 5s guard path keeps regression
+# coverage). The other five hooks there, and test-check-commit.sh cases 23/25,
+# run override-mode under GF_FAST_STDIN_GUARD_MS below.
 #
 # WHY 65000 and not 5s+epsilon: the epsilon is MSYS subprocess-spawn overhead in
 # the hook body AFTER the read, which scales with machine load and dwarfs the
@@ -55,10 +60,23 @@ GF_LIB_READ_WINDOW_MS=6000
 # guard. Bounds hooks running in override mode after M48c wires the override
 # into test runs.
 #
-# Provisional, unvalidated: this value is authored before any suite consumes
-# it, with no empirical run evidence yet. Placed in the 10000–20000ms range as
-# a reasonable initial estimate accounting for MSYS subprocess overhead (see
-# GF_HOOK_STDIN_GUARD_MS comment above). Must be revalidated against observed
-# runs before any test depends on it. M48c closes with this revalidation; until
-# then, treat this as a working placeholder, not a regression signal.
-GF_FAST_STDIN_GUARD_MS=15000
+# Validated 2026-08-21 from real override-wired runs (M48c task 5 + r3 fix
+# round). Quiet-machine: 5 full runs of each consuming fixture (40 samples),
+# worst 6806ms (workflow-checkpoint.sh). Loaded-machine (r3 blocking item 3 —
+# quiet samples alone were rejected in review): 3 fixture runs under full
+# 16-core CPU saturation, worst 12849ms (agent-lifecycle.sh), which left only
+# ~2.1s of margin against the provisional 15000 — a flaky bound, not a
+# regression signal, same class as the 20000 breach above. 30000 clears 2x the
+# loaded worst (25698ms, rounded up to a clean bound), and stays 10x under the 300s sleeper
+# fixture, so a guard-deleted hang is still caught decisively. Re-validate if
+# any sample exceeds 15000ms (half this bound).
+GF_FAST_STDIN_GUARD_MS=30000
+
+# Fast-stdin-guard override value (seconds): the GF_STDIN_TIMEOUT_OVERRIDE
+# fixtures export to force gf_read_stdin_timeout's ~2s fast path instead of
+# the production 5s argument. WHY a constant and not a bare `2` at each export
+# site: it is the same fact GF_FAST_STDIN_GUARD_MS above is bounding — the
+# guard bound and the override that produces the timing it bounds must move
+# together, and three bare-literal export sites already drifted from each
+# other once (code-lead round r3, minor finding).
+GF_FAST_STDIN_OVERRIDE_S=2

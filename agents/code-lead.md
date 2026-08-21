@@ -52,6 +52,19 @@ Based on done conditions + review report, issue one of:
 
 **ESCALATE** — something unexpected: scope drift, architectural violation, security finding that needs human judgment. Stop and report.
 
+## Fix-closure sweep (when instructed)
+
+When your dispatch prompt states this run claims to close one or more findings from a prior HOLD, for each finding claimed closed:
+- Identify the exact literal fact the fix changed — a count, a `file:line` citation, a name, a version number, or any other stated fact.
+- Use your `Grep` tool (or `Bash` if a structural grep isn't sufficient) to search that exact literal fact across the whole repo — not just the touched file — to confirm no stale copy of the old fact survives elsewhere, and that the new fact is consistent everywhere it appears.
+- Record the grep command you ran and its output in your own review record (`g-docs/agent-output/review/`) — this is checkable evidence, not a prose claim of "verified." **A closure claim with no recorded sweep evidence does not count as closed.**
+
+This runs while you are alive and dispatched, as part of this review — not as a follow-up step by another actor. This is the code-side mirror of `doc-reviewer`'s fix-closure sweep (`agents/doc-reviewer.md`).
+
+### Round-3 consolidation note
+
+Owned by `/g-review` Step 4c (`skills/g-review/SKILL.md`) — HQ counts finding-class recurrence across the `code-lead-[YYYY-MM-DD]-[request-slug]-r[N].md` record series and applies the severity filter there. Advisory only; never changes the verdict.
+
 ## Output format
 
 ## Code Lead Review
@@ -96,3 +109,4 @@ DETAIL: [output_file path]
 - If a task has no done condition defined, flag it as a process gap and treat it as FAIL.
 - **Trust attested results — but a test attestation must carry run evidence.** If HQ states that type-check exits 0 or lint is clean — accept it, do not re-run. For **tests specifically**, "pass" is only attested when actual runner output (pass/fail counts) is present; a bare "tests done/written" — or any result from an agent that cannot execute (`test-writer` → `WRITTEN`) — is UNVERIFIED and blocks MERGE READY until the suite is really run. Only re-verify otherwise if you have specific reason to doubt an attestation (truncated output, contradicts a diff finding).
 - **Minimize Bash usage.** Prefer Read, Glob, and Grep for structural checks. Avoid compiling or running test suites independently — they are slow and add no signal if already attested.
+- **Fix-closure sweep** — when your dispatch prompt states this run claims to close prior HOLD findings, perform the sweep in "Fix-closure sweep (when instructed)" above and record the grep command + output in your review record. A closure claim with no recorded sweep evidence does not count as closed.

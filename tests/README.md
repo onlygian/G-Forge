@@ -7,10 +7,10 @@ The suite **set** is never hand-typed here — `tests/run-all.sh` derives it fro
 the `tests/test-*.sh` glob at runtime, per [ADR-013](../g-docs/decisions/013-derive-in-consumers-keep-counts-in-prose.md)
 rule 1 (executable consumers derive their lists at runtime). This file is
 prose, not a consumer, so per the same ADR's rule 2 it keeps its concrete
-numbers rather than pointing at a directory: **19 suites** — pinned by
+numbers rather than pointing at a directory: **21 suites** — pinned by
 `tests/test-run-all.sh`'s suite-count baseline (`EXPECTED_SUITE_COUNT`), which
 goes red if a suite is added or removed without updating it — carrying
-**581 assertions** (attested 2026-08-21, summed independently from the run's
+**592 assertions** (attested 2026-08-21, summed independently from the run's
 `Results:` lines per G-RULES §H; the assertion total is a dated attestation,
 not test-pinned — re-sum after any suite change).
 

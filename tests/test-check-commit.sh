@@ -19,7 +19,11 @@ FAIL=0
 # in tests/lib/timing-bounds.sh with its evidence — the same bound governs
 # test-class-split-invariant.sh, and duplicating it is what let it drift.
 source "$TESTS_DIR/lib/timing-bounds.sh" || { echo "FAIL: could not source tests/lib/timing-bounds.sh"; exit 1; }
-STDIN_GUARD_WINDOW_MS="$GF_HOOK_STDIN_GUARD_MS"
+# STDIN_GUARD_WINDOW_MS sources GF_FAST_STDIN_GUARD_MS (tests/lib/timing-bounds.sh),
+# not the production GF_HOOK_STDIN_GUARD_MS bound — cases 23 and 25 below run
+# with GF_STDIN_TIMEOUT_OVERRIDE exported (hooks/lib/stdin-read.sh), so each
+# hook's internal stdin-read timeout is ~2s, not the production 5s.
+STDIN_GUARD_WINDOW_MS="$GF_FAST_STDIN_GUARD_MS"
 
 run() {
     local name="$1" input="$2" expected="$3"
@@ -308,20 +312,48 @@ rm -f "$DOCS_SENTINEL"
 # exits 0 (fail-open polarity), and produces no deny JSON on stdout. This verifies
 # that stdin-read.sh guards against indefinite hangs on orphaned stdin without
 # incorrectly blocking legitimate commits.
+#
+# GF_STDIN_TIMEOUT_OVERRIDE is exported for this invocation only
+# (hooks/lib/stdin-read.sh consumes it in gf_read_stdin_timeout, replacing
+# the 5s argument with this value before normalization), so `read -t 5 -d ''`
+# becomes `read -t 2 -d ''` and the hook's stdin read times out in ~2s
+# instead of 5s. STDIN_GUARD_WINDOW_MS above is GF_FAST_STDIN_GUARD_MS to
+# match. Unset immediately after so case 24 (guard-regression, no abandoned
+# pipe) — which sits right after this one in the same process — never sees
+# the override.
+#
+# falsifiability: hooks/, tests/test-check-commit.sh, and tests/lib/timing-bounds.sh
+# copied whole to a scratch dir (relative sourcing paths preserved). In the
+# scratch copy only: gf_read_stdin_timeout's
+# `if [ -n "${GF_STDIN_TIMEOUT_OVERRIDE:-}" ]` branch forced to `if false`
+# (override silently ignored, hook falls back to its normal 5s argument),
+# and GF_FAST_STDIN_GUARD_MS tightened to 4000 (the real bound — 15000 at
+# probe time, raised to 30000 on loaded-machine evidence; the probe pins its
+# own 4000ms scratch bound, so its conclusion is unaffected — has enough margin
+# to absorb the ~2s-vs-5s delta without flipping, so a tight bound is needed
+# to make the neutering observable). Re-running the scratch suite then
+# produced FAILs on cases 23 and 25 — both measured well over the 4000ms
+# bound (5s guard plus MSYS overhead) — confirming the guard-window pass in
+# the real suite (GF_FAST_STDIN_GUARD_MS, 15000 at probe time, now 30000) is not coincidental: it
+# depends on GF_STDIN_TIMEOUT_OVERRIDE actually reaching the read and
+# cutting the wait from 5s to ~2s. Scratch copy discarded after. Production
+# tree (this file and hooks/) untouched by the probe — 2026-08-21
 rm -f "$SENTINEL" "$DOCS_SENTINEL"
 stage "hooks/thing.sh"
 
+export GF_STDIN_TIMEOUT_OVERRIDE="$GF_FAST_STDIN_OVERRIDE_S"
 START_TIME=$(date +%s%3N)
 OUT=$(bash "$SCRIPT" < <(sleep 300) 2>&1)
 CODE=$?
 END_TIME=$(date +%s%3N)
 ELAPSED=$((END_TIME - START_TIME))
+unset GF_STDIN_TIMEOUT_OVERRIDE
 
 if [ "$CODE" -eq 0 ] && ! printf '%s' "$OUT" | grep -q 'deny'; then
     if [ "$ELAPSED" -lt "$STDIN_GUARD_WINDOW_MS" ]; then
         echo "PASS: stdin timeout (abandoned pipe) — exit 0, no deny, ${ELAPSED}ms <${STDIN_GUARD_WINDOW_MS}ms"; PASS=$((PASS+1))
     else
-        echo "FAIL: stdin timeout took ${ELAPSED}ms, expected <${STDIN_GUARD_WINDOW_MS}ms (5s guard + MSYS overhead headroom)"; FAIL=$((FAIL+1))
+        echo "FAIL: stdin timeout took ${ELAPSED}ms, expected <${STDIN_GUARD_WINDOW_MS}ms (~2s override guard + MSYS overhead headroom)"; FAIL=$((FAIL+1))
     fi
 else
     DENY_STATUS=$(printf '%s' "$OUT" | grep -q deny && echo "PRESENT" || echo "absent")
@@ -352,11 +384,16 @@ rm -f "$SENTINEL"
 # regression pin that the fail-open polarity (exit 0, bounded return) still
 # holds immediately after the guard-wiring cases 23-24 ran in this process.
 rm -f "$SENTINEL" "$DOCS_SENTINEL"
+# GF_STDIN_TIMEOUT_OVERRIDE re-exported for this invocation only, same
+# mechanism and rationale as case 23 above; unset again immediately after so
+# no later section of this suite is affected.
+export GF_STDIN_TIMEOUT_OVERRIDE="$GF_FAST_STDIN_OVERRIDE_S"
 START_TIME=$(date +%s%3N)
 OUT=$(bash "$SCRIPT" < <(sleep 300) 2>&1)
 CODE=$?
 END_TIME=$(date +%s%3N)
 ELAPSED=$((END_TIME - START_TIME))
+unset GF_STDIN_TIMEOUT_OVERRIDE
 if [ "$CODE" -eq 0 ] && [ "$ELAPSED" -lt "$STDIN_GUARD_WINDOW_MS" ]; then
     echo "PASS: stdin timeout, second sample — exit 0 in ${ELAPSED}ms <${STDIN_GUARD_WINDOW_MS}ms"; PASS=$((PASS+1))
 else

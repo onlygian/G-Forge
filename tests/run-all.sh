@@ -114,7 +114,8 @@ done
 # leave abandoned-stdin background sleepers (< <(sleep 300)) as deliberate
 # fixtures. These sleepers are UNBOUNDED in lifetime (~300s each) — nothing
 # reaps them (the reaping rider is still open, see g-docs/ROADMAP.md task
-# 7). GUARD_WINDOW_MS (tests/lib/timing-bounds.sh) bounds only the
+# 7). GUARD_WINDOW_MS (a local alias in test-class-split-invariant.sh of the
+# tests/lib/timing-bounds.sh constants) bounds only the
 # assertion window inside the suite under test — how long the hook under
 # test may take to return — not the sleeper fixture's own lifetime.
 # Running suites concurrently risks one suite's global process handling
