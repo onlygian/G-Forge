@@ -210,7 +210,7 @@ fi
 # Plain equality on a directory count — self-evidently falsifiable (any
 # mismatch fails immediately), no neuter-a-guard exercise needed. Bump this
 # deliberately when a tests/test-*.sh suite is added or removed.
-EXPECTED_SUITE_COUNT=21  # 20 pre-existing suites + this file (M48c: +test-version-agreement.sh +test-router-skill-parity.sh)
+EXPECTED_SUITE_COUNT=22  # 19 pre-existing suites + M48c: test-version-agreement.sh + test-router-skill-parity.sh; M48d: test-pre-commit.sh
 actual_count=0
 for f in "$TESTS_DIR"/test-*.sh; do
     [ -e "$f" ] || continue

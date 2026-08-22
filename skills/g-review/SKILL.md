@@ -50,15 +50,16 @@ Report the result as one line, verbatim, in the review record:
 
 Before reviewing any code, verify the test suite passes.
 
-**Check for a project-local test-runner agent first.** Glob `.claude/agents/*-dev.md`. If exactly one file matches:
-- Dispatch that agent to run the project's test suite (and any project-specific gate fixtures it is described as covering) and return its runner output verbatim.
-- Its report must include real pass/fail counts and, on any failure, the actual failing lines from the runner output. A self-declared "tests pass" claim with no runner evidence attached is UNVERIFIED (finding #20 doctrine) and does not count as attested — treat a report with no verbatim runner output the same as a failed run below and stop until the developer resolves it.
-- HQ sums the report's per-suite table independently before accepting any total. A summary total that disagrees with its own table is treated as confabulated — the summed table wins, and the discrepancy is recorded in the review record (claim-vs-data doctrine, three occurrences through M-audit).
-- Include the agent's verbatim runner output as the attested test result passed to code-lead in Step 4.
-- Apply the same pass/fail branching described below: on a fully green report, continue to Step 2; on any red or partial report, follow the **If any tests fail** branch below, substituting the agent's verbatim output for directly-captured output.
-- If more than one `.claude/agents/*-dev.md` file matches, ask the developer which one to dispatch, then proceed as above.
+**Run the deterministic suite directly — no agent indirection.** The suite run is a fixed command with a parseable `Results:` contract; it needs no judgment, so it is executed directly by HQ rather than dispatched through an agent. If `tests/run-all.sh` exists at the repo root:
+- Run `bash tests/run-all.sh` directly and capture its output verbatim. This is the mandatory suite action for this repo — do not glob or dispatch anything to obtain it.
+- Its report must include real pass/fail counts and, on any failure, the actual failing lines from the runner output.
+- HQ sums the runner's per-suite table independently before accepting any total. A summary total that disagrees with its own table is treated as confabulated — the summed table wins, and the discrepancy is recorded in the review record (claim-vs-data doctrine, three occurrences through M-audit).
+- Include the captured verbatim runner output as the attested test result passed to code-lead in Step 4.
+- Apply the pass/fail branching described below: on a fully green run, continue to the **Project-specific gate fixtures needing judgment** step immediately below, then Step 2; on any red or partial run, follow the **If any tests fail** branch below.
 
-**If no project-local test-runner agent exists, fall back to the following inline detect-and-run behavior.**
+**Project-specific gate fixtures needing judgment.** After the deterministic suite run above, Glob `.claude/agents/*-dev.md`. If exactly one file matches, dispatch it — scoped strictly to project-specific gate fixtures whose pass/fail requires interpretation (e.g. a `g-dev/` fixture set), never as a substitute for the direct `tests/run-all.sh` run above. Apply the same attestation doctrine: real pass/fail counts, verbatim runner output required (a self-declared "tests pass" claim with no runner evidence is UNVERIFIED per finding #20 doctrine and is treated the same as a failed run below), and HQ sums its per-suite table independently before accepting any total. Fold its verbatim output into the attested test result passed to code-lead in Step 4, and apply the same pass/fail branching above to its result. If more than one `.claude/agents/*-dev.md` file matches, ask the developer which one to dispatch. If none match, this step is a no-op. Either way, continue to Step 2.
+
+**If `tests/run-all.sh` does not exist, fall back to the following inline detect-and-run behavior.**
 
 **Detect the test command** using this priority order:
 1. Check `package.json` scripts for `"test"` — if found, use `npm test` (or `bun test` / `yarn test` based on lockfile)

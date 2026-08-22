@@ -9,7 +9,7 @@
 # listen mode. Direction-aware update-nudge cases (M46 W1 task 5): LATEST
 # newer/equal/older, pinning post-fix semver-comparison behavior.
 #
-# Total assertions: 81
+# Total assertions: 83
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
 # finding-#20 cross-check that catches a suite silently dropping cases.
 
@@ -332,23 +332,47 @@ check "prompt count increments" "2" "$COUNT"
 
 echo "§ 12. Session mode detection"
 
+rm -f .claude/session-prompt-count .claude/context-threshold-offset
+
+# Make the fixture's initial commit "old" so it doesn't trigger implementation mode.
+# The fixture setup at line 111 creates a recent commit; for the conversation-mode
+# baseline test to work, that commit must not be "recent" (within 4 hours).
+# Amending with an ancient date removes it from git log --since="4 hours ago".
+GIT_COMMITTER_DATE="@946684800" git commit --amend --date="@946684800" --no-edit 2>/dev/null || true
+
+# Conversation mode baseline test: prompt-count below amber threshold
+# Conversation baseline: BASE_AMBER=45, BASE_RED=65
+printf 'full\n' > .claude/integration-tier
+printf '37\n' > .claude/session-prompt-count
+
+OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-22 — mode detection, conversation baseline
+# In conversation mode, 37 < 45 (BASE_AMBER), so amber message should NOT appear
+if printf '%s' "$OUTPUT" | grep -q "⚠ Context depth.*ACTIVE MONITORING"; then
+    echo "FAIL: conversation mode amber should not trigger at 37 (below 45 baseline)"
+    FAIL=$((FAIL+1))
+else
+    echo "PASS: conversation mode silent at 37 (below 45 baseline)"
+    PASS=$((PASS+1))
+fi
+
+# Trigger implementation mode: create a recent commit
+touch .mode-trigger
+git add .mode-trigger 2>/dev/null
+git commit -q -m "mode trigger" 2>/dev/null || true
+
+# Implementation mode test: same prompt-count, different baseline triggers amber
+# Implementation baseline: BASE_AMBER=30, BASE_RED=45
 rm -f .claude/session-prompt-count
+printf '37\n' > .claude/session-prompt-count
 
-# Conversation mode (no recent commits, no dirty files, no plans)
 OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
-# In conversation mode, baselines are AMBER=45, RED=65
 
-# Implementation mode simulation — create a "recent" commit and dirty files
-touch .implementation-marker
-git add .implementation-marker 2>/dev/null
-git commit -q -m "impl" 2>/dev/null || true
-OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
-# In implementation mode, baselines are AMBER=30, RED=45
-
-# The output won't explicitly say the mode, but we can infer by threshold behavior
-# This is more of an integration test; the real test is that thresholds are applied correctly
-
-echo "PASS: session mode detection exercised"; PASS=$((PASS+1))
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-22 — mode detection, implementation baseline
+# In implementation mode, 37 >= 30 (BASE_AMBER), so amber message SHOULD appear
+check_match "implementation mode amber at 37 (>= 30 baseline)" \
+    "⚠ Context depth.*ACTIVE MONITORING" "$OUTPUT"
 
 # ============================================================================
 # § 13. Threshold calibration — offset application
@@ -358,19 +382,42 @@ echo "§ 13. Threshold offset calibration"
 
 rm -f .claude/context-threshold-offset .claude/session-prompt-count
 
-# No offset — baseline amber is 45 (conversation mode)
+# Establish this section's own implementation-mode baseline (same
+# touch/add/commit mechanism §12 uses) instead of inheriting §12's leftover
+# fixture commit — a future edit to §12 must not be able to silently change
+# the mode this section runs in.
+touch .mode-trigger-13
+git add .mode-trigger-13 2>/dev/null
+git commit -q -m "mode trigger (section 13)" 2>/dev/null || true
+
+# Implementation baseline: BASE_AMBER=30
+# Prompt-count=25 is below the baseline (no offset yet)
 printf 'full\n' > .claude/integration-tier
+printf '25\n' > .claude/session-prompt-count
+
 OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
-# Default: no amber message yet
 
-# Simulate offset (e.g., one compaction added 10 to offset)
-printf '10\n' > .claude/context-threshold-offset
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-22 — offset calibration, no offset baseline
+# Without offset: threshold = 30, so 25 < 30 means amber should NOT appear
+if printf '%s' "$OUTPUT" | grep -q "⚠ Context depth.*ACTIVE MONITORING"; then
+    echo "FAIL: without offset, amber should not trigger at 25 (below 30 baseline)"
+    FAIL=$((FAIL+1))
+else
+    echo "PASS: without offset — silent at 25 (below 30 baseline)"
+    PASS=$((PASS+1))
+fi
+
+# Apply offset=8, which lowers threshold from 30 to 22
+printf '8\n' > .claude/context-threshold-offset
 rm -f .claude/session-prompt-count
+printf '25\n' > .claude/session-prompt-count
 
-# Now amber should trigger earlier (45 - 10 = 35 instead of 45)
-# We'd need to trigger it by hitting that prompt count, which is hard in a test
-# Just verify the offset file is read
-echo "PASS: offset file read in fixture"; PASS=$((PASS+1))
+OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-22 — offset calibration, with offset applied
+# With offset=8: threshold = 30 - 8 = 22, so 25 >= 22 means amber SHOULD appear
+check_match "with offset=8, amber at 25 (threshold now 30-8=22)" \
+    "⚠ Context depth.*ACTIVE MONITORING" "$OUTPUT"
 
 # ============================================================================
 # § 14. Amber threshold message
@@ -380,7 +427,9 @@ echo "§ 14. Amber threshold (context depth warning)"
 
 rm -f .claude/context-threshold-offset .claude/session-prompt-count
 
-# Fixture is in IMPLEMENTATION mode (recent commits from line 331 signal this).
+# Fixture is in IMPLEMENTATION mode — the "mode trigger" commit made in §12
+# (and §13's own "mode trigger (section 13)" commit) is
+# still recent enough to signal implementation mode here.
 # For implementation mode: BASE_AMBER=30, BASE_RED=45. We test the amber band
 # by setting prompt count to 35 (30 <= 35 < 45, so amber triggers but not red).
 # This pins the implementation-mode thresholds and the amber message flow.

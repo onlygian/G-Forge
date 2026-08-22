@@ -5,8 +5,15 @@
 **Amended:** 2026-08-14 — M49 (Devil's-Advocate Agent, internal adversarial pattern review) folded into the 2.5 scope; see "Amendment — 2026-08-14" below.
 **Amended:** 2026-08-17 — M50 (Eval-Chain Integrity) folded into the 2.5 scope, sequenced **third** (after M48, before M45); see "Amendment — 2026-08-17" below.
 **Amended:** 2026-08-20 — M51 (Release Reliability / M45-lite) inserted **third** in the build order, absorbing M45 (Review Pipeline Rework); M50 moves to fourth. See "Amendment — 2026-08-20" below.
+**Amended:** 2026-08-22 — intermediate patch/minor releases cut at milestone-family closes; 2.5 scope and freeze identity unchanged; see "Amendment — 2026-08-22" below.
 **Reversibility:** two-way door, narrowing (scope can be re-cut before 2.5.0 ships, but the §3c copy has been on the README since 2026-08-10 under a hedged "What's coming in 2.5" heading — cutting an announced item now means editing published copy, a developer decision; at release the heading goes present-tense and the door closes)
 **Context:** G-Forge plugin source repo. Decision made by the developer in session, 2026-08-10 — this ADR captures it; the deliberation was the session's intake + triage, not a subagent pass.
+
+## Amendment — 2026-08-22: intermediate releases on the road to 2.5
+
+Developer directive (session record, 2026-08-22): the 2.5 scope and the freeze-release identity are unchanged, but the road to it now cuts **intermediate patch/minor releases at milestone-family closes** — first candidate v2.4.1 at the M48-family close (M47 + M48a–e). Rationale: the project's own testing model is release-and-dogfood, and a monolithic 2.5 starves the field-validation loop for months — everything hardened since v2.4.0 was un-dogfoodable outside this repo. v2.5.0 remains the final G-Forge label — **M41 cuts it** (sequenced last in the build order, `g-docs/ROADMAP.md:451`); **M51 defines the release condition** it must meet ("a reliable and very usable harness," not a doc patch — `g-docs/ROADMAP.md:622`) — cumulatively containing everything this ADR promises; the intermediate cuts change delivery cadence, not scope. Standard release flow (§D) applies to each cut: both manifests, CHANGELOG, tag, GitHub release.
+
+**Surface set updated for this amendment** — this ADR (header + this section + the "one release vehicle" claim, amended in place at what is now `:65` below) · `CHANGELOG.md:11` · `g-docs/ROADMAP.md`'s Version Plan (`:667`) · M47's and M48's `**Version:**` stamps (`:517`, `:547`). No typed site list is authoritative — this one included: the complete set is found only by sweeping.
 
 ## Amendment — 2026-08-20
 
@@ -55,7 +62,7 @@ ADR-010 set the delivery shape (v2.5 ships from this repo, the repo freezes, the
 | M41 | Release Machinery + README Currency — **cuts the 2.5.0 release, sequenced last** |
 | shipped | Check 24 injection detector; `/g-init` lib-install fix (`ec9bf8a`) |
 
-All in-2.5 milestones are stamped **v2.5.0** — one release vehicle, no v2.6+ ever ships from this repo.
+All in-2.5 milestones ship cumulatively in **v2.5.0**, the single final G-Forge release label — no v2.6+ ever ships from this repo. Intermediate patch/minor releases below that label (v2.4.x) may cut at milestone-family closes — **amended 2026-08-22**, see "Amendment — 2026-08-22" above.
 
 **Everything else forks to G-Proof:** M25, M26, M29–M37, M39, M42, M44, plus both backlog candidates (multiplayer orchestration, unified provenance). Their entries move to `g-docs/g-proof-roadmap.md` — **a gitignored, local-only file by explicit developer choice** (2026-08-10), carried to the fork by hand. The committed pointer in `ROADMAP.md`'s Backlog section is the record that the file exists; carrying it across the fork is a named fork-checklist item, because a gitignored planning file has been lost in this repo once before (CLAUDE.md, regenerated 2026-07-10).
 

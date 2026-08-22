@@ -15,7 +15,7 @@
 # lever is M48b/c's guard-window overrides, not reordering.
 #
 # Ordering is a HINT only. Basis: the two suites that would otherwise run last
-# in glob order, both large (test-workflow-checkpoint.sh 81 and test-worktree-
+# in glob order, both large (test-workflow-checkpoint.sh 83 and test-worktree-
 # resolve.sh 42 assertions), are front-loaded so the big suites don't tail the
 # run; the hint is NOT ranked by which suites hold the slow abandoned-stdin
 # sleeper fixtures. Consequence accepted deliberately: pulling those two out of glob

@@ -150,7 +150,12 @@ Once all waves are `complete`, immediately run `/g-review` without asking.
 Use Glob to find `skills/g-review/SKILL.md` inside `~/.claude/plugins/cache/g-forge/g-forge/` and follow its instructions.
 
 - **MERGE READY** → continue to Step 5.
-- **HOLD** → surface the fix list in the handoff (do not attempt fixes autonomously — the developer reviews HOLD findings).
+- **HOLD** → run the fix round autonomously (round 1 of max 3), directive 2026-08-22:
+  1. Dispatch scoped fix agents per the review findings — file scope bound to what each finding names.
+  2. Before each fix dispatch, sweep the restatement surface: grep the repo for every literal fact the fix is about to change, so the fix doesn't correct one carrier and leave a sibling stale.
+  3. Re-run `/g-review`, narrowed to the fix diffs plus the files named in the prior round's findings.
+  4. **MERGE READY** → continue to Step 5. **HOLD again** → repeat from (1), round + 1.
+  5. **Round 3 finishes without MERGE READY** → stop. Three-Strikes applies to reviews the same as any other bug class (G-RULES §A8) — do not attempt a 4th round. Escalate to the developer in Step 5's handoff with the full findings trail from all three rounds, not a fix list.
 
 ---
 
@@ -173,9 +178,15 @@ Waves completed:
   Next:         review the diff, then commit
 
 [If HOLD:]
-  Blocking items:
-    [numbered list of HOLD findings from /g-review]
-  Next:         fix the items above, then run /g-review
+  Review did not converge in 3 fix rounds — Three-Strikes applies (G-RULES §A8).
+  Findings trail (all rounds):
+    [List each round's review records under g-docs/agent-output/review/*-r<N>.md —
+     the findings themselves — and each round's fix record under
+     g-docs/agent-output/<wave>/fix-round-N-*.md, with what each round closed or
+     carried forward.]
+  Next:         developer decision required — this is not a fix list and not an
+                instruction to run /g-review again. Review the trail above and
+                choose: fix manually, re-scope, or accept the carried risk.
 
 Tier 3 — your turn to test:
   [Print the Tier 3 DoD from the plan header, or the QA scope doc if one exists.
@@ -244,6 +255,6 @@ No further autonomous actions will be taken this session.
 - Never skip the safety deny-list setup. Settings write failure = stop.
 - Never pause between waves to ask "shall I continue?" — that defeats the purpose.
 - BLOCKED and safety violations are the only valid autonomous stops.
-- Never attempt to fix HOLD findings autonomously — surface them for the developer.
+- On HOLD, run the fix round autonomously per Step 4 — bounded at round 3; escalate to the developer with the full findings trail if round 3 doesn't converge (Three-Strikes applied to reviews).
 - Always leave `.claude/settings.json` in a valid state — never corrupt it.
 - The top-tier session model orchestrates — never implements. Dispatch implementation agents at Sonnet; reads/search at Haiku.
