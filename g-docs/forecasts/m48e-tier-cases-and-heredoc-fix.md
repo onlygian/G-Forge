@@ -34,8 +34,10 @@ Elevated — apply at least the top-2 mitigations before approving. Both are alr
 
 | Scenario | Predicted | Actually happened? | Notes |
 |----------|-----------|---------------------|-------|
-| 1 | yes | | |
-| 2 | yes | | |
-| 3 | yes | | |
-| 4 | yes | | |
-| 5 | yes | | |
+| 1 | yes | happened (review records r1+r2) | CHANGELOG census overclaimed HEREDOC-k..o probes (r1); fix round's own summary miscounted its table 12/3 vs 11/4 (r2) — the class ate the closure record itself |
+| 2 | yes | happened (review records r1) | T1+T3 §H pass records never written despite read-back rule in every dispatch; plus the pass-record reconstruction manufactured its byline (new sub-class). 5th sighting in 2 days |
+| 3 | yes | did not happen (review record r1) | mitigation-held: both-directions regression cases (HEREDOC-n/o) + the reviewer's 14-row edge-probe table (E1–E13 plus E4b) found no over-strip; evasion contract intact |
+| 4 | yes | did not happen (attestation) | mitigation-held: nohup+disown+polled log; T6 completed 617/0/22, independently re-summed |
+| 5 | yes | did not happen (task4 record) | mitigation-held: per-site-verdict done condition — all four T4 sites got explicit verdicts (2 edited, 2 justified); the ROADMAP:555 miss was T7's sweep misjudging a present-tense claim as dated — scenario-1 class, not a T4 silent skip |
+
+Reconciled 2026-08-23 at pass close (retro g-docs/retros/2026-08-23-m48de-close.md).
