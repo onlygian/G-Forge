@@ -4,7 +4,7 @@
 # repo's own .claude/ (an earlier version deleted .claude/integration-tier in
 # the repo root, silently disabling the hooks for the project).
 #
-# Total assertions: 25
+# Total assertions: 28
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
 # finding-#20 cross-check that catches a suite silently dropping cases.
 
@@ -399,6 +399,69 @@ if [ "$CODE" -eq 0 ] && [ "$ELAPSED" -lt "$STDIN_GUARD_WINDOW_MS" ]; then
 else
     echo "FAIL: stdin timeout, second sample (exit $CODE, ${ELAPSED}ms — expected 0 within ${STDIN_GUARD_WINDOW_MS}ms)"; FAIL=$((FAIL+1))
 fi
+
+# ── Integration-tier gate (hooks/check-commit.sh:170-184) ────────────────────
+# The commit gate itself is conditional on .claude/integration-tier: "light"
+# disables it entirely (hook:181-184, exit 0 before any sentinel check);
+# anything else enforces it (TIER defaults to "full" at hook:174, and the
+# case statement at hook:177-179 only recognizes full|balanced|light — an
+# unrecognized value never reassigns TIER, so it stays "full" and the gate
+# stays on). These three cases pin that contract directly, independent of
+# the sentinel-presence cases above.
+
+# 26: light tier → gate OFF — a gated commit with NO sentinel present is
+# allowed (exit 0). Allow-path case; no falsifiability probe needed (§H
+# applies to deny-path guards, not allow paths).
+printf 'light\n' > .claude/integration-tier
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+stage "hooks/thing.sh"
+run "light tier: gated commit allowed with no sentinel (gate off)" \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat: light tier\""}}' \
+    0
+printf 'full\n' > .claude/integration-tier
+
+# 27: balanced tier → gate ON — the same gated payload with no sentinel is
+# denied, per the hook's PreToolUse deny convention (exit 2).
+#
+# falsifiability: hooks/ copied whole to a scratch dir (relative sourcing
+# preserved). In the scratch copy only: check-commit.sh's
+# `if [ "$TIER" = "light" ]; then` (hook:181) changed to
+# `if [ "$TIER" = "light" ] || [ "$TIER" = "balanced" ]; then`, folding
+# "balanced" into the gate-off bypass. Re-running this case's fixture
+# (balanced tier, no sentinel, staged code file) against the neutered
+# scratch hook produced exit 0 instead of 2 — RED, confirming the pass
+# above depends on the hook actually keeping "balanced" on the enforcing
+# path. Scratch copy discarded after. Production tree (this file and
+# hooks/) untouched by the probe — 2026-08-23
+printf 'balanced\n' > .claude/integration-tier
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+stage "hooks/thing.sh"
+run "balanced tier: gated commit denied with no sentinel (gate on)" \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat: balanced tier\""}}' \
+    2
+printf 'full\n' > .claude/integration-tier
+
+# 28: garbage/unknown tier value (e.g. "bananas") → gate ON, fail-safe — the
+# case statement only recognizes full|balanced|light; anything else leaves
+# TIER at its "full" default and the gate stays enforced (exit 2).
+#
+# falsifiability: hooks/ copied whole to a scratch dir. In the scratch copy
+# only: check-commit.sh's tier `case "$_raw" in full|balanced|light)
+# TIER="$_raw" ;; esac` (hook:177-179) given an added `*) TIER="light" ;;`
+# branch, folding unrecognized values into the gate-off bypass instead of
+# the fail-safe "full" default. Re-running this case's fixture (tier file
+# containing "bananas", no sentinel, staged code file) against the
+# neutered scratch hook produced exit 0 instead of 2 — RED, confirming the
+# pass above depends on the fail-safe default actually holding. Scratch
+# copy discarded after. Production tree (this file and hooks/) untouched
+# by the probe — 2026-08-23
+printf 'bananas\n' > .claude/integration-tier
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+stage "hooks/thing.sh"
+run "garbage tier value: gated commit denied (fail-safe gate on)" \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat: garbage tier\""}}' \
+    2
+printf 'full\n' > .claude/integration-tier
 
 # Reset the index so any later cases see a clean (empty) staged set.
 stage

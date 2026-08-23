@@ -11,7 +11,11 @@
 # W3.2 additions: +7 tests (ALIAS group — ad-hoc `-c alias.NAME=VALUE` argv
 # sub-case, M-audit W3 task 2; HEREDOC-h/i/j — opener-line suffix scan,
 # M-audit W3 task 16).
-# Total assertions: 65. Runner-attested (W3.2: 65/65).
+# M48e additions: +5 tests (HEREDOC-PATHSPEC group — heredoc-pathspec fix,
+# todo row 10 / 2026-08-16 live repro: operator+terminator no longer leak
+# into extract_pathspecs' pathspec walk, and real pathspecs are never
+# over-stripped).
+# Total assertions: 70. Runner-attested (M48e: 70/70).
 
 LIB="$(cd "$(dirname "$0")" && pwd)/../hooks/lib/commit-detect.sh"
 source "$LIB" || { echo "FAIL: could not source $LIB"; exit 1; }
@@ -211,6 +215,45 @@ test_not_detected "HEREDOC-i: cat <<EOF | grep foo (non-interpreter suffix) stay
 # Path-qualified interpreter in the suffix (*/bash glob) also caught.
 test_detected "HEREDOC-j: cat <<EOF | /bin/bash (path-qualified suffix interpreter) stays detected" \
     $'cat <<EOF | /bin/bash\ngit commit -m "test"\nEOF'
+
+# ── Group HEREDOC-PATHSPEC — heredoc-pathspec fix, todo row 10 (2026-08-16 live
+# repro) — _commit_detect_strip_heredocs now excises the `<<WORD` operator from
+# the opener line (prefix+suffix emitted) and never re-emits the terminator
+# line, so neither reaches extract_pathspecs' unflagged-token walk. Before the
+# fix both leaked in as false CODE pathspecs on a doc-only heredoc commit,
+# turning it into a false MIXED deny (hooks/lib/commit-detect.sh's
+# `_commit_detect_strip_heredocs`, "todo row 10" fix-rationale comment block —
+# content-anchored, not a bare line number, since inserts above it re-stale a
+# fixed line cite).
+
+# falsifiability: fix reverted in scratch copy, test confirmed red — 2026-08-23
+# (a) fix works: quoted delimiter, -F - message body, doc-only content — no
+# pathspecs (previously "MSG" leaked as an unflagged/CODE pathspec).
+test_pathspecs "HEREDOC-k: git commit -F - <<'MSG' (quoted delim, doc-only body) emits no pathspecs" \
+    $'git commit -F - <<\'MSG\'\nUpdate README docs only\nMSG' ""
+
+# falsifiability: fix reverted in scratch copy, test confirmed red — 2026-08-23
+# (a) fix works: unquoted delimiter variant of the same repro form.
+test_pathspecs "HEREDOC-l: git commit -F - <<MSG (unquoted delim, doc-only body) emits no pathspecs" \
+    $'git commit -F - <<MSG\nUpdate README docs only\nMSG' ""
+
+# falsifiability: fix reverted in scratch copy, test confirmed red — 2026-08-23
+# (a) fix works: -q -F - flag variant, one of the exact payload forms from the
+# 2026-08-16 live repro (g-docs/todo.md row 10).
+test_pathspecs "HEREDOC-m: git commit -q -F - <<'MSG' (-q -F - flag variant, doc-only body) emits no pathspecs" \
+    $'git commit -q -F - <<\'MSG\'\nUpdate README docs only\nMSG' ""
+
+# (b) no over-strip regression guard: a plain non-heredoc commit with a real
+# positional pathspec must still emit it — a false ALLOW here is worse than
+# the false DENY the fix above corrects.
+test_pathspecs "HEREDOC-n: git commit -m \"x\" path/to/file (no heredoc) still emits path/to/file" \
+    'git commit -m "x" path/to/file' "path/to/file"
+
+# (b) no over-strip: a heredoc opener line carrying a REAL pathspec alongside
+# the operator must still emit that pathspec — only the `<<WORD` operator
+# match itself is excised, never the opener line's real command tokens.
+test_pathspecs "HEREDOC-o: git commit -F - docs/README.md <<'MSG' (real pathspec on opener line) still emits docs/README.md" \
+    $'git commit -F - docs/README.md <<\'MSG\'\nUpdate README docs only\nMSG' "docs/README.md"
 
 # ── Summary ───────────────────────────────────────────────────────────────────────
 

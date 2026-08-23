@@ -30,8 +30,10 @@ High risk — strongly consider re-scoping before approval. (Advisory; formula c
 
 | Scenario | Predicted | Actually happened? | Notes |
 |----------|-----------|---------------------|-------|
-| 1 | yes | | |
-| 2 | yes | | |
-| 3 | yes | | |
-| 4 | yes | | |
-| 5 | yes | | |
+| 1 | yes | happened (git) | |
+| 2 | yes | did not happen (git) | mitigation-held: no new bounds authored — verified `git show 1fc8ace --stat` carries no `tests/lib/timing-bounds.sh` hunk |
+| 3 | yes | did not happen (git) | production-format fixtures held; case-15 probe gap is a marker issue, not divergence — verified against `1fc8ace`'s own commit message ("all 9 deny cases probe-proven RED in scratch copies (§H), incl. case 15 ... probed in the r2 fix round after its 'unprobeable' rationale was falsified"); `mitigation-held:` token withheld because at retro time (2026-08-22, r2 boundary) the §H-probe clause of the mitigation had not yet fully held — the case-15 gap closed only in the later r3 fix, so the row records the state as of the retro, not the eventual shipped state |
+| 4 | yes | partial (git) | attestation sums held everywhere, but the CHANGELOG probe census was confabulated |
+| 5 | yes | did not happen (retro 2026-08-22) | mitigation-held: nohup+disown+no-pipe — evidence is the retro's own record of the AFK run's suite invocations (pass-reference tag; a bare `(unverified)` tag would make `/g-forecast`'s calibration discard the row while its Notes assert a held mitigation — contradictory). No separate git/journal artifact exists for an invocation-pattern claim. |
+
+Backfilled 2026-08-23 from `g-docs/retros/2026-08-22-m48d-afk-run.md`'s Patterns section — the original reconciliation was found claimed-but-not-written (lost-write class). Evidence tags on rows 2/3/5 added 2026-08-23 by M48e fix round 1 (`g-docs/agent-output/m48e/fix-round-1.md`); row 3's `mitigation-held:` omission is explained rather than added, since the mitigation was only partially held at the retro's own point in time.

@@ -299,8 +299,18 @@ _commit_detect_scan_segments() {
 #      interpreter that never appears in the prefix, so the suffix is
 #      scanned too and an interpreter match there overrides a
 #      non-interpreter prefix verdict.
-#   3. The opener line itself is never removed — a real `git commit <<EOF`
-#      on the opener line is still scanned normally by the caller.
+#   3. The opener line's real command tokens are never removed — only the
+#      `<<WORD` operator match itself is excised from it (todo row 10 fix,
+#      2026-08-23: modeling real shell argv, which never passes the
+#      redirection operator or its terminator word to the invoked program).
+#      A real `git commit <<EOF` on the opener line is still scanned
+#      normally by the caller; so is anything before/after the operator on
+#      that same line (e.g. the `| bash` suffix in guard 2). The terminator
+#      line is likewise never re-emitted as its own output line in either
+#      branch below — it is a bare delimiter word, not a command, and
+#      leaving it in as an unflagged token is what let it (and the excised
+#      operator) leak into extract_pathspecs' positional-pathspec walk as
+#      false CODE pathspecs on an otherwise doc-only heredoc commit.
 # Only one heredoc form is recognised per opener: `<<[-]?WORD`,
 # `<<[-]?'WORD'`, or `<<[-]?"WORD"`. Anything else on a `<<` line (e.g. a
 # non-heredoc bitshift `1 << 2`, where `2` isn't a valid heredoc word) simply
@@ -415,20 +425,38 @@ _commit_detect_strip_heredocs() {
                 _cd_k2=$((_cd_k2 + 1))
             done
 
-            _cd_out+=("$_cd_opener")
+            # todo row 10 (2026-08-16 repro): the heredoc OPERATOR
+            # (`<<'MSG'`/`<<EOF`/...) and its TERMINATOR line are shell
+            # redirection syntax — real bash strips both from the argv the
+            # invoked program ever sees, they are never positional
+            # arguments. The old code kept the operator embedded in the
+            # opener line and re-appended the bare terminator word as its
+            # own output line; extract_pathspecs' walk has no redirection
+            # awareness, so `<<MSG` and `MSG` both survived tokenization as
+            # unflagged tokens and were misread as positional pathspecs
+            # (unmatched paths default to CODE in check-commit.sh, turning a
+            # doc-only heredoc commit into a false MIXED deny). Emitting
+            # prefix+suffix (the opener line's real command tokens with only
+            # the `<<WORD` match excised) and never emitting the terminator
+            # line models real shell argv exactly, in both branches below —
+            # this is strictly more accurate, not more permissive: is_git_commit
+            # detection is unaffected (its own tests, HEREDOC-a..j, stay
+            # green) since prefix/suffix already carried every token that
+            # mattered for the `git ... commit` walk.
+            _cd_out+=("${_cd_prefix}${_cd_suffix}")
             if [ "$_cd_is_interp" -eq 1 ]; then
                 # Interpreter-fed (or unidentifiable) — keep the body, it
-                # really executes (or we can't prove it doesn't).
+                # really executes (or we can't prove it doesn't). The
+                # terminator word itself is still dropped (see above).
                 local _cd_m=$((i + 1))
-                while [ "$_cd_m" -le "$_cd_term_idx" ]; do
+                while [ "$_cd_m" -lt "$_cd_term_idx" ]; do
                     _cd_out+=("${_cd_lines[$_cd_m]}")
                     _cd_m=$((_cd_m + 1))
                 done
-            else
-                # Positively identified as a non-interpreter command — strip
-                # the body, keep only the terminator line.
-                _cd_out+=("${_cd_lines[$_cd_term_idx]}")
             fi
+            # Positively-identified non-interpreter case: body already
+            # excluded (no `_cd_out` append) and the terminator is dropped
+            # above — nothing further to emit for this heredoc.
 
             i=$((_cd_term_idx + 1))
             continue
