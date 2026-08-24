@@ -2,7 +2,7 @@
 
 > **Educated, enforced project management for AI development.** Make any model ship like a senior team — planned, reviewed, and context-clean.
 
-**Version 2.4.0** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
+**Version 2.4.1** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
 
 G-Forge installs a structured engineering *process* into any Claude Code project: a project-manager layer that challenges scope and sequences risk, parallel implementation waves, and a commit gate that **can't be skipped** — only opened by a full multi-agent review. The point isn't a smarter model; it's discipline that lets the model you already have punch above its weight.
 
@@ -41,17 +41,17 @@ Each of those is a layer that has to run through everything the system does, and
 
 **Lighter where you feel it most.** The review gate runs before every commit, and today it's one enormous pass that costs a fortune and starts losing the thread by the time it reaches the last thing it checks. 2.5 scopes it to what actually changed and splits it into small parallel passes with a cheap assembly step at the end. This one is measured, not promised: on this repo, an unscoped review ran ~3 hours and ~130k tokens before being killed; the same gate scoped ran 11 tool calls, 79k tokens, one round — and still caught a real blocker ([2026-08-17 retro](g-docs/retros/2026-08-17-m50-scope-and-scoped-review.md)).
 
-**Planning that doesn't invent work.** Task breakdown currently splits jobs that belong together and hands each fragment to its own agent. 2.5 fixes the sizing, so you stop paying for coordination you never needed.
+**Planning that doesn't invent work.** Task breakdown currently splits jobs that belong together and hands each fragment to its own agent. 2.5 fixes the sizing, so you stop paying for coordination you never needed. *(Already shipped early — in v2.4.1.)*
 
 **Every setting in one place you can see.** `/g-settings` lists every variable that governs G-Forge's behaviour: what it's set to, what writes it, and what it changes. Safe edits go through it. No more hidden files quietly deciding how your sessions run.
 
 **A way to tell me when it breaks.** `/g-report` fires when something actually goes wrong, or whenever you call it. It asks what you want to report, writes it against an incident template, scrubs your project's specifics out, and hands you a file to send. Bugs and reasonable feature requests travel the same route.
 
-**Gates that stop misfiring.** A passing review could fail to unlock the commit gate on some machines, which reads as G-Forge being broken. Committed reference material a project builds against was getting blocked as though G-Forge owned it. Both fixed. Plan-time risk percentages get recalibrated too, because a number you've learned to ignore is worse than no number at all.
+**Gates that stop misfiring.** A passing review could fail to unlock the commit gate on some machines, which reads as G-Forge being broken. Committed reference material a project builds against was getting blocked as though G-Forge owned it. Both fixed. Plan-time risk percentages get recalibrated too, because a number you've learned to ignore is worse than no number at all. *(The recalibration already shipped early — in v2.4.1; the rest of this item is still coming.)*
 
 **Instruments that measure what they claim.** G-Forge grades itself with telemetry, risk forecasts and coverage reports — and some of those gauges turned out structurally unable to register the failures they exist to catch (the agent-coverage table couldn't count two of the agents). 2.5 makes each instrument read the live ground truth it reports on, with tests that go red the moment the two drift apart.
 
-**Documentation that can't quietly rot.** The health check now flags anything in your CLAUDE.md that's a hand-typed fact rather than one sourced from a file. That's how those facts go stale without anyone noticing.
+**Documentation that can't quietly rot.** The health check now flags anything in your CLAUDE.md that's a hand-typed fact rather than one sourced from a file. That's how those facts go stale without anyone noticing. *(Already shipped early — in v2.4.1.)*
 
 **Releases in one step.** Cutting a release stops being a manual walk through several files that has to be remembered correctly every time.
 

@@ -6,14 +6,19 @@
 **Amended:** 2026-08-17 — M50 (Eval-Chain Integrity) folded into the 2.5 scope, sequenced **third** (after M48, before M45); see "Amendment — 2026-08-17" below.
 **Amended:** 2026-08-20 — M51 (Release Reliability / M45-lite) inserted **third** in the build order, absorbing M45 (Review Pipeline Rework); M50 moves to fourth. See "Amendment — 2026-08-20" below.
 **Amended:** 2026-08-22 — intermediate patch/minor releases cut at milestone-family closes; 2.5 scope and freeze identity unchanged; see "Amendment — 2026-08-22" below.
+**Amended:** 2026-08-24 — rendering rule for the README's "What's coming in 2.5" copy at intermediate cuts: shipped bullets are marked in place; see "Amendment — 2026-08-24" below.
 **Reversibility:** two-way door, narrowing (scope can be re-cut before 2.5.0 ships, but the §3c copy has been on the README since 2026-08-10 under a hedged "What's coming in 2.5" heading — cutting an announced item now means editing published copy, a developer decision; at release the heading goes present-tense and the door closes)
 **Context:** G-Forge plugin source repo. Decision made by the developer in session, 2026-08-10 — this ADR captures it; the deliberation was the session's intake + triage, not a subagent pass.
+
+## Amendment — 2026-08-24: "What's coming in 2.5" rendering at intermediate cuts
+
+Developer decision (session record, 2026-08-24, at the v2.4.1 doc gate): when an intermediate cut ships an item the README's `### What's coming in 2.5` copy still announces as future, the affected bullet is **marked in place** with a short shipped tag (e.g. *"(Already shipped early — in v2.4.1.)"*) — the section keeps its approved shape and the promise list stays visible; bullets are never silently removed or moved to a separate block. A bullet that mixes shipped and unshipped claims gets the tag scoped to the shipped sentence only. This resolves the gap the 2026-08-22 amendment left open (it introduced intermediate cuts without addressing this copy), first hit at the v2.4.1 cut (`README.md:44,:50`); the rule applies at every subsequent family close. At the 2.5.0 release the heading goes present-tense per the original decision and the tags dissolve with it.
 
 ## Amendment — 2026-08-22: intermediate releases on the road to 2.5
 
 Developer directive (session record, 2026-08-22): the 2.5 scope and the freeze-release identity are unchanged, but the road to it now cuts **intermediate patch/minor releases at milestone-family closes** — first candidate v2.4.1 at the M48-family close (M47 + M48a–e). Rationale: the project's own testing model is release-and-dogfood, and a monolithic 2.5 starves the field-validation loop for months — everything hardened since v2.4.0 was un-dogfoodable outside this repo. v2.5.0 remains the final G-Forge label — **M41 cuts it** (sequenced last in the build order, `g-docs/ROADMAP.md:451`); **M51 defines the release condition** it must meet ("a reliable and very usable harness," not a doc patch — `g-docs/ROADMAP.md:622`) — cumulatively containing everything this ADR promises; the intermediate cuts change delivery cadence, not scope. Standard release flow (§D) applies to each cut: both manifests, CHANGELOG, tag, GitHub release.
 
-**Surface set updated for this amendment** — this ADR (header + this section + the "one release vehicle" claim, amended in place at what is now `:65` below) · `CHANGELOG.md:11` · `g-docs/ROADMAP.md`'s Version Plan (`:667`) · M47's and M48's `**Version:**` stamps (`:517`, `:547`). No typed site list is authoritative — this one included: the complete set is found only by sweeping.
+**Surface set updated for this amendment** — this ADR (header + this section + the "one release vehicle" claim, amended in place at what is now `:70` below) · `CHANGELOG.md:11` · `g-docs/ROADMAP.md`'s Version Plan (`:667`) · M47's and M48's `**Version:**` stamps (`:517`, `:547`). No typed site list is authoritative — this one included: the complete set is found only by sweeping.
 
 ## Amendment — 2026-08-20
 

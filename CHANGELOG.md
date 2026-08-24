@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.4.1] — 2026-08-24
+
+Intermediate release on the road to 2.5, cut at the M48-family close per [ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md) amendment 2026-08-22 — carries M47 (Planning-Pipeline Honesty) and M48a–e (Review-Pipeline Hardening), plus everything else landed on `main` since v2.4.0: the repository-owner rename (`hllrm` → `onlygian`, needs `/g-update`), the `/g-resume` origin-sync step, the `/g-patterns` two-phase lifecycle, new `/g-doctor` checks, and the fix for `/g-init` installing only 4 of 6 hook libs (shipped broken in 2.4.0) — full enumeration in the sections below. v2.5.0 remains the final G-Forge release label; this cut changes delivery cadence, not scope.
+
 ### Announced
 
 - **G-Forge 2.5 will be the last feature release.** The README now carries the freeze announcement (the approved §3a/§3b/§3c copy from `g-docs/communication-plan-2.5.md`), published ahead of the 2.5.0 release by explicit developer decision (2026-08-10, [ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md)). The 2.5 scope: M47 → M48 → M51 (Release Reliability, absorbing M45) → M50 → M38 → M40 → M43 → M49 → M41 (M49 folded 2026-08-14; M50 folded 2026-08-17; M51 added 2026-08-20, absorbing M45 — each an ADR-012 amendment). Maintenance continues after 2.5; the successor (G-Proof) restarts versioning at 1.0.
