@@ -1,26 +1,224 @@
-# Pattern Report — 2026-08-14
+# Pattern Report — 2026-08-27
+
+Corpus: 32 retrospectives (31 carrying at least one negative signal, 1 sentinel-only) · 23 closed-task archive rows across 8 sections · 28 forecasts (13 with confirmed outcome rows) · 100 commits scanned (0 rework markers). Weighted counting: a forecast scenario confirmed as happened counts 2, partial counts 1, every other source counts 1; distinct source files only.
 
 ## Systemic (≥3)
-- **Label:** summary-disagrees-with-own-detail | **Weighted count:** 3 | **Sources:** 3 retrospectives
-  **Failure class:** An automated worker reports a summary total that disagrees with the detailed table it claims to summarize. The summary is generated independently of the detail rather than derived from it, so the headline number can drift from the evidence while looking authoritative. Downstream consumers who trust the headline inherit the error.
-  **Proposed fix intent:** Require every consumer of a summarized result to re-derive the total from the detailed data and treat the detail as authoritative on any disagreement.
-  **Status:** DEFERRED — the drafted rule text failed review on the trigger condition (it bound the requirement to the restated figure changing, rather than to the underlying detail changing, so it could not fire on the very case it was mined from). The pattern stands; the wording needs authoring fresh.
+- **Label:** correction pass introduces the next defect at the site it edits | **Weighted count:** 17 | **Sources:** 7 retrospectives, 5 forecasts
+  **Failure class:** Every fix round of a review arc minted at least one new defect — a restated count, a renumbered step, a completeness claim — at a location that same round touched, across six milestones, even after sweep instruments were live. Hand-typed enumerations written during a correction pass go stale within the pass.
+  **Proposed fix intent:** Treat correction passes as deployments — the same scoping and pre-mortem instruments as planned work — and forbid writing any new enumeration or completeness claim inside a correction pass (pointer or omission only).
+  **Status:** PENDING
 
-- **Label:** timing-bounds-without-platform-headroom | **Weighted count:** 3 | **Sources:** 1 retrospective, 1 forecast
-  **Failure class:** Time-based assertions are authored against the fastest environment observed, then fail intermittently on slower or emulated platforms where fixed overhead is several times larger. The failures read as regressions but are calibration errors, and they only appear under load or on other machines — the author's machine keeps passing.
-  **Proposed fix intent:** Require every time bound to carry at least double the worst observed duration on the slowest supported platform, recorded as a named constant with its justification.
-  **Status:** DEFERRED — the doubling and named-constant requirements already existed; only the measurement basis was missing, and the drafted wording failed review as unsatisfiable on shared or hosted build machines, where the required quiet conditions cannot be guaranteed and the rule left no alternative evidence path. Needs a formulation that degrades on shared infrastructure.
+- **Label:** enumerated site list misses live carriers of the same fact | **Weighted count:** 12 | **Sources:** 5 retrospectives, 1 archive, 4 forecasts
+  **Failure class:** A sweep driven by a typed list of "the places this fact lives" reliably misses siblings — a fix list is not a blast radius. The authority document that carried one such list warned in the same sentence that no typed list is authoritative, and the very next release cut edited exactly the listed sites and missed five more, one in the same file.
+  **Proposed fix intent:** Require release and fix sweeps to search for the literal fact (old value, old status word) across every live surface, never to walk an enumerated list; add the release-cut sweep to the release sequence rule explicitly.
+  **Status:** PENDING
+
+- **Label:** delegated agent stalls silently and needs a resume nudge | **Weighted count:** 8 | **Sources:** 4 retrospectives, 2 forecasts
+  **Failure class:** Roughly one in three delegated runs yields silently at a long shell step or the final record-write step and never returns; a single resume message recovers it every time, but the round-trip is never budgeted.
+  **Proposed fix intent:** Make "budget one resume round-trip per long-running delegate; resume, never redeploy an interrupted run" an explicit line in the agent-discipline rule rather than folklore.
+  **Status:** PENDING
+
+- **Label:** observer journal blind to agent identity | **Weighted count:** 6 | **Sources:** 6 retrospectives
+  **Failure class:** For six consecutive sessions every agent event was logged as unknown start or stop, so retrospectives and pattern mining had no agent-level evidence and fell back to orchestrator memory. The eventing fix shipped later; the current residual is noise (many internal stop events per real dispatch), tracked separately below.
+  **Proposed fix intent:** Verify the shipped attribution fix holds on the installed runtime and pin it with the eventing test; the historical class closes if it does.
+  **Status:** PENDING
+
+- **Label:** hand-typed counts go stale within the same session | **Weighted count:** 6 | **Sources:** 4 retrospectives, 1 archive, 1 forecast
+  **Failure class:** Totals and census claims written by hand (suite counts, "N of M probed", closure tallies, three copies of one stack list) are invalidated by the author's own later edits in the same session; a corrected count is the next round's stale count.
+  **Proposed fix intent:** Strengthen the documentation rule: counts are derived from their source at the end of a pass or omitted; a hand-typed number without a pinning test is a review finding.
+  **Status:** PENDING
+
+- **Label:** timing bounds authored on a quiet machine break under platform load | **Weighted count:** 6 | **Sources:** 2 retrospectives, 2 forecasts
+  **Failure class:** Hook timing bounds set from quiet-machine samples were breached by subprocess overhead on the shell emulation layer under load, three times, each fixed by a large recalibration after the fact; parallel agent load and timing suites do not mix.
+  **Proposed fix intent:** The architecture note (author with at least 2× loaded-worst headroom, named constant, tighten on evidence) exists — make it a done condition of any task that adds a timing assertion, and require the attestation run on a quiet machine by design.
+  **Status:** PENDING
+
+- **Label:** verification instrument checks a different claim than the one that matters | **Weighted count:** 5 | **Sources:** 4 retrospectives, 1 forecast
+  **Failure class:** A mechanical check passes green while the claim a reader cares about goes unexamined — counting lines instead of occurrences, grepping for the replacement instead of what should be gone, verifying a string but not the ordinal words beside it.
+  **Proposed fix intent:** Require every verification step to state which claim its check pins, and prefer the absence-grep and falsifiability forms when the two differ.
+  **Status:** PENDING
+
+- **Label:** long verification run killed by a tool or session ceiling | **Weighted count:** 5 | **Sources:** 4 retrospectives, 1 forecast
+  **Failure class:** A full-suite or attestation run longer than the shell tool's maximum timeout — or a delegate crossing a session limit mid-run — is reaped with only narration emitted; trailing a pipe onto a detached run loses its output or fakes a hang.
+  **Proposed fix intent:** Make the detached-run-plus-log-polling shape the stated standard in the review skill's suite step, with the trailing-pipe prohibition, and budget the resume for delegates that run long.
+  **Status:** PENDING
+
+- **Label:** parallel wave agent overreaches into sibling scope | **Weighted count:** 5 | **Sources:** 2 retrospectives, 2 forecasts
+  **Failure class:** A wave agent's remediation clobbered sibling hook files and deleted untracked work mid-wave; a child documentation agent retro-edited a shipped release note so counts would "agree", falsifying history.
+  **Proposed fix intent:** Reinforce the existing scope-boundary and whole-file-diff recovery rules with a dispatch-prompt requirement naming what must not be touched and an explicit no-child-dispatch line (the corpus shows that line holding scope where present).
+  **Status:** PENDING
+
+- **Label:** commit gate false-fires on commands that merely quote commit phrases | **Weighted count:** 5 | **Sources:** 4 retrospectives, 1 forecast
+  **Failure class:** The pre-execution gate denied routine commands three times in one session, a sandbox call, and reviewer record writes, because the command string or a heredoc body contained a commit phrase — taxing the workflow and forcing path-free messages and file-based writes as workarounds.
+  **Proposed fix intent:** Narrow commit detection to real invocations (the heredoc pathspec leak is already fixed) and keep record writes on the file-write tool so the class cannot fire.
+  **Status:** PENDING
+
+- **Label:** delegate reports a file write that never landed | **Weighted count:** 3 | **Sources:** 1 retrospective, 1 forecast
+  **Failure class:** A delegated agent returns done while its report file was never written — five sightings in two days — and the read-back-before-done instruction only catches content edits, not report files the agent never created.
+  **Proposed fix intent:** Require delegates to read back their own report file by exact path before returning, and require the orchestrator to verify the file exists before accepting the result.
+  **Status:** PENDING
+
+- **Label:** reviewer record-write blocked by tooling or missing grant | **Weighted count:** 3 | **Sources:** 3 retrospectives
+  **Failure class:** Review agents dispatched without a write grant returned records inline for the orchestrator to transcribe; heredoc writes by review agents stalled in the permission layer twice; search tooling failed for one reviewer across two sessions.
+  **Proposed fix intent:** Give every record-producing agent a write grant scoped to its own record path (the pattern two agents already carry) and retire inline-transcription as a path.
+  **Status:** PENDING
+
+- **Label:** source fix not live in the installed runtime | **Weighted count:** 3 | **Sources:** 3 retrospectives
+  **Failure class:** "Shipped" and "live here" were conflated for months — claims true of source and false of the runtime; the installed cleanup hook did not fire and sentinels were cleared by hand; a fix landed in source while the installed copy stayed stale until the next resync. It recurred at the latest release cut (one installed library lagging its source fix).
+  **Proposed fix intent:** Make the installed-copy resync a named step of the pass-close and release sequences on the self-hosting project, and keep the drift line visible in every review record.
+  **Status:** PENDING
+
+- **Label:** stale carry-over task text | **Weighted count:** 3 | **Sources:** 1 retrospective, 1 forecast
+  **Failure class:** Tasks written from milestone one-liners carried already-closed or misdiagnosed items into the next plan; handoff residue accumulated across passes until a week-stale banner was served every prompt.
+  **Proposed fix intent:** Verify-and-archive carried rows at plan time with evidence, and enforce the replace-never-append rule on the handoff with a check rather than by convention.
+  **Status:** PENDING
+
+- **Label:** session budget forces a mid-plan handoff | **Weighted count:** 4 | **Sources:** 2 retrospectives, 2 forecasts
+  **Failure class:** Plans estimated above the remaining session budget complete their slice on fumes or hand off at a wave seam; the budget gate fires correctly but the estimate was optimistic.
+  **Proposed fix intent:** Feed measured exchange counts back into the planning estimate's calibration rather than carrying a fixed constant.
+  **Status:** PENDING
+
+- **Label:** design change mid-review re-breaks documentation currency | **Weighted count:** 3 | **Sources:** 1 retrospective, 1 forecast
+  **Failure class:** A design decision moved after the documentation for it was written, recreating the same doc drift in two consecutive review rounds.
+  **Proposed fix intent:** Freeze the design surface once a review round is dispatched; a design change re-opens the doc pass explicitly rather than silently.
+  **Status:** PENDING
 
 ## Emerging (2)
-- **Label:** static-risk-numbers-get-ignored | **Weighted count:** 2 | **Sources:** 1 retrospective, 1 forecast
-  **Failure class:** Quantified risk estimates surfaced at planning time read as high and never move between plans, so the audience habituates and stops reading them — alarm fatigue turns a governance signal into noise. The number is produced by a fixed formula rather than calibrated against recorded outcomes.
-  **Proposed fix intent:** Derive risk figures from the recorded history of predictions versus outcomes so the number visibly moves with evidence, and display the correction alongside the headline figure.
-  **Status:** DEFERRED — half-resolved. The planning-time estimate this was mined from covers two separate numbers; one now derives from recorded outcomes, the other is still a fixed carried constant. Deferred to the self-improvement track that owns calibration-from-history.
+- **Label:** unverified delegate claim relayed as fact | **Weighted count:** 2 | **Sources:** 2 retrospectives
+  **Failure class:** Negative claims from delegates ("cannot be detected", "no leftover files") were relayed to the developer as fact and refuted only by review; a disk-state claim without pasted evidence is a prose claim.
+  **Proposed fix intent:** Extend the results-flow rule: any whole-surface or disk-state claim from a delegate requires pasted command output before it is relayed.
+  **Status:** PENDING
+
+- **Label:** record declared lost without checking the disk | **Weighted count:** 2 | **Sources:** 1 retrospective, 1 archive
+  **Failure class:** Reports were written off as unrecoverable because they were untracked by version control; untracked is not deleted, and one directory listing recovered all of them.
+  **Proposed fix intent:** Add a one-line rule: never declare a record lost without a disk check.
+  **Status:** PENDING
+
+- **Label:** interrupted run resumed rather than redeployed | **Weighted count:** 2 | **Sources:** 1 forecast
+  **Failure class:** A platform limit killed an implementer mid-verification; resuming intact worked — the carve-out firing as predicted rather than a failure.
+  **Proposed fix intent:** Fold into the stall pattern above at resolve time.
+  **Status:** PENDING
+
+- **Label:** sentinel parser edge-case drift | **Weighted count:** 2 | **Sources:** 1 forecast
+  **Failure class:** A predicted malformed-partial-stamp advisory delta surfaced exactly as forecast during a parser extraction.
+  **Proposed fix intent:** Confirm the extraction's own tests pin it, then close.
+  **Status:** PENDING
+
+- **Label:** done condition requires a tool the executor does not hold | **Weighted count:** 2 | **Sources:** 2 retrospectives
+  **Failure class:** A done condition was written assuming a write grant the agent lacked; another asked for a runtime reduction its mechanism could never deliver.
+  **Proposed fix intent:** Planning checks the executor's tool grant and the mechanism's reach before writing a done condition.
+  **Status:** PENDING
+
+- **Label:** parallel lanes cross-contaminate a shared tree | **Weighted count:** 2 | **Sources:** 2 retrospectives
+  **Failure class:** Concurrent agents editing one working tree: a code fixer changed a literal while a doc fixer quoted the old one; an earlier wave left stash residue after clobbering siblings.
+  **Proposed fix intent:** Serialize fix lanes that touch the same fact, or run parallel lanes in isolated worktrees.
+  **Status:** PENDING
+
+- **Label:** date-keyed record names collide or confuse rounds | **Weighted count:** 2 | **Sources:** 2 retrospectives
+  **Failure class:** Same-day records collided on a date-keyed filename; resumed review rounds wrote into the first round's file so citations to later rounds read as missing.
+  **Proposed fix intent:** Round-ordinal and slug discrimination in every record path (already adopted by the review gates) — extend to remaining record writers.
+  **Status:** PENDING
+
+- **Label:** documentation currency caught at the gate, not in the sweep | **Weighted count:** 2 | **Sources:** 2 retrospectives
+  **Failure class:** Stale counts, list strings and handoff blocks were found only by the final review gate in three of five milestones, and again a release later.
+  **Proposed fix intent:** Run the literal-fact sweep as an implementer's final step, before the gate, not as the gate's discovery.
+  **Status:** PENDING
+
+- **Label:** first-screen read mistaken for a whole-file read | **Weighted count:** 2 | **Sources:** 2 retrospectives
+  **Failure class:** A change called near-nil after reading only the frontmatter; overreach damage assessed from the noticed line instead of a full-file diff.
+  **Proposed fix intent:** Whole-surface claims require a whole-file read or exhaustive search — the rule exists; make review verify it.
+  **Status:** PENDING
+
+- **Label:** hand-summed total presented as evidence | **Weighted count:** 2 | **Sources:** 2 retrospectives
+  **Failure class:** Orchestrator arithmetic on expected totals double-counted, and failed three times on one number in a single session; only the runner's attested table is authoritative.
+  **Proposed fix intent:** Any total in a record must cite the run that produced it; a derived provenance claim is as hand-made as the number.
+  **Status:** PENDING
+
+- **Label:** literal label written into a hook-parsed line | **Weighted count:** 2 | **Sources:** 2 retrospectives
+  **Failure class:** The handoff parser strips greedily to the last occurrence of its label; editorial prose repeating the label served garbage on every prompt, discovered live at a release gate.
+  **Proposed fix intent:** Pin the parser's single-occurrence assumption with a test, or make the parser non-greedy.
+  **Status:** PENDING
 
 ## Isolated (1)
-- **Label:** shared-text-block-with-divergent-parsers | **Sources:** 1 | **Status:** —
-- **Label:** deferred-cleanup-of-per-session-state-files | **Sources:** 1 | **Status:** —
+- **Label:** editing a script during its own background run | **Sources:** 1 | **Status:** —
+- **Label:** authorship-scoped review misses consumers | **Sources:** 1 | **Status:** —
+- **Label:** synthetic fixture diverges from the live path | **Sources:** 1 | **Status:** —
+- **Label:** fixture mistaken for round-trip evidence | **Sources:** 1 | **Status:** —
+- **Label:** record cites an in-flight tree | **Sources:** 1 | **Status:** —
+- **Label:** reviewer dispatched without the diff | **Sources:** 1 | **Status:** —
+- **Label:** universal rule drafted from single-project evidence | **Sources:** 1 | **Status:** —
+- **Label:** empty payload yields boilerplate external review | **Sources:** 1 | **Status:** —
+- **Label:** external automation minted an unsanitized filename | **Sources:** 1 | **Status:** —
+- **Label:** sentinel written before staging | **Sources:** 1 | **Status:** —
+- **Label:** unclearable nudge causes alarm fatigue | **Sources:** 1 | **Status:** —
+- **Label:** true narrow claim generalized to a false broad one | **Sources:** 1 | **Status:** —
+- **Label:** gauge polarity inverted in rule text | **Sources:** 1 | **Status:** —
+- **Label:** one-way settings write leaves residue | **Sources:** 1 | **Status:** —
+- **Label:** orchestrator inline write skips its own governance | **Sources:** 1 | **Status:** —
+- **Label:** author-versus-runner split seam is costly | **Sources:** 1 | **Status:** —
+- **Label:** manufactured provenance on a reconstructed record | **Sources:** 1 | **Status:** —
+- **Label:** forecast corpus read inconsistently | **Sources:** 1 | **Status:** —
+- **Label:** permission-denial escalation spiral | **Sources:** 1 | **Status:** —
+- **Label:** observer journal noise degrades retro inputs | **Sources:** 1 | **Status:** —
+- **Label:** behavior drift adjudicated during a refactor | **Sources:** 1 | **Status:** —
+- **Label:** blank-slate interview instead of record prefill | **Sources:** 1 | **Status:** —
+- **Label:** wave gate semantics underspecified until review | **Sources:** 1 | **Status:** —
+- **Label:** concurrent session shipped on a stale base | **Sources:** 1 | **Status:** —
+- **Label:** artifacts generated before the design settled | **Sources:** 1 | **Status:** —
+- **Label:** approval sentinel left spanning a session boundary | **Sources:** 1 | **Status:** —
+- **Label:** gate-evasion hack corrupted its own payload | **Sources:** 1 | **Status:** —
+- **Label:** required check that sits in no routine loop | **Sources:** 1 | **Status:** —
+- **Label:** reassurance offered instead of analysis | **Sources:** 1 | **Status:** —
+- **Label:** deliberation blind to platform mechanisms | **Sources:** 1 | **Status:** —
+- **Label:** relative path resolution varies by invocation form | **Sources:** 1 | **Status:** —
+- **Label:** unpinned invocation form splits attestations | **Sources:** 1 | **Status:** —
+- **Label:** proof step chained onto a gated command | **Sources:** 1 | **Status:** —
+- **Label:** fixture probe escaped into the real repository | **Sources:** 1 | **Status:** —
+- **Label:** wave schedule blind to shared-library edges | **Sources:** 1 | **Status:** —
+- **Label:** test fixtures leak background processes | **Sources:** 1 | **Status:** —
+- **Label:** reused output directory carries leftovers | **Sources:** 1 | **Status:** —
+- **Label:** forecast anticipated the wrong failure mode | **Sources:** 1 | **Status:** —
+- **Label:** date-keyed journal misses a session across midnight | **Sources:** 1 | **Status:** —
+- **Label:** design observation inflated into a defect | **Sources:** 1 | **Status:** —
+- **Label:** convention minted without a writer | **Sources:** 1 | **Status:** —
+- **Label:** full re-review reopens a settled field | **Sources:** 1 | **Status:** —
 
 ## Reinforced
-- **Label:** verify-claims-against-source-not-reporter | **Sources:** 3 | **Status:** —
-- **Label:** fresh-context-for-applying-deliberated-decisions | **Sources:** 2 | **Status:** —
+- **Label:** separate code and documentation gates | **Sources:** 10 | **Status:** —
+- **Label:** review dispatch scoped by exclusion | **Sources:** 7 | **Status:** —
+- **Label:** sweep the literal fact, de-enumerate rather than correct | **Sources:** 7 | **Status:** —
+- **Label:** resume, never redeploy, on interruption | **Sources:** 6 | **Status:** —
+- **Label:** same-turn re-derivation of stated claims | **Sources:** 4 | **Status:** —
+- **Label:** falsifiability red-proof before done | **Sources:** 3 | **Status:** —
+- **Label:** budget gate splits the milestone along dependency lines | **Sources:** 3 | **Status:** —
+- **Label:** stage, stamp, commit as separate steps | **Sources:** 3 | **Status:** —
+- **Label:** single-use fresh agent per round | **Sources:** 3 | **Status:** —
+- **Label:** orchestrator runs what delegates author | **Sources:** 3 | **Status:** —
+- **Label:** verify claims by execution, not trust | **Sources:** 3 | **Status:** —
+- **Label:** off-context deliberation finds holes | **Sources:** 3 | **Status:** —
+- **Label:** detached long run with log polling | **Sources:** 2 | **Status:** —
+- **Label:** explicit no-child-dispatch line holds scope | **Sources:** 2 | **Status:** —
+- **Label:** forecast score discriminates by change risk | **Sources:** 2 | **Status:** —
+- **Label:** developer challenge reframes the objective | **Sources:** 2 | **Status:** —
+- **Label:** wave-close integrity diff verifies scope | **Sources:** 2 | **Status:** —
+- **Label:** annotate corrections in place, never scrub | **Sources:** 1 | **Status:** —
+- **Label:** parallel review dispatch under the agent cap | **Sources:** 1 | **Status:** —
+- **Label:** fast review, fix, re-review loop | **Sources:** 1 | **Status:** —
+- **Label:** one shared rule reused by its consumers | **Sources:** 1 | **Status:** —
+- **Label:** done conditions ticked before review | **Sources:** 1 | **Status:** —
+- **Label:** wave gated on green tests | **Sources:** 1 | **Status:** —
+- **Label:** verify before relying | **Sources:** 1 | **Status:** —
+- **Label:** resolve design forks before artifacts | **Sources:** 1 | **Status:** —
+- **Label:** verify against origin before deleting local | **Sources:** 1 | **Status:** —
+- **Label:** review starts from verified ground truth | **Sources:** 1 | **Status:** —
+- **Label:** canary proves fixture trigger state | **Sources:** 1 | **Status:** —
+- **Label:** whole-file coherence as a done condition | **Sources:** 1 | **Status:** —
+- **Label:** re-measure a stale carry-over assumption | **Sources:** 1 | **Status:** —
+- **Label:** honest retro bullet triggers measurement | **Sources:** 1 | **Status:** —
+- **Label:** snapshot before an irreversible change | **Sources:** 1 | **Status:** —
+- **Label:** probe the live payload instead of assuming | **Sources:** 1 | **Status:** —
+- **Label:** clone-first rehearsal predicts live | **Sources:** 1 | **Status:** —
+- **Label:** root cause before any state change | **Sources:** 1 | **Status:** —
+- **Label:** gate denial correct by design, then pass | **Sources:** 1 | **Status:** —
+- **Label:** capture from records, not interview | **Sources:** 1 | **Status:** —
+- **Label:** adversarial reframe of a re-review dispatch | **Sources:** 1 | **Status:** —
