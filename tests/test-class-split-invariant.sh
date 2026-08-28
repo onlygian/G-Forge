@@ -104,10 +104,10 @@ test_hook_exit_code() {
 # WHY workflow-checkpoint is reliably the slowest of the six, and why that is a
 # machine signal rather than a regression: subprocess fork count under load, not
 # network. Its version-advisory curl is manifest-gated
-# (hooks/workflow-checkpoint.sh:455), 24h rate-limited (:459), backgrounded with
+# (hooks/workflow-checkpoint.sh:477), 24h rate-limited (:472), backgrounded with
 # &, --max-time 5, output discarded and never waited on — the harness times a
 # foreground child, so that call cannot enter the measurement at all. Its tail is
-# 491 lines forking git/grep/find/ls children against post-commit-cleanup.sh's 110.
+# 504 lines forking git/grep/find/ls children against post-commit-cleanup.sh's 110.
 # GUARD_WINDOW_MS (the default when the optional 4th arg is omitted) sources
 # GF_FAST_STDIN_GUARD_MS (tests/lib/timing-bounds.sh), not the production
 # GF_HOOK_STDIN_GUARD_MS bound — five of the six calls in § 7 below run with

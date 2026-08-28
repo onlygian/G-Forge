@@ -85,10 +85,12 @@ Both files are updated in the same commit. Disagreement between them is a releas
 2. Update version in `plugin.json` and `marketplace.json`
 3. Add CHANGELOG entry under the new version heading (Keep a Changelog format)
 4. Update README if skill/profile counts, command lists, or capability descriptions changed
-5. Single commit: `chore: bump to vX.Y.Z` or `vX.Y.Z — <milestone summary>`
-6. Push immediately — never leave a version bump unpushed
-7. Run `/g-update` on any downstream projects to sync installed files
-8. Tag the release commit `vX.Y.Z` (lightweight) and cut the GitHub release with that version's CHANGELOG section as the body — from v2.4.0 onward, per the *Git tags* note below
+5. Grep the literal fact being released (old version string, "candidate"/"pending"/status word, milestone token) across every live surface — never walk a typed site list (ADR-012, ADR-013). The v2.4.1 cut missed live carriers this way.
+6. Single commit: `chore: bump to vX.Y.Z` or `vX.Y.Z — <milestone summary>`
+7. Push immediately — never leave a version bump unpushed
+8. Run `/g-update` on any downstream projects to sync installed files
+9. If this repo self-hosts the plugin, resolve any `Installed-copy drift:` line flagged by the review record before tagging — realign `.claude/` from source (`/g-update`) or hand-sync the drifted file; never tag a release over unresolved self-host drift
+10. Tag the release commit `vX.Y.Z` (lightweight) and cut the GitHub release with that version's CHANGELOG section as the body — from v2.4.0 onward, per the *Git tags* note below
 
 *Version never changes mid-milestone.* If scope creeps enough to change the bump type (e.g. patch → minor), update the milestone's `**Version:**` field in `g-docs/ROADMAP.md` and note the reason before continuing.
 

@@ -94,14 +94,14 @@ Task: [task name]
 Done condition: [done condition from plan]
 Files in scope: [file paths from plan, or "determine from task scope"]
 Output file: g-docs/agent-output/wave-[N]/[task-slug].md
-Constraint: touch only files in your task scope.
+Constraint: touch only files in your task scope. Do not dispatch child agents (including doc-writer) unless step 2 below applies to a file inside that scope.
 [if defensive or recovery: telemetry clause from Step 0]
 
 You get ONE approach and ONE attempt. If your approach works, return DONE. If it does not work, do NOT thrash or try a second approach in this context — return FAILED with a learnings report and stop. HQ owns the retry.
 
 1. Implement the task using a single, committed approach.
-2. For any file with public interfaces or exported functions, dispatch doc-writer (files changed + design intent).
-3. Write a complete implementation summary to the output file above.
+2. For any file with public interfaces or exported functions whose docs are inside your scope, dispatch doc-writer restricted to exactly the files you changed (files changed + design intent). Docs outside your scope are a LEARNINGS gap for HQ, never a widened child scope.
+3. Write a complete implementation summary to the output file above, then read it back at that exact path before returning — a missing or empty report file is not DONE.
 4. Return ONLY this block — no other prose:
 
 RESULT: DONE|FAILED|BLOCKED
@@ -120,7 +120,7 @@ Wait for all agents in the wave to return before proceeding.
 
 Agents return a compact block (`RESULT / SUMMARY / FILES / DONE_CONDITION / LEARNINGS / DETAIL`). Parse the `RESULT:` field:
 
-- **`DONE`** — compact block is sufficient. Mark task complete. Do not read the detail file unless you need specifics for a dependent wave.
+- **`DONE`** — compact block is sufficient for content, but verify the `DETAIL` path exists and is non-empty (`ls -l`) before marking the task complete — a delegate can return DONE with the report never written. Do not read the detail file unless you need specifics for a dependent wave.
 - **`WRITTEN`** — returned by `test-writer`: the tests are **authored but NOT executed** (that agent has no run tool). This is **not** a completed task. Before marking it done, **you (HQ) run the suite yourself** — HQ has execution tools — and record the real runner output (framework, pass/fail counts). A **green** run marks the task complete and becomes the attestation code-lead/`/g-review` will require (Tier-1 evidence per g-rules-H). A **red** run starts the fix loop: dispatch a fresh `feature-implementer` (to fix the code) or `test-writer` (to fix a broken test) seeded with the failing output, then re-run. Never mark a `WRITTEN` task complete on the compact block alone — an unrun suite reported as done is finding #20.
 - **`FAILED`** — the agent's single approach didn't work; the agent is spent. **Never re-prompt it** — single-use agents are discarded on failure (G-RULES §C). Run the redeploy loop:
   1. Read the `LEARNINGS:` block (and the `DETAIL:` file if you need specifics). This is the only thing that crosses back — the failed agent's context is gone, and that's the point: it can't poison the retry.

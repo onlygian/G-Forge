@@ -43,6 +43,8 @@ All G-Forge-generated documents — project tracking included — live under `g-
 
 **Tracked vs. ignored:** the `g-docs/` project record is **committed** (it *is* the project) — except `g-docs/agent-output/` (and any local `g-docs/plans/` scratch), which is regenerable and gitignored. The `.gitignore` `/g-init` writes (Step 5a) draws this line; `/g-doctor` Check 20 keeps it honest, and Check 21 flags any G-Forge document that strays outside `g-docs/`. `g-docs/inbox/adversarial/` is the one deliberate exception to "G-Forge writes it, G-Forge tracks it": it is third-party-writable — dropped by external automation outside this project's control — yet still committed by design, because the advisory input itself is part of the project record once it lands.
 
+**Date-keyed record paths discriminate same-day collisions** — a slug, a round ordinal (`-r[N]`), or a numeric suffix (`-2`, `-3`, …). `/g-review`, `/g-doc-review`, `/g-patterns`, and `/g-telemetry` carry the shipped conventions; a writer that mints a bare `YYYY-MM-DD.md` path with no discriminator silently overwrites a same-day run and is a gap against this rule.
+
 ### Commit gate infrastructure
 
 Three hook scripts installed by `/g-init` under `.claude/hooks/`:

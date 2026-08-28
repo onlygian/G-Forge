@@ -10,7 +10,7 @@ prose, not a consumer, so per the same ADR's rule 2 it keeps its concrete
 numbers rather than pointing at a directory: **22 suites** — pinned by
 `tests/test-run-all.sh`'s suite-count baseline (`EXPECTED_SUITE_COUNT`), which
 goes red if a suite is added or removed without updating it — carrying
-**617 assertions** (attested 2026-08-23, summed independently from the run's
+**622 assertions** (attested 2026-08-28, summed independently from the run's
 `Results:` lines per G-RULES §H; the assertion total is a dated attestation,
 not test-pinned — re-sum after any suite change).
 
@@ -74,8 +74,8 @@ name. `tests/lib/` is deliberately outside the `test-*.sh` glob, so it is never
 mistaken for a suite by `for f in tests/test-*.sh`.
 
 Authoring rule (`profiles/claude-plugin/rules/architecture.md`): at least **2×
-the worst observed run** on MSYS/Git-Bash, extracted to a named `*_MS` constant,
-WHY stated. Author generous, tighten on evidence. Every bound currently in that
+the worst observed run** on MSYS/Git-Bash **measured under load** (never
+quiet-machine idle alone), extracted to a named `*_MS` constant, dated WHY stated. Author generous, tighten on evidence. Every bound currently in that
 file was first authored tight and later breached.
 
 This convention exists because the abandoned-pipe bound lived in two suites at

@@ -39,6 +39,8 @@ Tag every task with exactly one executor agent. Classify by the nature of the wo
   In a single-stack project there is one implementer — its globs cover the stack, so route all implementation tasks to it.
 - **`feature-implementer`** — everything else, and the fallback whenever no stack implementer matches or none are installed. This is the default — when in doubt, use `feature-implementer`.
 
+- **Grant check.** After tagging a task's executor, verify the task's done condition is achievable with that agent's frontmatter `tools:` grant (a done condition requiring a file write needs `Write`/`Edit` on the assignee) and that the stated mechanism can actually produce the claimed effect (reordering serial steps cannot itself reduce total runtime). A mismatch is a decomposition defect — flag it back rather than tagging silently.
+
 Never tag a task `general-purpose`.
 
 ## Output format

@@ -94,7 +94,10 @@ fi
 
 ACTIVE_CONTEXT=""
 if [ -f "g-docs/ROADMAP.md" ]; then
-    ACTIVE_CONTEXT=$(grep -m1 'Active context:' g-docs/ROADMAP.md | sed 's/.*Active context:[[:space:]]*//')
+    # Anchored to line start: a greedy `.*` strip removes through the LAST
+    # occurrence of the label on the line, so prose repeating the label served
+    # garbage on every prompt (retros 2026-07-23, 2026-07-26, 2026-08-15).
+    ACTIVE_CONTEXT=$(grep -m1 '^Active context:' g-docs/ROADMAP.md | sed 's/^Active context:[[:space:]]*//')
 fi
 
 # Review sentinel — resolved under the same GF_CLAUDE_DIR as the project
@@ -393,6 +396,16 @@ if [ "$PROMPT_COUNT" -eq 1 ]; then
         else
             echo "  · Fresh session, pending handoff — run /g-resume to re-hydrate context before new work"
         fi
+    fi
+fi
+
+# Duplicate-heading warning — §I requires the Active Session block be replaced
+# wholesale, never appended; an appended second block is the form this check
+# detects (intra-block residue, the 2026-07-23 m46 incident's shape, is not).
+if [ -f "g-docs/ROADMAP.md" ]; then
+    _active_session_count=$(grep -c '^## Active Session' g-docs/ROADMAP.md 2>/dev/null)
+    if [ "${_active_session_count:-0}" -gt 1 ] 2>/dev/null; then
+        echo "  ⚠ g-docs/ROADMAP.md has $_active_session_count '## Active Session' headings — replace-never-append violated (G-RULES §I)"
     fi
 fi
 

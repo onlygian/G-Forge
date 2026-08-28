@@ -52,6 +52,7 @@ Before reviewing any code, verify the test suite passes.
 
 **Run the deterministic suite directly — no agent indirection.** The suite run is a fixed command with a parseable `Results:` contract; it needs no judgment, so it is executed directly by HQ rather than dispatched through an agent. If `tests/run-all.sh` exists at the repo root:
 - Run `bash tests/run-all.sh` directly and capture its output verbatim. This is the mandatory suite action for this repo — do not glob or dispatch anything to obtain it.
+- If the suite's expected runtime may exceed the shell tool's maximum timeout (~10 min), run it detached — `nohup bash tests/run-all.sh > <logfile> 2>&1 & disown` — then poll the log for the runner's final results line. Never trail a pipe (e.g. `| tail`) onto a backgrounded suite run: it silently drops output or fakes a hang.
 - Its report must include real pass/fail counts and, on any failure, the actual failing lines from the runner output.
 - HQ sums the runner's per-suite table independently before accepting any total. A summary total that disagrees with its own table is treated as confabulated — the summed table wins, and the discrepancy is recorded in the review record (claim-vs-data doctrine, three occurrences through M-audit).
 - Include the captured verbatim runner output as the attested test result passed to code-lead in Step 4.
@@ -252,4 +253,5 @@ Append any round-3 consolidation note from Step 4c under the finding class it ap
 - The sentinel is automatically cleared after the next `git commit` by the commit hook.
 - In listen mode: zero edits, zero suggestions, acknowledgement only. Violations of listen mode reset the round.
 - The Step 4b fix-closure sweep record check is required, not advisory, whenever a run claims to close one or more findings from a prior HOLD — keyed on that claim, never on "the same file set". code-lead performs the sweep itself in Step 4 while dispatched; Step 4b is HQ's required check that its record actually carries the sweep evidence. A closure claim with no recorded sweep output in code-lead's review record does not count as closed, and blocks MERGE READY the same way a HOLD does, independent of code-lead's own verdict line.
+- When a code-fix round and a doc-fix round run in parallel on the same HOLD, each fix dispatch greps the other lane's changed literals (the facts each round rewrote) before returning — a fact changed in one lane and not swept in the other is a Currency-class finding next round, not a surprise.
 - The Step 4c round-3 consolidation note is advisory phrasing only — it is never grounds to change a verdict, skip Step 5, or override the Step 4 severity contract.
