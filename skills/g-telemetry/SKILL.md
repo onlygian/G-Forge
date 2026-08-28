@@ -82,7 +82,7 @@ rarely:doc-writer
 
 Omit a line entirely if the list for that category is empty. If all agents are `used`, write an empty file.
 
-Also append a coverage section to the `g-docs/telemetry/YYYY-MM-DD.md` snapshot:
+Also append a coverage section to the `g-docs/telemetry/YYYY-MM-DD.md` snapshot (taking the first free numeric suffix — `-2`, `-3`, … in numeric order — if a snapshot for today already exists; never silently overwrite a same-day run):
 
 ````markdown
 ## Agent coverage (last [N] retros)
@@ -137,7 +137,7 @@ Effect on adaptive orchestration:
 Coverage: [N] of 19 agents used · never: [list or "none"] · rarely: [list or "none"]
   (workflow-checkpoint will surface suggestions for never-used agents once per day)
 
-Snapshot written: g-docs/telemetry/[YYYY-MM-DD].md
+Snapshot written: g-docs/telemetry/[YYYY-MM-DD].md   (or [YYYY-MM-DD]-N.md on a same-day collision)
 Profile persisted: .claude/telemetry-profile
 Coverage persisted: .claude/telemetry-coverage
 

@@ -1,4 +1,14 @@
+## 2026-08-27 — reviewer-record-write-blocked-by-missing-grant (Systemic, weighted 3)
+- Sources: retros/2026-07-19-adr007-w15e.md · retros/2026-07-23-m-audit-close-v230.md · retros/2026-07-23-m46-update-integrity.md
+- Proposed target: `agents/*.md` frontmatter — scoped `Write` grant on every record-producing reviewer (`architecture-enforcer`, `code-reviewer`, `performance-auditor`, `security-auditor`, `dependency-auditor`, `spec-writer`, `wave-planner`), the `code-lead`/`doc-reviewer` pattern.
+- Triage: **defer → M51 item 4** (`g-docs/ROADMAP.md`, "apply the doc-reviewer/task-decomposer scoped-Write pattern to the remaining Write-less agents") — already decided by developer directive; a resolve-pass edit here would fork it. The heredoc half is already closed by G-RULES §C's Write-tool-never-heredoc line.
+
+## 2026-08-27 — parallel-lanes-cross-contaminate-shared-tree — execute-wave half (Emerging, weighted 2)
+- Sources: retros/2026-07-16-w13-verify-gproof-rebrand.md (stash residue after sibling clobber)
+- Triage: **defer → ADR-006 implementation.** The review-fix-round half (retros/2026-08-21-m48b-and-m51-slotting.md) was APPLIED this pass as a cross-lane sweep line in `/g-review` and `/g-doc-review` Rules. The execute-wave half is the incident ADR-006 was written for, and ADR-006's mechanism (flight recorder, wave-close integrity check, `NEEDS_GLOBAL`) has **never been built** — no `hash-object -w` recorder or integrity step exists in `skills/g-execute/SKILL.md` or `hooks/`. That is a milestone-sized gap, not a rule line; re-litigating it as a rule would contradict the in-force ADR. Needs slotting.
+
 ## 2026-08-15 — summary-disagrees-with-own-detail (Systemic, weighted 3)
+- **2026-08-27 update:** wording authored fresh and APPLIED as the §G Currency-rule paragraph ("pinned by a test that fails when the source and the count disagree, or omitted"). Both drafting defects below avoided: the trigger binds to source/count disagreement via the pinning test, and the paragraph stands alone with no §H pointer. Entry retained as the drafting record.
 - Sources: retros/2026-05-19-m10-m14-pre-shipping-sweep.md (:34, :35) · retros/2026-07-23-m46-update-integrity.md (:25, hit twice in one pass) · retros/2026-08-15-g-patterns-two-phase-lifecycle.md
 - Proposed target: `rules/g-rules/G-documentation.md`, `### Currency rule` — a paragraph requiring derived counts and summary figures (suite totals, file/skill/agent counts, list sizes, version stamps) to be re-derived from their source of detail rather than carried forward as prose, with the detail authoritative on disagreement.
 - Triage: **defer — pattern confirmed, drafted wording rejected at review.** Two defects in the draft, both worth carrying:
@@ -7,6 +17,7 @@
 - Placement: any future pass that authors the wording fresh. The evidence is the strongest in the corpus (3 retrospectives); only the drafting failed.
 
 ## 2026-08-15 — timing-bounds-without-platform-headroom (Systemic, weighted 3)
+- **2026-08-27 update:** the narrow gap named below ("under what machine conditions") APPLIED as a refinement of the architecture note — "measured under load (an `nproc`-core busy-loop), never quiet-machine idle time alone", with the rejected quiet-machine run condition explicitly ruled out in the note itself. `tests/lib/timing-bounds.sh` already carries the loaded measurements (2026-08-21).
 - Sources: retros/2026-08-12-m47-planning-honesty.md · forecasts/m47-planning-pipeline-honesty.md
 - Proposed target: `profiles/claude-plugin/rules/architecture.md`, the "Note — timing assertions in hook tests" — pin the measurement basis for "worst observed".
 - Triage: **defer — narrower than it first read, and the drafted wording is unsafe for consumers.**
@@ -17,6 +28,7 @@
 - **Developer decision still open, unchanged by this deferral:** the `GUARD_WINDOW_MS` 20000-vs-24.3s question. The quiet-runner convention was chosen in session on 2026-08-15; it is the *rule text* that parked, not the decision.
 
 ## 2026-08-15 — static-risk-numbers-get-ignored (Emerging, weighted 2)
+- **2026-08-27 update (partial):** the carried `per-task review = 4` constant in `/g-plan` Step 3c now has a re-derivation rule ("recompute when ≥3 new pass reports exist; carried-forward is a one-round exception") — APPLIED. Observation 2's larger shape (exchange-count proxy vs live capacity, never re-estimated as waves burn) is unchanged and still M38/M39's.
 - Sources: retros/2026-08-12-m47-planning-honesty.md · forecasts/m47-planning-pipeline-honesty.md · seed record `g-docs/milestones/M36-salience-inputs/2026-07-18-forecast-calibration-feedback.md`
 - Triage: **defer → M38/M39**, the placement the seed record itself assigns ("calibration-from-history is their charter").
 - **Half-resolved, and that is the point of this entry.** The seed record names **two** self-governance numbers, not one. Observation 1 (`/g-forecast` miss-risk never reading below 50%) **is** fixed — M47 shipped Step 5b outcome-corpus calibration, recomputed from the live corpus every run. Observation 2 (`/g-plan`'s context-budget check — a static snapshot in a proxy unit, counting exchanges rather than live `/context` capacity, never re-estimated as waves burn) is **NOT** fixed: M47's Step 3c added the review-chain term as another *carried* constant (`CHANGELOG.md` states it outright — "carried, not copied"), which is the same fixed-formula shape the pattern describes.

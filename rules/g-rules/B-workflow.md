@@ -78,4 +78,5 @@ Run `/g-help` for the full skill reference including deep-analysis, learning, an
 - Never commit without `.claude/g-forge-approved` — the commit gate will block it
 - Never skip `/g-plan` for non-trivial tasks — "it's quick" is not an exception
 - `code-lead` HOLD = fix everything listed, re-review. No partial merges.
+- A fix/correction round never writes a *new* unpinned enumeration, count, or completeness claim at a site it edits — pin it with a test that fails when source and claim disagree, or omit it (ADR-013 rule 2, applied to review rounds). Consecutive M48-family milestones minted the next round's defect this way.
 - `git commit` is HQ-only, after MERGE READY. Never instruct subagents to commit — they implement and return results only.

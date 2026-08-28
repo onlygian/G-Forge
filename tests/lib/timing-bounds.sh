@@ -12,7 +12,8 @@
 # in step" does not enforce; a single definition does.
 #
 # Authoring rule (profiles/claude-plugin/rules/architecture.md, timing note):
-# at least 2x the worst observed run on MSYS/Git-Bash, named *_MS, WHY stated.
+# at least 2x the worst observed run on MSYS/Git-Bash measured under load (never
+# quiet-machine idle alone), named *_MS, dated WHY stated.
 # Author generous, tighten on evidence. The two empirical bounds below were
 # first authored tight, both breached, and both now sit at 2x worst observed;
 # all three now carry dated empirical evidence (the fast-override bound was

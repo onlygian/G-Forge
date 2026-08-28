@@ -18,11 +18,11 @@
 | Build / audit >2 min with clear done condition | Background agent |
 | Same bug class, 3rd attempt | Stop inline. Explore agent + escalate model + different mechanism. |
 
-**Agent prompt must include:** exact `file:line` refs for known things · scope boundary (what NOT to touch) · one specific verifiable done condition · enough WHY for judgment calls · **record/report files are written with the Write tool, never Bash heredocs** — heredocs stall in the permission layer and trip the commit-gate multi-line walk; an agent with Bash-only write ability returns content to HQ instead, or is granted Write scoped to its record path.
+**Agent prompt must include:** exact `file:line` refs for known things · scope boundary (what NOT to touch) · one specific verifiable done condition · enough WHY for judgment calls · **record/report files are written with the Write tool, never Bash heredocs** — heredocs stall in the permission layer and trip the commit-gate multi-line walk; an agent with Bash-only write ability returns content to HQ instead, or is granted Write scoped to its record path · **no child dispatch unless the task explicitly requires it** — an unscoped `doc-writer` child falsified a shipped CHANGELOG entry twice before this line was enforced by hand · **the agent reads back its own report/output file at the exact dispatched path before returning DONE** — distinct from content-edit read-back; it catches the report file an agent never got around to writing, and HQ verifies the path exists before accepting the result.
 
 **Out-of-scope edit recovery:** when any agent touches a file outside its stated scope, recovery is a full-file diff against git for every file it touched — never a spot-revert of the noticed line.
 
-**Results flow:** summary + `file:line` refs back to HQ — never raw file dumps. A claim about a file's *whole* surface ("no other occurrences", "nothing else changed", "near-nil") requires a whole-file read or exhaustive grep — targeted reads support only targeted claims.
+**Results flow:** summary + `file:line` refs back to HQ — never raw file dumps. A claim about a file's *whole* surface ("no other occurrences", "nothing else changed", "near-nil") requires a whole-file read or exhaustive grep — targeted reads support only targeted claims. A **negative, capability, or disk-state claim** ("cannot be detected", "no leftover files", "nothing else references X") is not relayed to the developer as fact until the delegate's exact command and its pasted output travel with it — an unverified claim is reported as unverified, not as confirmed. **Never declare a record lost without checking the disk first** — gitignored is not deleted; a directory listing or grep of the actual path is required before reporting anything as unrecoverable.
 
 **Caps:** Hard limit 7 agents/task. 4 agents in one wave = warning sign, restructure first.
 
@@ -44,6 +44,8 @@
 `FAILED` (the approach didn't work — HQ analyzes and redeploys) is distinct from `BLOCKED` (an external dependency makes the task impossible to proceed — surface to the human immediately; redeploying a fresh agent won't help).
 
 **Interrupted ≠ `FAILED`.** A dispatch killed mid-task by a session limit or platform stop — context intact, approach not refuted — is **resumed to completion**, not discarded. The single-use rule bars re-prompting *failed* agents, whose dead-end exploration would poison a retry; it does not bar resuming *interrupted* ones that never finished their one attempt.
+
+**Budget the resume.** A delegate whose task includes a long shell run or ends in its own record-write step silently yields at that point routinely — this is the common case of the carve-out above, not the exception. Budget one resume round-trip into the dispatch; a second stall on the same run is genuinely stuck, not a nudge-again case.
 
 This is the same airtight-contract discipline G-Forge already uses for *first* attempts — `spec-writer` produces a spec precise enough for a cheap executor to run without judgment calls — extended to *retries*. The learnings report is the fixed-contract value crossing the seam; thinking out loud inside a reused agent is mutating the shared object (the executor's window) in place. Keep the seam clean.
 

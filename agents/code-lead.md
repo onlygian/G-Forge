@@ -35,11 +35,12 @@ For each task in the wave, check its done condition mechanically:
 - Report every result: `[task N] done condition: PASS (attested) | PASS (verified) | FAIL — [detail]`
 
 ### Step 2 — Review the diff
-Run `git diff main...HEAD` (or the branch range provided in the calling prompt). Review the diff directly — cover all four axes:
+Run `git diff main...HEAD` (or the branch range provided in the calling prompt). Review the diff directly — cover every axis below:
 - **Logic errors**: off-by-one, wrong operators, always-true/false conditions, incorrect precedence
 - **Security**: injection vectors, hardcoded secrets, missing auth checks, unvalidated external input
 - **Performance**: O(n²) loops over unbounded collections, N+1 query patterns, hot-path waste
 - **Code quality**: functions > 30 lines, deep nesting (> 3 levels), DRY violations, magic values
+- **Whole-surface claims**: any delegate summary or record under review asserting "near-nil", "no other occurrences", "nothing else changed", or similar is **Major** unless the summary itself shows the whole-file read or exhaustive grep behind it (G-RULES §C Results flow); an out-of-scope edit recovered by spot-revert instead of a full-file diff against git is the same class of finding
 
 Report findings with `file:line` refs and severity: **Critical** / **Major** / **Minor**.
 

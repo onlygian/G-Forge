@@ -15,7 +15,13 @@
 # todo row 10 / 2026-08-16 live repro: operator+terminator no longer leak
 # into extract_pathspecs' pathspec walk, and real pathspecs are never
 # over-stripped).
-# Total assertions: 70. Runner-attested (M48e: 70/70).
+# todo row 13 addition: +2 tests (HEREDOC-p — multi-heredoc-operator coverage
+# gap, M48e fix round 1 code-lead r1 Minor 9; pins CURRENT unfixed behaviour,
+# does not change hooks/lib/commit-detect.sh). One assertion pins the
+# extract_pathspecs leak, a second pins that is_git_commit still detects the
+# shape despite the leak (r1 Minor finding — the comment claimed this but no
+# assertion pinned it).
+# Total assertions: 72. Runner-attested (M48e: 70/70; HEREDOC-p added 2026-08-27, 2 assertions).
 
 LIB="$(cd "$(dirname "$0")" && pwd)/../hooks/lib/commit-detect.sh"
 source "$LIB" || { echo "FAIL: could not source $LIB"; exit 1; }
@@ -254,6 +260,27 @@ test_pathspecs "HEREDOC-n: git commit -m \"x\" path/to/file (no heredoc) still e
 # match itself is excised, never the opener line's real command tokens.
 test_pathspecs "HEREDOC-o: git commit -F - docs/README.md <<'MSG' (real pathspec on opener line) still emits docs/README.md" \
     $'git commit -F - docs/README.md <<\'MSG\'\nUpdate README docs only\nMSG' "docs/README.md"
+
+# todo row 13 / M48e fix round 1, code-lead r1 Minor 9 (not blocking) —
+# reviewer probe E4b: two `<<WORD` heredoc operators on one opener line
+# (`cat <<A <<B` shape). _commit_detect_strip_heredocs' regex match finds
+# only the FIRST `<<WORD` on a line (BASH_REMATCH is leftmost-match only), so
+# the second operator, its body, and its terminator all survive into the
+# opener line's suffix unstripped. This is not a gate weakness TODAY — the
+# surviving tokens still classify CODE in check-commit.sh's unmatched-path
+# default (fail-toward-deny), and is_git_commit still detects the `git
+# commit` shape (pinned by the is_git_commit assertion below) — but the
+# pathspec-extraction leak itself was unpinned, so nothing regression-locked
+# that direction if the strip logic changed later. Empirically confirmed
+# 2026-08-27: pins CURRENT behaviour only, does not change
+# hooks/lib/commit-detect.sh.
+test_pathspecs "HEREDOC-p: git commit -m x <<A <<B (two heredoc operators, one opener line) leaks second operator/body/terminator as unstripped pathspecs (fail-toward-deny)" \
+    $'git commit -m x <<A <<B\nbody A line\nA\nbody B line\nB' $'<<B\nbody\nB\nline\nB'
+
+# Same command string: is_git_commit must still return DETECTED despite the
+# pathspec leak above — classification stays fail-toward-deny either way.
+test_detected "HEREDOC-p: git commit -m x <<A <<B (two heredoc operators) is_git_commit still DETECTED" \
+    $'git commit -m x <<A <<B\nbody A line\nA\nbody B line\nB'
 
 # ── Summary ───────────────────────────────────────────────────────────────────────
 

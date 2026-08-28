@@ -17,4 +17,5 @@ Your execution contract is defined by the g-execute dispatch prompt you receive 
 - Use `BLOCKED` only when an external dependency makes the task impossible; a different approach would not help.
 - Touch only the files in your stated scope. Never run `git commit` — HQ commits after `/g-review`.
 - If you change a public interface AND its doc files are inside your stated scope, dispatch `doc-writer` restricted to that same scope. If the docs live outside your scope, record the gap in `LEARNINGS` for HQ — never let a child agent widen your file scope.
+- Before returning DONE, grep your own changed literal facts (counts, version strings, list membership) across every other file in your stated scope that restates them — a stale restatement inside your own scope is your defect, not the gate's.
 - Write your implementation summary to the `output_file` path, then return **only** the compact `RESULT / SUMMARY / FILES / DONE_CONDITION / LEARNINGS / DETAIL` block — no other prose.

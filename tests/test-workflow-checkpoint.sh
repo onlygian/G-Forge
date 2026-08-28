@@ -9,7 +9,7 @@
 # listen mode. Direction-aware update-nudge cases (M46 W1 task 5): LATEST
 # newer/equal/older, pinning post-fix semver-comparison behavior.
 #
-# Total assertions: 83
+# Total assertions: 86
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
 # finding-#20 cross-check that catches a suite silently dropping cases.
 
@@ -227,6 +227,25 @@ cat > g-docs/ROADMAP.md <<'EOF'
 Active context:   · hooks/workflow-checkpoint.sh:60-70 tier resolution
 EOF
 
+# Anchor-strip regression: the label appears twice on the line — once as the
+# leading label, once repeated inside the prose. A greedy `.*Active context:`
+# strip removes through the LAST occurrence, serving garbage; the anchored
+# `^Active context:` strip removes only the leading label and keeps the rest.
+cat > g-docs/ROADMAP.md <<'EOF'
+# Test Roadmap
+## Active Session
+Active context:   · note about the Active context: label itself · more state
+EOF
+OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_match "active context: anchored strip keeps trailing prose when label repeats mid-line" "note about the Active context: label itself" "$OUTPUT"
+
+# Restore ROADMAP for later tests (same content as above restore)
+cat > g-docs/ROADMAP.md <<'EOF'
+# Test Roadmap
+## Active Session
+Active context:   · hooks/workflow-checkpoint.sh:60-70 tier resolution
+EOF
+
 # ============================================================================
 # § 9. Review approval status — sentinel detection
 # ============================================================================
@@ -264,7 +283,7 @@ check_match "review: not approved (different worktree)" "not yet approved" "$OUT
 # consumer (hooks/pre-commit's gf_validate_sentinel, which enforces the real commit gate) would
 # DENY this same malformed stamp — it requires all three fields to be present and valid.
 # This test pins that contrast: same corrupted-file input, different outcomes from the advisory
-# vs gating layers. See hooks/workflow-checkpoint.sh:104-124 and hooks/lib/sentinel-read.sh.
+# vs gating layers. See hooks/workflow-checkpoint.sh:107-127 and hooks/lib/sentinel-read.sh.
 
 # Case (a): malformed stamp with missing commit_sentinel_ts
 cat > .claude/g-forge-approved <<EOF
@@ -627,6 +646,41 @@ OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
 
 check_match "handoff: fresh session nudge" "Fresh session.*handoff" "$OUTPUT"
 check_match "handoff: /g-resume recommendation" "/g-resume" "$OUTPUT"
+
+# Duplicate-heading warning — the fixture above (line ~633) has exactly one
+# '## Active Session' heading; confirm the warning does NOT fire on it (no
+# false positive). Own capture — not borrowed from the handoff-nudge OUTPUT
+# above, since this pins a distinct assertion against the same fixture.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-27
+DUP_HEADING_OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+if printf '%s' "$DUP_HEADING_OUTPUT" | grep -q "replace-never-append violated"; then
+    echo "FAIL: duplicate-heading warning should not fire with a single heading"; FAIL=$((FAIL+1))
+else
+    echo "PASS: no duplicate-heading warning with a single Active Session heading"; PASS=$((PASS+1))
+fi
+
+# Now a fixture with TWO '## Active Session' headings — replace-never-append
+# violated (G-RULES §I). Handoff residue accumulated across passes served a
+# week-stale banner (retro 2026-07-23-m46-update-integrity).
+cat > g-docs/ROADMAP.md <<'EOF'
+# ROADMAP
+## Active Session
+Done this pass:   · fixture setup
+## Active Session
+Next up:          · write tests
+EOF
+OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_match "duplicate-heading warning: fires with two Active Session headings" "replace-never-append violated" "$OUTPUT"
+
+# Restore single-heading fixture for §23 onward (mirrors the anchored-strip
+# restore at :242-247 — leaving the two-heading fixture in place would leak
+# a replace-never-append violation into sections that assume a well-formed
+# ROADMAP).
+cat > g-docs/ROADMAP.md <<'EOF'
+# ROADMAP
+## Active Session
+Active context:   · hooks/workflow-checkpoint.sh
+EOF
 
 # ============================================================================
 # § 23. Non-gating with various malformed inputs

@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- **`/g-patterns` RESOLVE pass, 2026-08-27 — 23 rule/skill/agent/hook edits from the 27-pattern report mined at `fc6bc04`** (23 applied · 1 deferred to M51 · 3 already covered; the wave-execution half of one applied pattern is deferred to ADR-006's still-unbuilt mechanism, logged in `g-docs/patterns-deferred.md`). Consumers run `/g-update` to resync installed copies. The shipped-source changes:
+  - G-RULES §B Hard stops: a fix round never writes a new count, enumeration, or completeness claim at a site it edits — pin it with a test or omit it (ADR-013 rule 2).
+  - G-RULES §C: dispatch prompts require no child dispatch unless the task needs it and a read-back of the agent's own report file by path before DONE; Results flow — negative/disk-state claims travel with pasted output or are relayed as unverified, and a record is never declared lost without a disk check; new "Budget the resume" paragraph (long delegates routinely stall once).
+  - G-RULES §D Release commit sequence: new step 5 (grep the literal fact across every live surface, never a typed list) and step 9 (resolve self-host installed-copy drift before tagging); old steps 5–8 renumbered 6–8, 10.
+  - G-RULES §G Currency rule: hand-typed counts are pinned by a test or omitted; a post-dispatch design change explicitly re-opens the doc pass. Documentation ownership: the implementer's `doc-writer` dispatch is scoped to docs inside its own file scope; out-of-scope docs are a LEARNINGS gap, never a widened child.
+  - G-RULES §H: the confabulation clause now covers review/closure tallies, not only suite totals; new Instrument-claim rule (every check names the claim it pins).
+  - G-RULES §I: date-keyed record paths must discriminate same-day collisions.
+  - `profiles/claude-plugin/rules/architecture.md` timing note: "worst observed" is measured under load, never quiet-machine idle alone.
+  - `/g-review` Step 1: detached run + log polling for suites near the shell timeout, never a trailing pipe; `/g-review` and `/g-doc-review` Rules: parallel code/doc fix lanes grep each other's changed literals.
+  - `/g-execute`: dispatch template forbids child dispatch outside scope, scopes doc-writer to changed files, requires report read-back; HQ verifies the `DETAIL` path exists before accepting DONE.
+  - `/g-plan`: carried rows are probed against source before re-entering the task list; the review-chain coefficient is re-derived when ≥3 new pass reports exist.
+  - `/g-telemetry`: numeric suffix on same-day snapshot collision instead of silent overwrite.
+  - `wave-planner` Step 3: grant check — the tagged executor's `tools:` and the mechanism's reach must be able to satisfy the done condition.
+  - `feature-implementer` and the stack-implementer template: grep own changed literal facts across in-scope restatements before DONE.
+  - `code-lead` Step 2: new review axis — whole-surface claims without the read behind them are Major.
+  - `hooks/workflow-checkpoint.sh`: the `Active context:` extraction is anchored to line start (the greedy strip served garbage when prose repeated the label); warns when `g-docs/ROADMAP.md` carries more than one `## Active Session` heading. Both pinned in `tests/test-workflow-checkpoint.sh`.
+  - `tests/test-commit-detect.sh`: HEREDOC-p pins the two-operators-one-line shape (todo row 13).
+
 ## [2.4.1] — 2026-08-24
 
 Intermediate release on the road to 2.5, cut at the M48-family close per [ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md) amendment 2026-08-22 — carries M47 (Planning-Pipeline Honesty) and M48a–e (Review-Pipeline Hardening), plus everything else landed on `main` since v2.4.0: the repository-owner rename (`hllrm` → `onlygian`, needs `/g-update`), the `/g-resume` origin-sync step, the `/g-patterns` two-phase lifecycle, new `/g-doctor` checks, and the fix for `/g-init` installing only 4 of 6 hook libs (shipped broken in 2.4.0) — full enumeration in the sections below. v2.5.0 remains the final G-Forge release label; this cut changes delivery cadence, not scope.

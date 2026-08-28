@@ -41,9 +41,13 @@ Undocumented decisions become invisible. Undocumented APIs block adoption. Undoc
 
 Any PR that changes a function signature, module responsibility, user-facing behaviour, configuration option, or public API must update the corresponding documentation in the same PR. Outdated documentation is a Major finding in code review — it actively misleads.
 
+A hand-typed count (suite totals, "N of M" tallies, list sizes) is either pinned by a test that fails when the source and the count disagree, or omitted — never left as an unpinned number in prose. A hand-typed number without a pinning test is a review finding.
+
+A design decision changed after a review round has already dispatched (code or doc gate) invalidates any doc pass written against the prior design — the round owning the change explicitly re-opens the doc pass (a fresh `/g-doc-review` dispatch scoped to the changed surface), never relying on the next round's incidental sweep to catch the drift.
+
 ### Documentation ownership
 
-Documentation is the implementing agent's responsibility, not the reviewer's. Every subagent that creates or modifies code with public interfaces must dispatch `doc-writer` as its **final step**, before returning its result to HQ. The implementing agent has full context of what it just built and why — that context is most valuable at the moment of implementation, not during retrospective review.
+Documentation is the implementing agent's responsibility, not the reviewer's. Every subagent that creates or modifies code with public interfaces dispatches `doc-writer` as its **final step**, before returning its result to HQ — scoped to the doc files inside its own stated file scope; docs that live outside that scope are reported to HQ as a `LEARNINGS` gap, never reached by widening a child's scope (§C). The implementing agent has full context of what it just built and why — that context is most valuable at the moment of implementation, not during retrospective review.
 
 `doc-writer` receives: the files changed, what changed and why, and any design intent not obvious from the code. It also checks whether the project README has a relevant section and updates it or flags the gap.
 
