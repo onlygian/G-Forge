@@ -38,6 +38,12 @@ For each metric, record:
 
 If a metric's source is empty (e.g. zero retros for retro-sourced metrics), record `n/a — insufficient data` and do not flag as ⚠.
 
+**Empty means empty by the spec's own mechanism — never fill the gap by reading.** A retro-sourced metric is computed **only** from the literal match the spec defines for it (`g-docs/telemetry-metrics.md`, each metric's Source line). Run that match. If it returns zero hits, the metric is `n/a — insufficient data`, full stop: do **not** substitute a semantic reading of retro prose, do not infer a value from narrative that describes the same kind of event in different words, and do not carry a number over from a prior snapshot. A number reached by interpretation is not a measurement, and this table is consumed as measurements.
+
+Why this rule is explicit: a 2026-08-28 adopter field report (`g-docs/field-reports/2026-08-28-g-sharp-telemetry.md`) records a run that reported all eight metrics as computed — including `20% hallucination` and `80% retry dependency` — on a corpus where every one of the spec's literal tokens matched **zero** files. The numbers were reached by reading the prose. The project then ran three weeks at an escalated review posture on the strength of them. The snapshot's own Notes flagged the doubt, but `.claude/telemetry-profile` carries one word and no caveats, so nothing reached the consumer.
+
+**Measurement vacuum.** After computing all eight, count the computable ones (`✓` or `⚠`; `n/a` excluded). If `computable < 5`, the run is a **measurement vacuum**, not a health verdict: apply the forced-`stable` floor in Step 4 and state the vacuum in the Step 5 summary block, naming which metrics were `n/a` and why. A profile derived from a minority of the metrics is a floor, not an assessment, and must be reported as one.
+
 ## Step 4 — Derive health profile
 
 Apply the ratio-based derivation defined in `g-docs/telemetry-metrics.md` — Health profile derivation:
@@ -54,9 +60,11 @@ warn_ratio = ⚠ count / max(computable, 1)
 | `defensive` | `0.25 < warn_ratio ≤ 0.50` |
 | `recovery` | `warn_ratio > 0.50` |
 
-Floor: if `computable < 3`, force `stable` regardless of ratio — too few signals to classify reliably.
+Floor: if `computable < 5`, force `stable` regardless of ratio, and report the run as a **measurement vacuum** per Step 3 — too few signals to classify reliably. The forced `stable` is a floor, not an assessment; the Step 5 summary must say so and name the `n/a` metrics. *(Raised from `computable < 3` on 2026-08-28 — the old floor let a run with three git-derived metrics and five `n/a` present itself as a health verdict.)*
 
-If the derived profile is `stable`, also reset `.claude/review-holds` to `0` (write the single character `0` and a newline). This drops accumulated HOLDs that are no longer representative.
+**Never write `.claude/review-holds`.** This skill is read-only on that counter — it folds the value into rework rate and nothing more. `/g-review` owns both the increment and the decrement (`g-docs/telemetry-metrics.md`, metric 4 counter policy).
+
+*(Retired 2026-08-28: this step previously reset the counter to `0` on a `stable` profile. That was the write half of a latch — the counter only grew, growth forced a ⚠ on rework rate, a ⚠ made `stable` unreachable, and unreachable `stable` meant the reset never fired. Measured on this repo when it was found (2026-08-29): `fix_after_feat` 7 + `review_holds` 34 = 41, over 30 `feat:` commits — a 137% rework rate against a 20% threshold. Reported at `g-docs/field-reports/2026-08-28-g-sharp-telemetry.md` §2.)*
 
 ## Step 5 — Persist the profile
 
@@ -64,7 +72,7 @@ Write the chosen profile name as a single line to `.claude/telemetry-profile`. O
 
 ## Step 5b — Compute agent coverage
 
-The 19 G-Forge agents are: `task-decomposer`, `wave-planner`, `spec-writer`, `code-reviewer`, `security-auditor`, `architecture-enforcer`, `performance-auditor`, `debugger`, `error-detective`, `project-manager`, `review-orchestrator`, `code-lead`, `test-writer`, `doc-writer`, `doc-reviewer`, `pr-writer`, `refactor-executor`, `dependency-auditor`, `feature-implementer`. (Per-project `<stack>-implementer` agents installed by `/g-specialize` are not counted here.)
+**Derive the agent roster from disk — never from a list typed here (ADR-013 rule 1).** Glob `agents/*.md` in the plugin source and take each file's basename without the extension; that set is the roster, however many it contains. Per-project `<stack>-implementer` agents installed by `/g-specialize` live in `.claude/agents/` and are **not** part of this set. *(Rewritten 2026-08-28: this step used to hand-type "The 19 G-Forge agents are: …" and then render a coverage table that listed only 17 of them — `doc-reviewer` and `feature-implementer` were missing, so two agents could never be reported as `never` used, which is precisely the blind spot this metric exists to surface. Deriving removes the count and the table from the set of things that can drift.)*
 
 Read all files in `g-docs/retros/` (up to the 10 most recent by filename date, or all if fewer). For each agent name, count how many retro files mention it at least once (case-insensitive, whole-word match).
 
@@ -89,23 +97,9 @@ Also append a coverage section to the `g-docs/telemetry/YYYY-MM-DD.md` snapshot 
 
 | Agent | Retros mentioning it | Status |
 |-------|---------------------|--------|
-| task-decomposer | [N] | used / rarely / never |
-| wave-planner | [N] | ... |
-| spec-writer | [N] | ... |
-| code-reviewer | [N] | ... |
-| security-auditor | [N] | ... |
-| architecture-enforcer | [N] | ... |
-| performance-auditor | [N] | ... |
-| debugger | [N] | ... |
-| error-detective | [N] | ... |
-| project-manager | [N] | ... |
-| review-orchestrator | [N] | ... |
-| code-lead | [N] | ... |
-| test-writer | [N] | ... |
-| doc-writer | [N] | ... |
-| pr-writer | [N] | ... |
-| refactor-executor | [N] | ... |
-| dependency-auditor | [N] | ... |
+| [one row per agent in the derived roster, in `agents/*.md` glob order] | [N] | used / rarely / never |
+
+Emit **one row per agent in the derived roster** — every agent, including any added since this file was last edited. Do not transcribe a row list from this template; the template shows the row shape, not the roster.
 
 **Never used:** [comma-separated list, or "none"]
 **Rarely used:** [comma-separated list, or "none"]
@@ -132,9 +126,10 @@ Profile: [stable / cautious / defensive / recovery]   ⚠ [N] of 8 metrics out o
   8. Retry dependency  [X%]   [...]
 
 Effect on adaptive orchestration:
-  [list the behavioural changes that apply to the chosen profile per g-docs/telemetry-metrics.md — e.g. for cautious: "/g-review will add one extra reviewer on next dispatch"]
+  [list the behavioural changes that apply to the chosen profile per g-docs/telemetry-metrics.md — e.g. for cautious: "/g-review announces the profile and passes it to code-lead, which scales its own scrutiny — no extra reviewer is dispatched as shipped"; for defensive/recovery, list the /g-execute effects (wave cap, model tier, prompt clause) — the /g-review fan-out effects are not wired as shipped, per the stamp under the spec's profile table]
 
-Coverage: [N] of 19 agents used · never: [list or "none"] · rarely: [list or "none"]
+Coverage: [N] of [M] agents used · never: [list or "none"] · rarely: [list or "none"]
+  ([M] is the size of the roster derived in Step 5b — never a number typed from this template)
   (workflow-checkpoint will surface suggestions for never-used agents once per day)
 
 Snapshot written: g-docs/telemetry/[YYYY-MM-DD].md   (or [YYYY-MM-DD]-N.md on a same-day collision)

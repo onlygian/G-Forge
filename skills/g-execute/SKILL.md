@@ -19,7 +19,7 @@ Apply the following dispatch adjustments throughout this skill based on the prof
 | Profile | Wave-size cap | Model bump | Extra prompt clause |
 |---------|---------------|------------|---------------------|
 | `stable` | none | none | none |
-| `cautious` | none | none | none — reviewer adjustments live in `/g-review` |
+| `cautious` | none | none | none — the `/g-review` reviewer adjustment for this profile is not wired as shipped (`skills/g-review/SKILL.md` Step 0 note) |
 | `defensive` | 3 agents/wave max | Sonnet → Opus when defaults to Sonnet | append `"Telemetry profile: defensive. Be extra strict about scope boundaries."` to every agent prompt |
 | `recovery` | 1 agent/wave (force serial) | Opus on every dispatch | append `"Telemetry profile: recovery. Verify every file path before writing. Surface uncertainty immediately."` to every agent prompt |
 
@@ -153,7 +153,7 @@ After all tasks in the wave complete without blockers:
 
 1. **Update the Progress table** in the plan file: find the row for Wave N in the `## Progress` table and change its status from `pending` or `in progress` to `complete`. If the plan file or Progress table doesn't exist, skip silently.
 
-2. **Capacity check (additional §A7 guard).** A wave is the heaviest token-burn event in the workflow — parallel agents, file reads, returned detail — so the boundary right after it is exactly where the window can jump toward overflow, and it's a natural hold point, so the check is essentially free. Run `/context` now. If remaining capacity is below the §A7 floor (~25%), **do not dispatch the next wave**: finish here, trigger `/g-retro`, write the handoff (next wave as the first task), and tell the developer to start a fresh session and run `/g-resume`. The remaining waves resume clean. This catches fast-burning sessions before they ever compact — the exchange-count gate alone can miss them. Above the floor, proceed.
+2. **Capacity check (additional §A7 guard).** A wave is the heaviest token-burn event in the workflow — parallel agents, file reads, returned detail — so the boundary right after it is exactly where the window can jump toward overflow, and it's a natural hold point, so the check is essentially free. Run `/context` now. If **~25% of the window has been used** (the §A7 floor), **do not dispatch the next wave**: finish here, trigger `/g-retro`, write the handoff (next wave as the first task), and tell the developer to start a fresh session and run `/g-resume`. The remaining waves resume clean. This catches fast-burning sessions before they ever compact — the exchange-count gate alone can miss them. Under it — less than ~25% used — proceed.
 
 3. Announce:
 ```

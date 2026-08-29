@@ -3,9 +3,15 @@
 # The pipeline is LLM-driven — its runtime behaviour can't be unit-tested here.
 # What we CAN pin is the prompt contract that makes the fail-open impossible:
 # the orchestrator normalizes native scales + forces FAIL on any axis HOLD +
-# emits an AXES line; code-lead honours that AXES line; and every auditor's
-# return-block scale matches the shared Critical/Major/Minor vocabulary it feeds.
-# A future edit that reopens the mismatch fails these greps — that's the point.
+# emits an AXES line; code-lead honours that AXES line when one is supplied; and
+# every auditor's return-block scale matches the shared Critical/Major/Minor
+# vocabulary it feeds.
+# NOTE (2026-08-29): the orchestrator is INERT AS SHIPPED — no shipped skill
+# dispatches it and code-lead holds no Agent( grant (agents/code-lead.md, INERT
+# stamp), so no AXES line is produced at runtime. These greps pin the CONTRACT
+# TEXT so the fail-open cannot silently return if the panel is ever wired; they
+# do not assert that the pipeline runs. A future edit that reopens the wording
+# mismatch fails these greps — that's the point.
 #
 # Total assertions: 9
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
@@ -39,7 +45,7 @@ ok  "orchestrator: any reviewer HOLD forces aggregate FAIL" \
     grep -qi 'forces aggregate \*\*\?FAIL\|forces aggregate FAIL' "$ORCH"
 ok  "orchestrator return block emits an AXES line" \
     grep -q '^AXES:' "$ORCH"
-ok  "code-lead treats the AXES line as authoritative (axis HOLD blocks)" \
+ok  "code-lead honours an AXES line when one is supplied (contract text; inert as shipped)" \
     grep -qi 'axis is HOLD\|AXES' "$LEAD"
 
 # --- Bug C: auditor return scales match the shared Critical/Major/Minor buckets ---

@@ -1,8 +1,8 @@
 # G-Proof Roadmap (fork-bound milestones)
 
-> **Local-only file — gitignored by explicit developer choice ([ADR-012](decisions/012-g-forge-2.5-final-release-scope.md), 2026-08-10).**
+> **Committed file** — tracked in git since 2026-08-21 (`45e21ad`, gaps A9 developer directive: a 42KB single-copy planning doc is a known-fatal loss pattern). ~~Local-only, gitignored by explicit developer choice ([ADR-012](decisions/012-g-forge-2.5-final-release-scope.md), 2026-08-10)~~ — that choice was reversed; see `.gitignore:67`.
 > These milestones left `g-docs/ROADMAP.md` when the 2.5 final-release scope was settled: they ship from the **G-Proof** fork (ADR-010), never from this repo. Statuses and milestone numbers preserved as-moved; every version stamp below is STALE — versioning restarts at G-Proof 1.0.
-> **Fork checklist item: carry this file to the new repo BY HAND.** It is not in git; a clone or git-mediated fork will not bring it. This repo already lost one gitignored planning file this way (CLAUDE.md, regenerated 2026-07-10).
+> ~~**Fork checklist item: carry this file to the new repo BY HAND.** It is not in git; a clone or git-mediated fork will not bring it.~~ **Retired 2026-08-21** — the file is committed, so a clone or git-mediated fork brings it automatically and no hand-carry step is needed. The reason it was un-ignored stands as the warning: this repo already lost one gitignored planning file (CLAUDE.md, regenerated 2026-07-10).
 
 ---
 

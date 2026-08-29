@@ -1,7 +1,7 @@
 ## 2026-08-27 — reviewer-record-write-blocked-by-missing-grant (Systemic, weighted 3)
 - Sources: retros/2026-07-19-adr007-w15e.md · retros/2026-07-23-m-audit-close-v230.md · retros/2026-07-23-m46-update-integrity.md
 - Proposed target: `agents/*.md` frontmatter — scoped `Write` grant on every record-producing reviewer (`architecture-enforcer`, `code-reviewer`, `performance-auditor`, `security-auditor`, `dependency-auditor`, `spec-writer`, `wave-planner`), the `code-lead`/`doc-reviewer` pattern.
-- Triage: **defer → M51 item 4** (`g-docs/ROADMAP.md`, "apply the doc-reviewer/task-decomposer scoped-Write pattern to the remaining Write-less agents") — already decided by developer directive; a resolve-pass edit here would fork it. The heredoc half is already closed by G-RULES §C's Write-tool-never-heredoc line.
+- Triage: **defer → `g-docs/todo.md` row 6** (the reviewer record-write contract — originally M51 item 4, "apply the doc-reviewer/task-decomposer scoped-Write pattern to the remaining Write-less agents"; M51 was absorbed into M52 on 2026-08-28 with item 4 narrowed to the two `output_file` dispatch sites + the README correction, so this half is not in 2.5 — retargeted 2026-08-29) — already decided by developer directive; a resolve-pass edit here would fork it. The heredoc half is already closed by G-RULES §C's Write-tool-never-heredoc line.
 
 ## 2026-08-27 — parallel-lanes-cross-contaminate-shared-tree — execute-wave half (Emerging, weighted 2)
 - Sources: retros/2026-07-16-w13-verify-gproof-rebrand.md (stash residue after sibling clobber)

@@ -1,6 +1,6 @@
 ---
 name: review-orchestrator
-description: Coordinates the full review pipeline — code review, architecture, security, and performance in parallel. Aggregates findings into one report. Does not review itself. Must run as the root session agent (`--agent review-orchestrator` or directly from a skill in the main session) — spawning it as a nested subagent prevents it from dispatching reviewers.
+description: Coordinates the full review pipeline — code review, architecture, security, and performance in parallel. Aggregates findings into one report. Does not review itself. Must run as the root session agent (`--agent review-orchestrator` or directly from a skill in the main session) — spawning it as a nested subagent prevents it from dispatching reviewers. Not dispatched by any shipped skill as of 2.5 — `/g-review` dispatches `code-lead` directly and code-lead holds no `Agent(` grant (`agents/code-lead.md`, INERT stamp 2026-08-29).
 model: sonnet
 tools: Agent(code-reviewer, security-auditor, performance-auditor, architecture-enforcer, doc-writer)
 color: purple
