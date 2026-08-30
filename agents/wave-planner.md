@@ -61,16 +61,19 @@ Never tag a task `general-purpose`.
 
 ## Return format
 
-Write the full wave schedule to the `output_file` path passed in your dispatch prompt. Create parent directories if they do not exist.
+You hold no `Write` grant (`tools: Read, Glob` only) — you cannot write the `output_file` yourself. Return the full Wave Schedule (per the Output format above) inline in your result; the calling session writes it to the `output_file` path passed in your dispatch prompt.
 
-Return to the calling session using **only** this compact block — no additional prose:
+Return to the calling session using **only** this structure — no additional prose beyond it:
 
 ```
 RESULT: DONE
 WAVES: N
 TASKS: N total — peak parallelism X (Wave Y)
 SUMMARY: [one sentence]
-DETAIL: [output_file path]
+
+## Wave Schedule
+
+[full wave schedule content, per Output format above]
 ```
 
 ## Rules

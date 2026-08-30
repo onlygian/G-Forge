@@ -80,6 +80,7 @@ Dispatch `spec-writer` with:
 - The merged findings from Step 4
 - The coverage risk flag from Step 3
 - The project layer rules
+- An `output_file` path, following the `g-docs/agent-output/` convention: `g-docs/agent-output/g-refactor/spec-writer-[YYYY-MM-DD]-[slug].md`, where `[slug]` is a short slugified form of the target being refactored. Create the `g-docs/agent-output/g-refactor/` directory first if it does not exist.
 - This constraint prompt:
 
 > Write a refactor spec for [target]. The spec must:
@@ -89,7 +90,7 @@ Dispatch `spec-writer` with:
 > 4. Flag any step that carries HIGH change risk due to test coverage gaps.
 > 5. If the scope would produce >10 implementation steps, split into waves and note which steps are independent.
 
-Wait for spec-writer to return the spec.
+Wait for spec-writer to return. spec-writer holds no Write tool (reviewer-class per the installed `.claude/rules/architecture-<stack>.md` — in this repo's self-hosted case `profiles/claude-plugin/rules/architecture.md:6` and `:19`) — it returns the full spec content in its result rather than writing the file itself. Write that returned content to the `output_file` path assigned above using your own Write tool before proceeding to Step 6.
 
 ## Step 6 — Human approval gate
 
@@ -111,7 +112,7 @@ Approve this spec? (approve / edit / cancel)
 Wait for explicit approval. Do not proceed without it.
 
 - **"approve"** or equivalent ("yes", "looks good", "do it"): proceed to Step 7.
-- **"edit"**: ask what to change, re-dispatch spec-writer with the edit note, re-present.
+- **"edit"**: ask what to change, re-dispatch spec-writer with the edit note and a new `output_file` path (same convention as Step 5, with a `-r2`-style round suffix so the prior run's file is never overwritten). Write the returned spec content to it as in Step 5, re-present.
 - **"cancel"**: stop. Report: "Refactor cancelled at spec review."
 
 ## Step 7 — Execute in waves
@@ -151,7 +152,7 @@ If code-lead issues **MERGE READY**: report success and stop.
 If code-lead issues **HOLD**: present the blocking findings. Ask:
 > "The review has [N] blocking findings. Fix them now and re-run `/g-review`, or open a follow-up task? (fix / defer)"
 
-- **"fix"**: for each blocking finding, dispatch `spec-writer` to produce a targeted fix spec, get approval (Step 6 abbreviated), execute. Re-run `/g-review` after all fixes.
+- **"fix"**: for each blocking finding, dispatch `spec-writer` to produce a targeted fix spec — assign each an `output_file` path following the Step 5 convention (e.g. `g-docs/agent-output/g-refactor/spec-writer-[YYYY-MM-DD]-[slug]-fix.md`) and write the returned content there as in Step 5 — get approval (Step 6 abbreviated), execute. Re-run `/g-review` after all fixes.
 - **"defer"**: add each unresolved finding as a follow-up task to `g-docs/todo.md`. Stop.
 
 ## Step 9 — Update the milestone (if launched from audit/optimize milestone)

@@ -11,10 +11,16 @@
 # W2-20: SessionStart `source` field journaled — one pin per platform source
 # value (startup/resume/compact) + absent-field fallback + null-artifact pin.
 # W3-10/W3-11: control-char sanitize + UTF-8-safe truncation fixtures.
-# Total assertions: 33 (16 original observe tests + 2 W3-10 control-char pins
+# S-fix task 12: observe.sh's own last-resort sed-tier extract_cmd() now uses
+# the escape-aware capture pattern from hooks/check-commit.sh:83 instead of
+# the naive [^"]* form, so a `command` field with an escaped inner quote
+# (\") and backslash (\\) is captured whole rather than truncated at the
+# first inner quote — regression pin below.
+# Total assertions: 34 (16 original observe tests + 2 W3-10 control-char pins
 # + 1 W3-11 UTF-8-boundary pin + 6 W2-20 session-source tests + 8 agent-
-# lifecycle extraction/regression tests). Runner-observed count (M-audit
-# finding #20 discipline) — see this task's output file.
+# lifecycle extraction/regression tests + 1 S-fix task-12 sed-tier escape-
+# aware extraction pin). Runner-observed count (M-audit finding #20
+# discipline) — see this task's output file.
 
 SCRIPT="$(cd "$(dirname "$0")" && pwd)/../hooks/observe.sh"
 PASS=0
@@ -393,6 +399,49 @@ else
     echo "FAIL: sed-tier escaped-quote truncation → detail does not show truncation, got '$DETAIL7'"; FAIL=$((FAIL+1))
 fi
 rm -rf "$STUB3"
+
+# ============================================================================
+# S-fix task 12 — observe.sh's own extract_cmd() sed-tier, escape-aware.
+# Distinct from Test 7 above (agent-lifecycle.sh's sed tier, still naive by
+# design/W1.6-18): this pins observe.sh's PostToolUse `command`-field sed
+# tier at hooks/observe.sh's extract_cmd(), now aligned with the
+# escape-aware pattern hooks/check-commit.sh:83 already uses.
+# ============================================================================
+
+# observe_full_journal <payload-json> <PATH-override> — run observe.sh log
+# with a forced PATH (so jq/python3/node are all shadowed and the sed tier
+# is the one under test — same shadowing idiom as the STUB fixtures above)
+# and return the raw journaled JSONL line.
+observe_full_journal() {
+    local payload="$1" path_override="$2" dir f
+    dir=$(mktemp -d)
+    ( cd "$dir" && git init -q && mkdir -p .claude && printf 'full\n' > .claude/integration-tier )
+    printf '%s' "$payload" | ( cd "$dir" && PATH="$path_override" bash "$SCRIPT" log )
+    f=$(ls "$dir"/.claude/journal/*.jsonl 2>/dev/null | head -1)
+    [ -n "$f" ] && cat "$f"
+    rm -rf "$dir"
+}
+
+# Fixture command, as it appears (already JSON-escaped) inside the payload's
+# "command" field: npm test \"fix say \\\"done\\\" ok\" — decodes to:
+# npm test "fix say \"done\" ok". "npm test" sits BEFORE the first escape
+# sequence, so it survives extraction under both the naive and the fixed
+# pattern (and drives the "test" journal kind either way); "done" sits
+# AFTER the escaped quote/backslash run, so only the escape-aware pattern
+# carries it through — the naive [^"]* pattern stops at the first literal
+# quote character, right after the backslash preceding it, and never
+# reaches "done" at all.
+STUB4=$(mktemp -d)
+for p in jq python3 node; do printf '#!/bin/sh\nexit 1\n' > "$STUB4/$p"; chmod +x "$STUB4/$p"; done
+SED_ESCAPE_PAYLOAD='{"tool_input":{"command":"npm test \"fix say \\\"done\\\" ok\""}}'
+JOURNAL_LINE=$(observe_full_journal "$SED_ESCAPE_PAYLOAD" "$STUB4:$PATH")
+rm -rf "$STUB4"
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-29
+if printf '%s' "$JOURNAL_LINE" | grep -qF 'done'; then
+    echo "PASS: observe.sh sed-tier escape-aware extraction → 'done' (after escaped quote/backslash) survives, not truncated"; PASS=$((PASS+1))
+else
+    echo "FAIL: observe.sh sed-tier escape-aware extraction → 'done' truncated away, got '$JOURNAL_LINE'"; FAIL=$((FAIL+1))
+fi
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

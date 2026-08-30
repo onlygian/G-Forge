@@ -155,7 +155,7 @@ This check also covers two related canonical-vs-installed surfaces that hook dri
     → Run `/g-update` to re-sync hooks/ into .claude/hooks/.
   - Advisory, not a failure (marker absent — a foreign, non-G-Forge pre-commit occupies the slot; the /g-init·/g-update clobber guard preserves it rather than overwriting it): ⚠ foreign pre-commit present (gate not installed — advisory, run /g-update to see options)
 
-This check also covers the g-rules section files and the `.claude/agents/` surface — agents differ from hooks/lib/rules in that not every installed agent has a byte-canonical source, so the three classes below get distinct pass/fail/advisory wording rather than one shared rule:
+This check also covers the g-rules section files, the `.claude/agents/` surface, and the installed `.claude/skills/architecture-*/SKILL.md` surface — agents differ from hooks/lib/rules in that not every installed agent has a byte-canonical source, so the three classes below get distinct pass/fail/advisory wording rather than one shared rule:
 
 - **`g-rules` section-file drift.** For each of the 10 canonical g-rules section files in `rules/g-rules/` (plugin source), hash-compare against its installed counterpart in `.claude/rules/`, using the same flat-rename mapping CLAUDE.md's own `@` references use — `rules/g-rules/X-name.md` (source) → `.claude/rules/g-rules-X-name.md` (installed):
   - `rules/g-rules/A-session.md` → `.claude/rules/g-rules-A-session.md`
@@ -184,6 +184,14 @@ This check also covers the g-rules section files and the `.claude/agents/` surfa
   2. **Template-instantiated** agents (e.g. `claude-plugin-implementer.md`) — generated per-project by `/g-specialize` from `templates/stack-implementer.md` with per-stack substitutions ({{IMPLEMENTER_NAME}}, {{ARCHITECT_NAME}}, {{STACK_LABEL}}, etc.); no byte-canonical per-stack source exists to hash against. This class is advisory-only and must never Fail — it mirrors the foreign-pre-commit precedent above, where the absence of a comparable canonical copy rules out a hash-based verdict.
      - Advisory: ⚠ [agent].md is template-instantiated (no canonical source — not checked for drift)
   3. **Project-local** agents matching `*-dev.md` (e.g. `g-forge-dev.md`) are never shipped by the plugin and are excluded entirely from this check (zero drift output) — they are neither Pass, Fail, nor Advisory; skip them before classification even runs.
+
+- **Installed architecture-skill drift.** `/g-specialize` writes `.claude/skills/architecture-[stack]/SKILL.md` per specialized stack — a frontmatter block (`name: architecture-[stack]`, `description: ...`) followed by the full unmodified content of `profiles/[stack]/rules/architecture.md` as the body (`skills/g-specialize/SKILL.md` "Also after writing each agent file" step). **Enumerate installed instances from disk** — `ls -d .claude/skills/architecture-*/` — never from a hardcoded stack list. For each instance found, derive `<stack>` from the directory name (`architecture-<stack>`), strip the installed file's frontmatter (everything through the closing `---` line) to isolate the body, and hash-compare the body against `[plugin-root]/profiles/<stack>/rules/architecture.md` using the same `hash_file` cascade above.
+  - Pass (per file): body hash matches the canonical `profiles/<stack>/rules/architecture.md` source.
+  - Pass (overall): ✓ Installed architecture-skill copies match profile source (no drift)
+  - Fail (hash mismatch): ✗ .claude/skills/architecture-[stack]/SKILL.md installed copy differs from profile source (drift)
+    → Run `/g-update` to realign it from profiles/[stack]/rules/architecture.md.
+  - Advisory (canonical source missing, e.g. the profile that installed it was renamed or removed upstream): ⚠ .claude/skills/architecture-[stack]/SKILL.md has no matching profile source (no canonical source — not checked for drift)
+    → Run `/g-update` to check for a renamed or removed profile.
 
 **17. CLAUDE.md architecture rules format** (advisory)
 Read `CLAUDE.md`. For each `<!-- G-Forge [stack] Architecture Rules` block, count the non-empty lines between the opening and closing markers. If any block has more than 3 lines of content, it is using the legacy inline format.

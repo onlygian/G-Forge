@@ -87,6 +87,8 @@ The most minimal mode. The only hook that fires is `workflow-checkpoint.sh`, and
 
 **Best for:** solo experimental work, throwaway branches, or projects where the workflow discipline is more friction than value. The opt-out tier.
 
+For a trivial edit — one file, known location, no design decision — `/g-plan` is the wrong tool: switch to the `light` tier (`/g-tier light`) or edit inline, and return to `full` afterwards; the full pipeline on a trivial task costs an order of magnitude more than the edit itself.
+
 ⚠ **Warning when switching to `light`:** `/g-tier light` prompts for confirmation because it disables the commit gate. This is intentional — bypassing the gate accidentally is the #1 reason to wish you hadn't.
 
 ---

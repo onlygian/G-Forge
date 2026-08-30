@@ -245,6 +245,15 @@ Report: `✓ .claude/rules/g-rules-*.md — [N] rule section files updated`
 
 Report: `✓ .claude/rules/[filename] — updated` for each updated file.
 
+**6c — Installed architecture-skill copies.** `/g-specialize` also writes `.claude/skills/architecture-[stack]/SKILL.md` per specialized stack — a frontmatter block (`name: architecture-[stack]`, `description: ...`) followed by the full unmodified content of `profiles/[stack]/rules/architecture.md` as the body (`skills/g-specialize/SKILL.md` "Also after writing each agent file" step). Enumerate installed instances from disk (`ls -d .claude/skills/architecture-*/`), never from a hardcoded stack list. For each instance found:
+
+1. Derive `<stack>` from the directory name (`architecture-<stack>`).
+2. Read the installed file's existing frontmatter (everything through the closing `---` line) and keep it unchanged.
+3. Replace the body with the current `[plugin-root]/profiles/<stack>/rules/architecture.md` content, verbatim.
+4. If `[plugin-root]/profiles/<stack>/rules/architecture.md` no longer exists (profile renamed or removed), skip it and report: "Could not find a current profile for `architecture-<stack>` — skipping. It may have been renamed or removed." Do not delete the file.
+
+Report: `✓ .claude/skills/architecture-[stack]/SKILL.md — realigned` for each updated file.
+
 ---
 
 ## Step 7 — Update hook scripts
@@ -317,6 +326,7 @@ g-forge update complete ✓
   ✓ G-RULES.md — realigned
   ✓ CLAUDE.md — vue-pinia architecture rules realigned
   ✓ .claude/agents/vue-architect.md — realigned
+  ✓ .claude/skills/architecture-vue-pinia/SKILL.md — realigned
   ✓ .claude/hooks/check-commit.sh — realigned
   ✓ .claude/hooks/workflow-checkpoint.sh — realigned
   ✓ .claude/hooks/lib/*.sh — realigned
