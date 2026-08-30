@@ -12,6 +12,33 @@
 #   is_git_commit <cmd>      — return 0 iff <cmd> really invokes `git commit`
 #   extract_pathspecs <cmd>  — print, one per line, <cmd>'s positional
 #                              pathspec arguments (assumes is_git_commit true)
+#   gf_commit_skips_hooks <cmd>          — return 0 iff <cmd> is a real
+#                                          `git commit` carrying --no-verify
+#                                          (or any prefix of it the function's
+#                                          `case` arm lists — every prefix, so
+#                                          the arm never depends on which ones
+#                                          git treats as ambiguous), or a
+#                                          single-dash short-flag
+#                                          cluster in which `n` appears before
+#                                          any value-taking short flag — the
+#                                          set is the one the function's own
+#                                          cluster-walk `case` arm names; a
+#                                          value-taking flag consumes the rest
+#                                          of the cluster, so `-mnote` is a
+#                                          message and `-na` is a skip. Both
+#                                          skip the native ADR-004 pre-commit
+#                                          hook (F1-2). False on a non-commit
+#                                          or a commit with no such flag.
+#   gf_commit_overrides_hookspath <cmd>  — return 0 iff <cmd> is a real
+#                                          `git commit` whose tokens BEFORE
+#                                          `commit` name core.hooksPath (key
+#                                          case-insensitive) in any of the
+#                                          forms the function's `case` arms
+#                                          match — a global `-c` (separate or
+#                                          glued value) or an env-assignment
+#                                          prefix token; each redirects git to
+#                                          skip the same native hook (F1-2).
+#                                          False otherwise.
 
 # _commit_detect_tokenize <cmd> — split <cmd> into argv-like tokens, one per
 # output line. Uses `xargs -n1` (shell-style quote/whitespace splitting)
@@ -23,8 +50,21 @@
 # partial tokens, not zero tokens. That partial argv typically still starts
 # `git commit ...` and so is typically DETECTED: fail-toward-deny, the safe
 # direction for a commit gate.
+#
+# F1-2 fix: `xargs -n1` with NO command given runs its default, `echo` — GNU
+# coreutils `echo`, not the bash builtin — and GNU `echo` treats a bare `-n`
+# (also `-e`, `-E`, `--help`, `--version`, ...) argument as ITS OWN flag
+# rather than printing it as literal output, so that token vanished from the
+# tokenized stream entirely (discovered live: `git commit -n -m x` tokenized
+# to `git commit -m x`, silently dropping the very flag
+# gf_commit_skips_hooks needs to see). Passing `printf '%s\n'` explicitly as
+# the command xargs runs sidesteps this — printf has no flag-like arguments
+# of its own to swallow, so every token, including a bare `-n`, reaches the
+# output unchanged. Malformed-input behavior (partial tokens + stderr error)
+# is unaffected — that error path is xargs's own quote handling, not the
+# command it invokes.
 _commit_detect_tokenize() {
-    printf '%s' "$1" | xargs -n1 2>/dev/null
+    printf '%s' "$1" | xargs -n1 printf '%s\n' 2>/dev/null
 }
 
 # _commit_detect_is_var_assign <tok> — true iff <tok> is a shell env-style
@@ -101,6 +141,32 @@ _commit_detect_walk_core() {
             esac
         done
     fi
+
+    [ "$i" -lt "$_CD_N" ] || return 0
+
+    # F1-3: strip a bounded run of "transparent" prefix tokens — each of
+    # these wraps or introduces a command without changing which program
+    # actually runs (an `if`/`elif`/`while`/`until` conditional test, a `!`
+    # negation, `command`/`exec` wrapping, `time`/`nohup`/`builtin`
+    # instrumentation, or a bare `$(` subshell/command-substitution opener —
+    # normally split off as its own boundary token by the paren padding in
+    # _commit_detect_scan_segments, but stripped here too for any caller that
+    # hands this function an unpadded segment directly). Closed on purpose —
+    # no general "skip unknown words", which would let arbitrary tokens
+    # masquerade as transparent and silently swallow a real command. Runs
+    # AFTER the var-assign/env strip above and BEFORE the `git` test below, so
+    # `if git commit`, `command git commit`, `exec git commit`, `time git
+    # commit`, and `$( git commit` all still land on the `git` token next.
+    while [ "$i" -lt "$_CD_N" ]; do
+        case "${_CD_TOKENS[$i]}" in
+            if | elif | while | until | "!" | command | exec | time | nohup | builtin | '$(')
+                i=$((i + 1))
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
 
     [ "$i" -lt "$_CD_N" ] || return 0
 
@@ -205,6 +271,16 @@ _commit_detect_walk_core() {
 # (two boundaries with an empty segment between them, which the loop below
 # already skips via the `${#_cd_seg[@]} -gt 0` guard); same for `||`.
 #
+# WRAPPER-SHAPE NORMALIZATION (F1-3): the same reasoning extends to `(`, `)`,
+# `{`, `}`, and a backtick — a `git commit` wrapped in a subshell
+# `(git commit -m x)`, a command substitution `$(git commit -m x)` or
+# `` `git commit -m x` ``, or a brace group `{ git commit -m x; }` is
+# likewise invisible to the boundary `case` unless these characters are
+# padded into their own tokens first. Same sed pass, same quote-safety
+# argument: a message body containing a literal `(`/`)`/`{`/`}`/backtick
+# (e.g. `-m "a (b) {c}"`) stays inside its quotes and folds back into one
+# token, so it is never mistaken for a wrapper boundary.
+#
 # NOTE: an unescaped `&` in a sed REPLACEMENT means "the matched text" —
 # the `&` replacement below is written `s/&/ \& /g` (escaped) so it
 # inserts a literal ampersand rather than relying on that coincidence.
@@ -220,7 +296,7 @@ _commit_detect_walk_core() {
 _commit_detect_scan_segments() {
     local raw="$1"
     local _cd_norm
-    _cd_norm=$(printf '%s' "$raw" | sed -e 's/&/ \& /g' -e 's/|/ | /g' -e 's/;/ ; /g')
+    _cd_norm=$(printf '%s' "$raw" | sed -e 's/&/ \& /g' -e 's/|/ | /g' -e 's/;/ ; /g' -e 's/(/ ( /g' -e 's/)/ ) /g' -e 's/{/ { /g' -e 's/}/ } /g' -e 's/`/ ` /g')
 
     local -a _cd_flat=()
     while IFS= read -r _cd_tok; do
@@ -245,7 +321,7 @@ _commit_detect_scan_segments() {
 
         _cd_cur="${_cd_flat[$_cd_i]}"
         case "$_cd_cur" in
-            "&&" | "||" | ";" | "|" | "&")
+            "&&" | "||" | ";" | "|" | "&" | "(" | ")" | "{" | "}" | "\`")
                 if [ "${#_cd_seg[@]}" -gt 0 ]; then
                     _CD_TOKENS=("${_cd_seg[@]}")
                     _CD_N=${#_CD_TOKENS[@]}
@@ -559,4 +635,144 @@ extract_pathspecs() {
         fi
         printf '%s\n' "$tok"
     done
+}
+
+# gf_commit_skips_hooks <cmd> — true (exit 0) iff <cmd> is a real `git commit`
+# (per is_git_commit) carrying `--no-verify` (or any prefix of it — the
+# `case` arm below lists every one, fail-toward-deny, so this predicate never
+# depends on which prefixes git would accept), or a single-dash short-flag
+# cluster in which `n` appears before any value-taking short flag (`-n`,
+# `-an`, `-na`, `-anm` — but not `-mnote`, where `m` consumes `note` as its
+# glued value) — both skip the native ADR-004 pre-commit hook (F1-2). Walks
+# argv strictly after the `commit` subcommand token, using the SAME
+# flag/value-skip rules as extract_pathspecs above (so a `-m` value, e.g. a
+# message body that merely mentions "-n", is skipped whole and never misread
+# as the flag). False on a non-commit, or a commit with no such flag.
+gf_commit_skips_hooks() {
+    _commit_detect_parse "$1"
+    [ "$_CD_OK" -eq 1 ] || return 1
+
+    local i=$_CD_IDX
+    local seen_dashdash=0
+    local tok
+
+    while [ "$i" -lt "$_CD_N" ]; do
+        tok="${_CD_TOKENS[$i]}"
+        i=$((i + 1))
+        if [ "$seen_dashdash" -eq 0 ]; then
+            if [ "$tok" = "--" ]; then
+                seen_dashdash=1
+                continue
+            fi
+            case "$tok" in
+                --no-verify | --no-verif | --no-veri | --no-ver | --no-ve | --no-v)
+                    # git's parse-options accepts any UNAMBIGUOUS long-option
+                    # prefix (probed: `git status --shor` runs --short), so
+                    # every prefix of --no-verify is matched, exact-literal.
+                    # `--no-ver` and shorter are expected to collide with
+                    # --no-verbose and be rejected by git as ambiguous — that
+                    # was NOT probed (permission-denied in review), so they
+                    # are denied here anyway: fail-toward-deny costs nothing on
+                    # a form git would refuse, and removes the unverified
+                    # claim. `--no-verbose` itself is not in the alternation
+                    # (code-lead F1 r1/r2, 2026-08-30).
+                    return 0
+                    ;;
+                -m | --message | -c | -C | --reuse-message | --reedit-message | -F | --file | -A | --author | --date | --template | --fixup | --squash | --trailer)
+                    i=$((i + 1)) # skip the flag's separate value token
+                    continue
+                    ;;
+                --message=* | --reuse-message=* | --reedit-message=* | --file=* | --author=* | --date=* | --template=* | --fixup=* | --squash=* | --trailer=*)
+                    continue
+                    ;;
+                -[a-zA-Z]*)
+                    # Single-dash short-flag cluster — -n itself, or -n fused
+                    # with other boolean short flags (-an, -anm, ...). Walked
+                    # char by char, not matched with a bare `*n*`: the first
+                    # VALUE-taking short flag (m C c F t S u — message,
+                    # reuse/reedit, file, template, gpg-sign, untracked-files)
+                    # consumes the rest of the cluster as its glued value, so
+                    # `-mnote` / `-m"no…"` is a message, never a hook-skip
+                    # flag (HQ F1 self-review 2026-08-30: `*n*` produced a
+                    # false --no-verify deny on a glued -m value).
+                    local _cd_cl="${tok#-}" _cd_ch
+                    while [ -n "$_cd_cl" ]; do
+                        _cd_ch="${_cd_cl:0:1}"
+                        _cd_cl="${_cd_cl:1}"
+                        case "$_cd_ch" in
+                            n) return 0 ;;
+                            m | C | c | F | t | S | u) break ;;
+                        esac
+                    done
+                    continue
+                    ;;
+                -*)
+                    continue
+                    ;;
+            esac
+        fi
+    done
+    return 1
+}
+
+# gf_commit_overrides_hookspath <cmd> — true (exit 0) iff <cmd> is a real
+# `git commit` (per is_git_commit) whose tokens BEFORE `commit` carry
+# core.hooksPath (key compared case-insensitively) in any of three forms:
+# separate-value `-c core.hooksPath=X`, glued `-ccore.hooksPath=X`, or an
+# env-assignment prefix token naming it (`GIT_CONFIG_PARAMETERS='core.hooksPath=X'`,
+# or the `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_<n>=core.hooksPath` triple) —
+# each redirects git to a different hooks directory, skipping the same native
+# ADR-004 hook `--no-verify` does (F1-2). False on a non-commit, or a commit
+# whose pre-`commit` tokens name no such key.
+gf_commit_overrides_hookspath() {
+    _commit_detect_parse "$1"
+    [ "$_CD_OK" -eq 1 ] || return 1
+
+    local i=0
+    local _cd_commit_idx=$((_CD_IDX - 1))
+    local tok
+
+    while [ "$i" -lt "$_cd_commit_idx" ]; do
+        tok="${_CD_TOKENS[$i]}"
+        case "$tok" in
+            -c)
+                if [ "$((i + 1))" -lt "$_cd_commit_idx" ]; then
+                    case "$(_commit_detect_lower "${_CD_TOKENS[$((i + 1))]}")" in
+                        core.hookspath=*) return 0 ;;
+                    esac
+                fi
+                i=$((i + 2))
+                continue
+                ;;
+            -c*)
+                case "$(_commit_detect_lower "$tok")" in
+                    -ccore.hookspath=*) return 0 ;;
+                esac
+                ;;
+            *=*)
+                # Env-assignment form of the same override, sitting in the
+                # VAR=val prefix the walk strips: `GIT_CONFIG_PARAMETERS=
+                # 'core.hooksPath=x' git commit`, or the GIT_CONFIG_COUNT /
+                # GIT_CONFIG_KEY_<n>=core.hooksPath triple. Either reaches git
+                # exactly as `-c` does. A message body can never sit before
+                # `commit`, so a substring test on these tokens is safe (HQ F1
+                # self-review 2026-08-30).
+                case "$(_commit_detect_lower "$tok")" in
+                    *core.hookspath*) return 0 ;;
+                esac
+                ;;
+        esac
+        i=$((i + 1))
+    done
+    return 1
+}
+
+# _commit_detect_lower <str> — print <str> lower-cased. `tr`, not bash's
+# `${var,,}`: that operator is bash 4.0+ and is a *bad substitution* on the
+# bash 3.2 that macOS ships at /bin/bash (which `#!/bin/bash` pins), so the
+# predicate above would abort — fail-OPEN at PreToolUse — on exactly the
+# `-c core.hooksPath=` input it exists to catch (code-lead F1 r1, 2026-08-30).
+# Nothing else in hooks/ uses a bash-4-only construct; keep it that way.
+_commit_detect_lower() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
 }

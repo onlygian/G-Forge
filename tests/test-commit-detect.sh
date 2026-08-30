@@ -21,7 +21,14 @@
 # extract_pathspecs leak, a second pins that is_git_commit still detects the
 # shape despite the leak (r1 Minor finding — the comment claimed this but no
 # assertion pinned it).
-# Total assertions: 72. Runner-attested (M48e: 70/70; HEREDOC-p added 2026-08-27, 2 assertions).
+# F1-3/F1-2 additions (M52 F1 Task 25 + HQ hardening + code-lead r1):
+# WRAPPERS group (command-wrapper shapes plus message-body regression
+# guards), NOVERIFY group (gf_commit_skips_hooks predicate, incl. glued-value
+# clusters and git long-option abbreviations), HOOKSPATH group
+# (gf_commit_overrides_hookspath predicate, incl. env-assignment forms).
+# Total assertions: runner-observed — this file's own `Results:` line is the
+# only count; it is never restated here (ADR-013 rule 2 — a typed count in
+# this header went stale within the same session it was minted).
 
 LIB="$(cd "$(dirname "$0")" && pwd)/../hooks/lib/commit-detect.sh"
 source "$LIB" || { echo "FAIL: could not source $LIB"; exit 1; }
@@ -281,6 +288,114 @@ test_pathspecs "HEREDOC-p: git commit -m x <<A <<B (two heredoc operators, one o
 # pathspec leak above — classification stays fail-toward-deny either way.
 test_detected "HEREDOC-p: git commit -m x <<A <<B (two heredoc operators) is_git_commit still DETECTED" \
     $'git commit -m x <<A <<B\nbody A line\nA\nbody B line\nB'
+
+# test_skips_hooks_true <name> <cmd> — assert gf_commit_skips_hooks returns 0
+test_skips_hooks_true() {
+    local name="$1" cmd="$2"
+    if gf_commit_skips_hooks "$cmd"; then
+        echo "PASS: $name"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected gf_commit_skips_hooks true, but was false)"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# test_skips_hooks_false <name> <cmd> — assert gf_commit_skips_hooks returns nonzero
+test_skips_hooks_false() {
+    local name="$1" cmd="$2"
+    if ! gf_commit_skips_hooks "$cmd"; then
+        echo "PASS: $name"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected gf_commit_skips_hooks false, but was true)"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# test_overrides_hookspath_true <name> <cmd> — assert gf_commit_overrides_hookspath returns 0
+test_overrides_hookspath_true() {
+    local name="$1" cmd="$2"
+    if gf_commit_overrides_hookspath "$cmd"; then
+        echo "PASS: $name"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected gf_commit_overrides_hookspath true, but was false)"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# test_overrides_hookspath_false <name> <cmd> — assert gf_commit_overrides_hookspath returns nonzero
+test_overrides_hookspath_false() {
+    local name="$1" cmd="$2"
+    if ! gf_commit_overrides_hookspath "$cmd"; then
+        echo "PASS: $name"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected gf_commit_overrides_hookspath false, but was true)"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# ── Group WRAPPERS — command-wrapper shapes (F1-3): (), $(), ``, {}, and
+# if/command/exec/time-wrapped `git commit` invocations, previously invisible
+# to the argv walk (no boundary padding for paren/brace/backtick, no
+# transparent-prefix strip for these keywords). All eight must DETECT.
+
+test_detected "WRAPPERS: (git commit -m x) (parenthesized subshell)" "(git commit -m x)"
+test_detected "WRAPPERS: \$(git commit -m x) (command substitution)" '$(git commit -m x)'
+test_detected "WRAPPERS: \`git commit -m x\` (backtick command substitution)" '`git commit -m x`'
+test_detected "WRAPPERS: { git commit -m x; } (brace group)" '{ git commit -m x; }'
+test_detected "WRAPPERS: if git commit -m x; then :; fi (if-wrapped)" 'if git commit -m x; then :; fi'
+test_detected "WRAPPERS: command git commit -m x (command-wrapped)" "command git commit -m x"
+test_detected "WRAPPERS: exec git commit -m x (exec-wrapped)" "exec git commit -m x"
+test_detected "WRAPPERS: time git commit -m x (time-wrapped)" "time git commit -m x"
+
+# Regression guards: the new paren/brace/backtick boundary padding and the
+# if/command/exec/time/$( prefix strip must not split a real commit message
+# that happens to contain those characters or words as plain text — the
+# message stays ONE token and pathspec extraction is unaffected.
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_pathspecs "WRAPPERS: git commit -m \"if x then y\" (message body not split by if/keyword strip)" 'git commit -m "if x then y"' ""
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_pathspecs "WRAPPERS: git commit -m \"a (b) {c}\" (message body not split by paren/brace pad)" 'git commit -m "a (b) {c}"' ""
+
+# ── Group NOVERIFY — gf_commit_skips_hooks predicate (F1-2) ──────────────────
+
+test_skips_hooks_true "NOVERIFY: --no-verify detected" 'git commit --no-verify -m x'
+test_skips_hooks_true "NOVERIFY: -n detected" 'git commit -n -m x'
+test_skips_hooks_true "NOVERIFY: -anm x (fused short-flag cluster containing n) detected" 'git commit -anm x'
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: plain git commit -m x not flagged" 'git commit -m x'
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: -m \"use -n here\" (message body, not a real flag) not flagged" 'git commit -m "use -n here"'
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: -m \"(not a commit)\" (message body) not flagged" 'git commit -m "(not a commit)"'
+# Glued value on a value-taking short flag: the cluster walk stops at `m`, so
+# the `n` inside the message is never read as a flag. Claim pinned: a glued
+# -m value containing n is not a hook-skip (HQ F1 self-review 2026-08-30).
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: -mnote (glued -m value containing n) not flagged" 'git commit -mnote'
+test_skips_hooks_true "NOVERIFY: -na (n before a boolean flag in a cluster) detected" 'git commit -na -m x'
+# git parse-options accepts unambiguous long-option prefixes; --no-veri is the
+# shortest that does not collide with --no-verbose (code-lead F1 r1).
+test_skips_hooks_true "NOVERIFY: --no-veri (shortest unambiguous git abbreviation) detected" 'git commit --no-veri -m x'
+test_skips_hooks_true "NOVERIFY: --no-verif (abbreviation) detected" 'git commit --no-verif -m x'
+test_skips_hooks_true "NOVERIFY: --no-v (shortest prefix, fail-toward-deny even if git would reject it) detected" 'git commit --no-v -m x'
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: --no-verbose (a different --no-ver* option) not flagged" 'git commit --no-verbose -m x'
+
+# ── Group HOOKSPATH — gf_commit_overrides_hookspath predicate (F1-2) ─────────
+
+test_overrides_hookspath_true "HOOKSPATH: -c core.hooksPath=/dev/null detected" 'git -c core.hooksPath=/dev/null commit -m x'
+test_overrides_hookspath_true "HOOKSPATH: -c CORE.HOOKSPATH=x (case-insensitive key) detected" 'git -c CORE.HOOKSPATH=x commit -m x'
+test_overrides_hookspath_true "HOOKSPATH: GIT_CONFIG_PARAMETERS env prefix detected" "GIT_CONFIG_PARAMETERS='core.hooksPath=/x' git commit -m x"
+test_overrides_hookspath_true "HOOKSPATH: GIT_CONFIG_KEY_0=core.hooksPath env triple detected" 'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/x git commit -m x'
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_overrides_hookspath_false "HOOKSPATH: -c user.name=x (unrelated config key) not flagged" 'git -c user.name=x commit -m x'
 
 # ── Summary ───────────────────────────────────────────────────────────────────────
 

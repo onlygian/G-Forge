@@ -30,10 +30,12 @@
 # need check-commit.sh's `-a`/pathspec-widening heuristics — `git diff
 # --cached --name-only` here already IS the final staged set (ADR-004).
 #
-# Later sub-milestone note: this source file is installed into
-# `.git/hooks/pre-commit` by a later increment. This file is NOT installed
-# or registered anywhere by this change — the source file living here under
-# `hooks/` is the whole deliverable of this increment.
+# Install: `/g-init` Step 6a and `/g-update` Step 7a copy this file to
+# `$(git rev-parse --git-path hooks)/pre-commit` together with every
+# `hooks/lib/*.sh` into `<git-hooks-dir>/lib/` (the libs sourced below
+# resolve relative to this file's own location). No `.claude/settings.json`
+# registration — git invokes it natively. (Stale "not installed anywhere"
+# note replaced 2026-08-30, M52 F1.)
 
 # deny <reason> — block the commit: print "G-Forge: <reason>" to stderr and
 # exit 1 (see exit contract above — any non-zero exit blocks a git hook).
@@ -43,8 +45,8 @@ deny() {
 }
 
 # Resolve shared lib helpers relative to this script's own location, so the
-# eventually-installed copy (.git/hooks/pre-commit, libs alongside it) finds
-# them the same way this repo-source copy (hooks/pre-commit, hooks/lib/)
+# installed copy (<git-hooks-dir>/pre-commit, libs alongside it in lib/)
+# finds them the same way this repo-source copy (hooks/pre-commit, hooks/lib/)
 # does — same convention hooks/check-commit.sh uses (M-audit finding #21 /
 # BUG-2: one sourced classifier/resolver, never a second hand-copied one).
 _GF_HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"

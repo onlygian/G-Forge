@@ -183,6 +183,25 @@ if is_git_commit "$CMD"; then
         exit 0
     fi
 
+    # F1-2: --no-verify/-n and -c core.hooksPath=... both skip the native
+    # ADR-004 pre-commit hook (hooks/pre-commit) entirely — that hook is
+    # where sentinel CONTENT binding (tree hash, HEAD, worktree) actually
+    # lives; this hook's own sentinel check just below is existence-only. So
+    # a stale-but-present sentinel would otherwise sail through PreToolUse
+    # while the native hook that would have caught the staleness never runs.
+    # Denying here, before the sentinel/classifier path and on every tier the
+    # gate is active for, is the only place either bypass is ever caught.
+    # Guarded by `command -v`: if commit-detect.sh is missing, these
+    # predicates are undefined too, and this layer falls through to its
+    # documented fail-open path (see the KNOWN FAIL-OPEN comment above)
+    # rather than erroring on an unbound function.
+    if command -v gf_commit_skips_hooks >/dev/null 2>&1 && gf_commit_skips_hooks "$CMD"; then
+        deny "--no-verify or -n skips the native commit gate (ADR-004) — remove the flag; the gate cannot be bypassed"
+    fi
+    if command -v gf_commit_overrides_hookspath >/dev/null 2>&1 && gf_commit_overrides_hookspath "$CMD"; then
+        deny "core.hooksPath override skips the native commit gate (ADR-004) — remove the -c override; the gate cannot be bypassed"
+    fi
+
     # File-set classifier — the gate triggers on WHAT is being committed, not
     # merely that a commit is happening. Two review surfaces, two sentinels:
     #   CODE (executable/instruction surface) → /g-review writes .claude/g-forge-approved

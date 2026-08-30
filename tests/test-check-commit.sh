@@ -4,7 +4,15 @@
 # repo's own .claude/ (an earlier version deleted .claude/integration-tier in
 # the repo root, silently disabling the hooks for the project).
 #
-# Total assertions: 29
+# M52 F1 Task 25 addition: +3 cases (30-32) — F1-2 hook-skip bypass gate:
+# --no-verify and -c core.hooksPath=... denied even with the code sentinel
+# PRESENT (gf_commit_skips_hooks / gf_commit_overrides_hookspath deny before
+# the sentinel check), plus a light-tier regression guard (gate off, so
+# --no-verify passes too — the predicates are never reached on that path).
+#
+# Total assertions: runner-observed — see this file's own `Results:` line
+# (previously 29; +3 added by Task 25, attested by a separate run, not this
+# dispatch — re-derive after any further suite change, never hand-typed).
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
 # finding-#20 cross-check that catches a suite silently dropping cases.
 
@@ -482,6 +490,54 @@ if [ "$CODE" -eq 0 ] && printf '%s' "$OUT" | grep -qF 'reference-only commit —
 else
     echo "FAIL: marked reference-only commit (expected exit 0 + advisory line on stdout; got exit $CODE, stdout: $OUT)"; FAIL=$((FAIL+1))
 fi
+
+# ── F1-2 hook-skip bypass gate (gf_commit_skips_hooks / gf_commit_overrides_hookspath) ─
+# --no-verify/-n and -c core.hooksPath=... both skip the native ADR-004
+# pre-commit hook entirely — sentinel CONTENT binding (tree hash, HEAD,
+# worktree) lives solely there; this hook's own sentinel check is
+# existence-only. So a present-but-stale sentinel would otherwise sail
+# through this layer. These predicates (hooks/lib/commit-detect.sh) deny
+# BEFORE the sentinel/classifier path, regardless of sentinel state.
+
+# 30: --no-verify denied even with the code sentinel PRESENT — a present
+# sentinel does not save a hook-skipping commit.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+echo "approved" > "$SENTINEL"
+stage "hooks/thing.sh"
+OUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git commit --no-verify -m \"x\""}}' | bash "$SCRIPT" 2>/dev/null)
+CODE=$?
+if [ "$CODE" -eq 2 ] && printf '%s' "$OUT" | grep -q '"permissionDecision":"deny"'; then
+    echo "PASS: --no-verify denied even with code sentinel present (exit 2 + deny JSON)"; PASS=$((PASS+1))
+else
+    echo "FAIL: --no-verify not denied with sentinel present (exit $CODE, stdout: $OUT)"; FAIL=$((FAIL+1))
+fi
+rm -f "$SENTINEL"
+
+# 31: -c core.hooksPath=... denied even with the code sentinel PRESENT.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+echo "approved" > "$SENTINEL"
+stage "hooks/thing.sh"
+OUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git -c core.hooksPath=/tmp/x commit -m \"x\""}}' | bash "$SCRIPT" 2>/dev/null)
+CODE=$?
+if [ "$CODE" -eq 2 ] && printf '%s' "$OUT" | grep -q '"permissionDecision":"deny"'; then
+    echo "PASS: -c core.hooksPath override denied even with code sentinel present (exit 2 + deny JSON)"; PASS=$((PASS+1))
+else
+    echo "FAIL: -c core.hooksPath override not denied with sentinel present (exit $CODE, stdout: $OUT)"; FAIL=$((FAIL+1))
+fi
+rm -f "$SENTINEL"
+
+# 32: light tier — gate off entirely, so --no-verify passes too (tier-off
+# stays off; the F1-2 predicates are never reached on this path since the
+# light-tier exit returns before this code runs). Guard/negative assertion —
+# probe: light-tier `exit 0` removed in a scratch copy of check-commit.sh.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+printf 'light\n' > .claude/integration-tier
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+stage "hooks/thing.sh"
+run "light tier: --no-verify commit allowed (gate off, predicate never evaluated)" \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit --no-verify -m \"x\""}}' \
+    0
+printf 'full\n' > .claude/integration-tier
 
 # Reset the index so any later cases see a clean (empty) staged set.
 stage

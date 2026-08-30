@@ -1,6 +1,7 @@
 name: tests
 
-# This workflow runs the project's bash test suites on push and pull_request.
+# This workflow runs the project's bash test suites on every push (see the
+# `on:` block below for why there is no pull_request trigger).
 # It is a TEST RUNNER, NOT the commit gate. The commit gate is enforced
 # locally by the native `pre-commit` git hook + the `.claude/g-forge-approved`
 # sentinel (bound to the reviewed tree per ADR-004:
@@ -33,9 +34,25 @@ name: tests
 # Do not chase a timing-only red here as a code bug without first checking
 # whether it reproduces locally.
 
+# push only, every branch: this repo merges feature branches locally with
+# `git merge --no-ff` (G-RULES §D), never through PRs, so a `pull_request`
+# trigger only ever produced a second identical run — and filtering push to
+# main would have moved the backstop from pre-merge to post-merge
+# (code-lead F1 r1, 2026-08-30).
 on:
   push:
-  pull_request:
+
+# Least privilege — the runner only reads the checkout; nothing here writes
+# to the repo, so nothing needs more (todo 15 F6, closed M52 F1 2026-08-30).
+permissions:
+  contents: read
+
+# One run per ref at a time. On a feature branch a newer push cancels the
+# older in-flight run; on main every SHA keeps its own recorded result, so
+# cancellation is off there.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:

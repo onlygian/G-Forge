@@ -279,9 +279,9 @@ If the plugin cache does not contain any of the thirteen files above (the top-le
   Reinstall the plugin: /plugin install g-forge
 ```
 
-## Step 6a — Install the native pre-commit gate
+## Step 6a — Install the native pre-commit gate and its lib/
 
-ADR-004 makes the native git `pre-commit` hook (`<plugin-hooks>/pre-commit`) — not the PreToolUse `check-commit.sh` hook installed in Step 6 — the authoritative enforcement site for the commit gate: it fires after `git commit` has already staged the true to-be-committed tree, so it sees things PreToolUse cannot (e.g. `git commit -a`/`-p`, raw-terminal commits). It has never been installed by `/g-init` until now.
+ADR-004 makes the native git `pre-commit` hook (`<plugin-hooks>/pre-commit`) — not the PreToolUse `check-commit.sh` hook installed in Step 6 — the authoritative enforcement site for the commit gate: it fires after `git commit` has already staged the true to-be-committed tree, so it sees things PreToolUse cannot (e.g. `git commit -a`/`-p`, raw-terminal commits). It has never been installed by `/g-init` until now. Installing the `pre-commit` script by itself is not the full deliverable: it `source`s several `lib/` scripts from its own directory at runtime and denies every commit with an internal-error message if any is missing — so this step also installs `<git-hooks-dir>/lib/`.
 
 1. Resolve the real git hooks directory — do not assume a fixed default path: run `git rev-parse --git-path hooks` and use its output as `<git-hooks-dir>`. This honors `core.hooksPath` overrides and, in a linked worktree, correctly resolves to the primary checkout's shared hooks directory rather than a per-worktree path.
 
@@ -295,11 +295,17 @@ ADR-004 makes the native git `pre-commit` hook (`<plugin-hooks>/pre-commit`) —
        To let G-Forge also enforce natively, back up and remove the existing hook, then re-run /g-init.
      ```
 
+3. **Install `<git-hooks-dir>/lib/`** — the native `pre-commit` hook sources its shared libs from its own directory at runtime (the set is whatever `hooks/pre-commit`'s `. "$_GF_HOOK_DIR/lib/…"` lines name — read them, never restate them here), denying every commit with an internal error if any is missing. This runs on **both** the Absent and Present-and-G-Forge-managed branches above — never on the Present-and-NOT-G-Forge-managed branch, where nothing is installed:
+   - Create `<git-hooks-dir>/lib/` if it does not already exist.
+   - Enumerate the canonical set **from disk** — `ls <plugin-hooks>/lib/*.sh` — never a typed list of lib names (ADR-011 derive-don't-type; a hardcoded list is exactly how `/g-init` once shipped a 4-of-6 lib install undetected, because every reader of that list iterated the same short set — `tests/test-lib-install-completeness.sh` pins this).
+   - Copy every `<plugin-hooks>/lib/*.sh` file the enumeration finds to `<git-hooks-dir>/lib/<file>`.
+
 Report:
 ```
   ✓ <git-hooks-dir>/pre-commit — installed (canonical from plugin cache)
+  ✓ <git-hooks-dir>/lib/*.sh — installed (canonical from plugin cache)
 ```
-or, if left untouched:
+or, if the existing `pre-commit` was left untouched:
 ```
   ⚠ <git-hooks-dir>/pre-commit — not overwritten (existing non-G-Forge hook preserved)
 ```
@@ -471,7 +477,8 @@ G-Forge ready ✓
   ✓ g-docs/todo.md — created (or already existed)
   ✓ .gitignore — project artifacts excluded, project record tracked
   ✓ .claude/hooks/ — 7 hooks + 6 lib/ scripts installed (check-commit, post-commit-cleanup, observe, agent-lifecycle, pre-compact, session-start, workflow-checkpoint, lib/commit-detect, lib/worktree-resolve, lib/classify-changeset, lib/sentinel-read, lib/stdin-read, lib/semver-compare)
-  ✓ pre-commit — installed | not overwritten (existing hook preserved)
+  ✓ <git-hooks-dir>/pre-commit — installed | not overwritten (existing hook preserved)
+  ✓ <git-hooks-dir>/lib/*.sh — installed | skipped (foreign pre-commit preserved)
   ✓ .claude/settings.json — hooks registered
   ✓ .claude/voice-profile — [chosen voice]
   ✓ .claude/integration-tier — [chosen tier]

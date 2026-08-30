@@ -44,6 +44,8 @@ hash_file() {
 ```
 For each top-level script in `hooks/` and each lib script in `hooks/lib/*.sh`, compare `hash_file` of the canonical source against its installed counterpart at `.claude/hooks/<file>` and `.claude/hooks/lib/<file>` respectively. A missing installed file counts as drift, same as Check 16. Skip this check silently (report `Installed-copy drift: not applicable — no canonical hooks/ in this checkout`) if `hooks/` does not exist at the repo root, so /g-review stays usable outside this repo's own dogfooded copy.
 
+Also resolve `<git-hooks-dir>` via `git rev-parse --git-path hooks` and extend the same comparison to the native install site: `hooks/pre-commit` → `<git-hooks-dir>/pre-commit`, and each file in `hooks/lib/*.sh` → `<git-hooks-dir>/lib/<file>`. Before comparing, read the first lines of `<git-hooks-dir>/pre-commit` for the literal marker `G-Forge commit gate`; if it is absent, the slot holds a foreign, non-G-Forge hook — skip this half of the comparison with a note (`<git-hooks-dir>/pre-commit not G-Forge-managed — skipped`) rather than counting it as drift.
+
 Report the result as one line, verbatim, in the review record:
 - Clean: `Installed-copy drift: clean`
 - Drifted: `Installed-copy drift: N file(s) drifted — run /g-update ([file], [file], ...)`

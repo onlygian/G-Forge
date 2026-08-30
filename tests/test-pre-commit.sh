@@ -18,9 +18,9 @@
 # never a `local -n` nameref (the other historical break: bash's nameref
 # cannot bind an array literal the way that attempt tried).
 #
-# Total assertions: 16. Count is the RUNNER-OBSERVED total and must equal the
-# `Results:` line — the finding-#20 cross-check that catches a suite silently
-# dropping cases.
+# Total assertions: 18 = 16 original + 2 installed-layout lib cases
+# (runner-observed count). Must equal the `Results:` line — the finding-#20
+# cross-check that catches a suite silently dropping cases.
 
 # Resolve to ABSOLUTE paths once, before any fixture cd (tests/README.md).
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -318,6 +318,56 @@ run_deny "git write-tree failure on unmerged/conflicted index is denied" 1 "git 
 git merge --abort >/dev/null 2>&1
 
 cd / && rm -rf "$WORKDIR"
+
+# ── Group 5: installed layout — lib/ presence requirement ─────────────────
+
+# 17: Installed layout, lib ABSENT — pre-commit copied alone, denies with
+# "internal error" because it sources lib/worktree-resolve.sh from its own
+# directory at runtime (hooks/pre-commit:50-56).
+INSTALLED_FIXTURE="$(mktemp -d)"
+cd "$INSTALLED_FIXTURE" || { echo "FAIL: could not enter installed fixture"; exit 1; }
+git init -q
+git config user.email "test@g-forge.local"
+git config user.name "g-forge-test"
+mkdir -p .claude
+printf 'full\n' > .claude/integration-tier
+INSTALLED_GIT_HOOKS="$(git rev-parse --git-path hooks)"
+mkdir -p "$INSTALLED_GIT_HOOKS"
+# Copy only the pre-commit hook, NOT the lib/ directory
+cp "$SCRIPT" "$INSTALLED_GIT_HOOKS/pre-commit"
+chmod +x "$INSTALLED_GIT_HOOKS/pre-commit"
+# Stage a file so the hook has something to classify
+printf 'x\n' > test-code.sh
+git add test-code.sh >/dev/null 2>&1
+# Run the installed pre-commit hook directly
+INSTALLED_OUT=$("$INSTALLED_GIT_HOOKS/pre-commit" </dev/null 2>&1 1>/dev/null)
+INSTALLED_CODE=$?
+if [ "$INSTALLED_CODE" -eq 1 ] && printf '%s' "$INSTALLED_OUT" | grep -qF "could not load hooks/lib/worktree-resolve.sh"; then
+    echo "PASS: installed pre-commit without lib/ denies with internal-error reason"; PASS=$((PASS+1))
+else
+    echo "FAIL: installed pre-commit without lib/ (expected exit 1 + stderr containing \"could not load hooks/lib/worktree-resolve.sh\"; got exit $INSTALLED_CODE, stderr: $INSTALLED_OUT)"; FAIL=$((FAIL+1))
+fi
+
+# 18: Installed layout, lib PRESENT — pre-commit copied with all lib files,
+# denies with the normal "no valid code-lead sign-off" deny (proves the
+# installed copy resolves its libs from its own directory and reaches the
+# sentinel check).
+INSTALLED_LIB="$INSTALLED_GIT_HOOKS/lib"
+mkdir -p "$INSTALLED_LIB"
+# Copy all lib files from the plugin source
+for libfile in "$TESTS_DIR/../hooks/lib"/*.sh; do
+    cp "$libfile" "$INSTALLED_LIB/$(basename "$libfile")" >/dev/null 2>&1
+done
+# Re-run the installed pre-commit hook with lib/ now present
+INSTALLED_WITH_LIB_OUT=$("$INSTALLED_GIT_HOOKS/pre-commit" </dev/null 2>&1 1>/dev/null)
+INSTALLED_WITH_LIB_CODE=$?
+if [ "$INSTALLED_WITH_LIB_CODE" -eq 1 ] && printf '%s' "$INSTALLED_WITH_LIB_OUT" | grep -qF "no valid code-lead sign-off"; then
+    echo "PASS: installed pre-commit with lib/ reaches sentinel check"; PASS=$((PASS+1))
+else
+    echo "FAIL: installed pre-commit with lib/ (expected exit 1 + stderr containing \"no valid code-lead sign-off\"; got exit $INSTALLED_WITH_LIB_CODE, stderr: $INSTALLED_WITH_LIB_OUT)"; FAIL=$((FAIL+1))
+fi
+
+cd / && rm -rf "$INSTALLED_FIXTURE"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

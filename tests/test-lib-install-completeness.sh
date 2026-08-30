@@ -16,14 +16,15 @@
 # derive-don't-type doctrine ADR-011 applies to CLAUDE.md, pointed at the
 # install list. Adding a lib without updating the docs fails here.
 #
-# Total assertions: 43 = 2 derivation-sanity + (6 libs x 4 doc surfaces)
+# Total assertions: 47 = 43 original (2 derivation-sanity + (6 libs x 4 doc surfaces)
 # + 2 g-doctor-derives-from-disk + 6 reverse + 2 set-parity + 4
 # count-coherence + 1 combined-file-count + 1 commit-gate matcher pin
-# (audit-7 H3) + 1 hooks.json empty-manifest pin (audit-7 H9). The count is
-# RUNNER-OBSERVED and must equal the `Results:` line — the finding-#20
-# cross-check that catches a suite silently dropping cases. It scales with
-# the lib count: adding a lib adds 5 assertions (4 surfaces + 1 reverse), so
-# re-derive this header from a run, never by hand.
+# (audit-7 H3) + 1 hooks.json empty-manifest pin (audit-7 H9))
+# + 4 skill lib-dir pins (F1-1 fix). Count is RUNNER-OBSERVED and must equal
+# the `Results:` line — the finding-#20 cross-check that catches a suite
+# silently dropping cases. It scales with the lib count: adding a lib adds 5
+# assertions (4 surfaces + 1 reverse), so re-derive this header from a run,
+# never by hand.
 #
 # g-doctor is deliberately NOT a per-lib surface. Its Check 16 was changed to
 # enumerate `hooks/lib/*.sh` from disk rather than from a written list, because
@@ -270,6 +271,22 @@ fi
 # hooks/hooks.json itself is never touched.
 assert_grep "$HOOKS/hooks.json" '"hooks": {}' \
     "hooks/hooks.json hooks key stays an empty object (double-registration guard)"
+
+# ── Group G — skill lib-dir install surface pins (F1-1 fix) ───────────────
+# These pins verify that the four skills documenting the install process name
+# the git-hooks-dir and hooks-dir lib/ directories explicitly, so the suite
+# catches a revert or a silence of the lib-install step. Each is a presence-grep
+# of the literal directory name the skill mentions, not a completeness claim
+# about the install logic itself.
+
+assert_grep "$G_INIT" "<git-hooks-dir>/lib/" \
+    "g-init Step 6a names <git-hooks-dir>/lib/ install"
+assert_grep "$G_UPDATE" "<hooks-dir>/lib/" \
+    "g-update Step 7a names <hooks-dir>/lib/ install"
+assert_grep "$G_DOCTOR" "<hooks-dir>/lib/*.sh" \
+    "g-doctor Check 16 names <hooks-dir>/lib/*.sh drift check"
+assert_grep "$REPO/skills/g-review/SKILL.md" "<git-hooks-dir>/lib/" \
+    "g-review Step 1 names <git-hooks-dir>/lib/ drift check"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

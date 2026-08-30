@@ -150,10 +150,17 @@ This check also covers two related canonical-vs-installed surfaces that hook dri
 - **Native `pre-commit` git hook drift.** Resolve the installed git hooks directory with `git rev-parse --git-path hooks` (do not assume `.git/hooks` — it can be relocated, e.g. worktrees) and look for `<hooks-dir>/pre-commit`. Before comparing, check whether it is a G-Forge-managed pre-commit: read its first few lines for the literal marker `G-Forge commit gate`.
   - Pass: `<hooks-dir>/pre-commit` exists, carries the `G-Forge commit gate` marker, AND its hash matches the canonical `hooks/pre-commit` (same `hash_file` cascade).
   - Fail (missing): ✗ pre-commit missing from installed git hooks dir (drift)
-    → Run `/g-update` to re-sync hooks/ into .claude/hooks/.
+    → Run `/g-update` to re-sync hooks/pre-commit into <hooks-dir>/.
   - Fail (G-Forge pre-commit present but hash differs): ✗ pre-commit installed copy differs from plugin source (drift)
-    → Run `/g-update` to re-sync hooks/ into .claude/hooks/.
+    → Run `/g-update` to re-sync hooks/pre-commit into <hooks-dir>/.
   - Advisory, not a failure (marker absent — a foreign, non-G-Forge pre-commit occupies the slot; the /g-init·/g-update clobber guard preserves it rather than overwriting it): ⚠ foreign pre-commit present (gate not installed — advisory, run /g-update to see options)
+
+  **`<hooks-dir>/lib/*.sh` drift.** When a G-Forge-managed `pre-commit` is present at `<hooks-dir>/pre-commit` (the Pass and hash-differs cases above, never the foreign case), also check the `lib/` scripts it sources from its own directory at runtime: enumerate the canonical set **from disk** — `ls [plugin-root]/hooks/lib/*.sh` — never a typed list, same derive-from-disk rule this check already applies to `.claude/hooks/lib/` above. For each `.sh` found, hash-compare `[plugin-root]/hooks/lib/<file>` against `<hooks-dir>/lib/<file>` using the same `hash_file` cascade.
+  - Pass (per file): `<hooks-dir>/lib/<file>` exists AND its hash matches the canonical source.
+  - Fail (missing): ✗ <hooks-dir>/lib/[file] missing — native pre-commit will deny every commit with "could not load" (drift)
+    → Run `/g-update` to re-sync hooks/lib/ into <hooks-dir>/lib/.
+  - Fail (hash mismatch, file present): ✗ <hooks-dir>/lib/[file] installed copy differs from plugin source (drift)
+    → Run `/g-update` to re-sync hooks/lib/ into <hooks-dir>/lib/.
 
 This check also covers the g-rules section files, the `.claude/agents/` surface, and the installed `.claude/skills/architecture-*/SKILL.md` surface — agents differ from hooks/lib/rules in that not every installed agent has a byte-canonical source, so the three classes below get distinct pass/fail/advisory wording rather than one shared rule:
 
