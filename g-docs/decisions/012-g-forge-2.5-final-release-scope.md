@@ -82,7 +82,7 @@ ADR-010 set the delivery shape (v2.5 ships from this repo, the repo freezes, the
 | M43 | 🗄 Dropped (2026-08-28) — ~~Operator Controls (`/g-settings` + inspection cadence)~~ **Dotfile layer TRANSFORMS/DIES in rebuild per `2026-07-rebuild-map.md:64`.** See Amendment 2026-08-28. |
 | M49 | 🗄 Dropped (2026-08-28) — ~~Devil's-Advocate Agent (internal adversarial pattern review) — **folded in 2026-08-14**~~ **New agent in dying review-orchestrator layer per `2026-07-rebuild-map.md:26`.** See Amendment 2026-08-28. |
 | M41 | 🗄 Dropped (2026-08-28) — ~~Release Machinery + README Currency — **cuts the 2.5.0 release, sequenced last**~~ **Replaced by M52 hand-cut release per §D.** See Amendment 2026-08-28. |
-| M52 | v2.5 Minimal Freeze — hand-cut release containing M47 + M48 + slimmed M51/M40. Four implementation sessions (plan: `g-docs/plans/v25-minimal-freeze.md`). |
+| M52 | v2.5 Minimal Freeze — hand-cut release containing M47 + M48 + slimmed M51/M40. Four implementation sessions as planned — *(2026-08-30 amendment: audit cycles F1–F3 inserted before Session D; release when F3's gate closes)* (plan: `g-docs/plans/v25-minimal-freeze.md`). |
 | shipped | Check 24 injection detector; `/g-init` lib-install fix (`ec9bf8a`) |
 
 All in-2.5 milestones ship cumulatively in **v2.5.0**, the single final G-Forge release label — no v2.6+ ever ships from this repo. Intermediate patch/minor releases below that label (v2.4.x) may cut at milestone-family closes — **amended 2026-08-22**, see "Amendment — 2026-08-22" above.

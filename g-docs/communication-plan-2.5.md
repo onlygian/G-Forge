@@ -5,7 +5,7 @@
 > **Owner:** HQ. Changes to the copy below are a developer decision, not an editing pass.
 > **Anchors:** [ADR-010](decisions/010-full-rebuild-on-current-platform.md) (rebuild + version identity: G-Proof ships as 1.0, there is no G-Forge 3.0).
 >
-> **§7 records the decision trail.** ~~The 2.5 scope described in §3c is in the committed record as of 2026-08-10 — [ADR-012](decisions/012-g-forge-2.5-final-release-scope.md) plus the roadmap re-scope pass: all eight milestones stamped v2.5.0, M47/M48 recorded, the "only M41" framing retired.~~ **Superseded 2026-08-28 ([ADR-012](decisions/012-g-forge-2.5-final-release-scope.md) amendment 4):** 2.5 is a minimal freeze — M47 ✅ + M48 ✅ (shipped v2.4.1) + M52, hand-cut 2026-08-30. §3c is rewritten to match; see the 2026-08-28 re-scope block in §7. §7's formerly-blocking findings are closed or carried; one item (M38's delivery reconciliation) is decided at M38's plan gate.
+> **§7 records the decision trail.** ~~The 2.5 scope described in §3c is in the committed record as of 2026-08-10 — [ADR-012](decisions/012-g-forge-2.5-final-release-scope.md) plus the roadmap re-scope pass: all eight milestones stamped v2.5.0, M47/M48 recorded, the "only M41" framing retired.~~ **Superseded 2026-08-28 ([ADR-012](decisions/012-g-forge-2.5-final-release-scope.md) amendment 4):** 2.5 is a minimal freeze — M47 ✅ + M48 ✅ (shipped v2.4.1) + M52, hand-cut when the F3 audit gate closes (moved from 2026-08-30). §3c is rewritten to match; see the 2026-08-28 re-scope block in §7. §7's formerly-blocking findings are closed or carried; one item (M38's delivery reconciliation) is decided at M38's plan gate.
 
 ---
 
