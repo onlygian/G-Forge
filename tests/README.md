@@ -11,7 +11,7 @@ numbers rather than pointing at a directory: **24 suites** — pinned by
 `tests/test-run-all.sh`'s suite-count baseline (`EXPECTED_SUITE_COUNT`), which
 goes red if a suite is added or removed without updating it (it did, when
 `test-telemetry-contract.sh` and then `test-readme-counts.sh` landed, both 2026-08-29) — carrying
-**661 assertions** (attested 2026-08-29, summed independently from the run's
+**684 assertions** (attested 2026-08-30, summed independently from the run's
 `Results:` lines per G-RULES §H; the assertion total is a dated attestation,
 not test-pinned — re-sum after any suite change).
 

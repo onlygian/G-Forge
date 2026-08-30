@@ -4,7 +4,7 @@
 # repo's own .claude/ (an earlier version deleted .claude/integration-tier in
 # the repo root, silently disabling the hooks for the project).
 #
-# Total assertions: 28
+# Total assertions: 29
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
 # finding-#20 cross-check that catches a suite silently dropping cases.
 
@@ -462,6 +462,26 @@ run "garbage tier value: gated commit denied (fail-safe gate on)" \
     '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat: garbage tier\""}}' \
     2
 printf 'full\n' > .claude/integration-tier
+
+# 29: REFERENCE class (M40 Task 17) — a marked reference/<bundle>/... commit
+# (bundle dir contains SNAPSHOT.md) passes with NO sentinel at all — it is
+# exempt-with-advisory, not a fourth thing requiring its own sign-off. The
+# marker file (SNAPSHOT.md) physically exists on disk in the fixture (stage()
+# both creates and stages it), which is what the lib's `[ -f ]` marker lookup
+# needs — GF_CLASSIFY_ROOT defaults to "." (this fixture's cwd). Also asserts
+# the advisory line reaches STDOUT (Session C fix round, lane A) — the
+# exemption must stay visible, never a silent bypass; run()'s own stdout
+# redirect (`>/dev/null 2>&1`) can't see it, so this uses the same sibling
+# OUT=$(...) capture shape as cases 15/16 above instead.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+stage "reference/mybundle/SNAPSHOT.md" "reference/mybundle/data.txt"
+OUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"chore: snapshot refresh\""}}' | bash "$SCRIPT" 2>/dev/null)
+CODE=$?
+if [ "$CODE" -eq 0 ] && printf '%s' "$OUT" | grep -qF 'reference-only commit — REFERENCE class, exempt from the review gate'; then
+    echo "PASS: marked reference-only commit allowed with no sentinel (REFERENCE, exempt) + advisory line on stdout"; PASS=$((PASS+1))
+else
+    echo "FAIL: marked reference-only commit (expected exit 0 + advisory line on stdout; got exit $CODE, stdout: $OUT)"; FAIL=$((FAIL+1))
+fi
 
 # Reset the index so any later cases see a clean (empty) staged set.
 stage

@@ -11,6 +11,19 @@
 # Total assertions: 47. Runner-attested (W1.6 Wave 7 r2: 47/47).
 # M-audit W3 task 12 additions: +3 tests (README*/CHANGELOG*/LICENSE* non-root
 # over-match fix). Total assertions: 50.
+# M40 Task 17 additions: +8 tests (REFERENCE bucket coverage: marked bundle
+# file set via SNAPSHOT.md, marked via NOTE.md, unmarked-stays-CODE guard,
+# code-extension-under-marked-bundle-stays-CODE guard x5 extensions). Total
+# assertions: 58.
+# Session C fix round, lane A additions: +8 tests (allowlist-flip guard —
+# extensionless/.ps1/.yml/Makefile/uppercase-.PDF under a marked bundle stay
+# CODE, a bundle name containing ".." or empty never reaches the marker
+# lookup, and a positive control confirming an allowlisted extension under a
+# marked bundle still classifies REFERENCE). Total assertions: 66.
+# Session C code-gate r2 fix (HQ): +3 tests (dot-segment guard on the whole
+# path — `..` below a marked bundle escaping reference/, and `.` segments as
+# or below the bundle name, all stay CODE). Total assertions: 69.
+# Runner-attested 2026-08-30: 69/69.
 
 LIB="$(cd "$(dirname "$0")" && pwd)/../hooks/lib/classify-changeset.sh"
 source "$LIB" || { echo "FAIL: could not source $LIB"; exit 1; }
@@ -141,10 +154,10 @@ test_classify "EMPTY: empty input string" "" 0 0
 # BOUNDARY: whitespace-only (non-empty) line is NOT skipped by the lib's
 # `[ -z "$_f" ] && continue` guard — it falls through every case arm to the
 # unmatched→CODE default. This is fail-toward-deny (an unparseable/garbage
-# path gates as the stricter CODE bucket) and is byte-identical to the
-# pre-extraction inline loop in hooks/check-commit.sh (verified commit
-# 9688e95) — the header comment was corrected to match this observed
-# behavior rather than the body being changed to match a wrong comment.
+# path gates as the stricter CODE bucket rather than silently vanishing) —
+# see the lib's own header for the current (Session C-corrected) framing of
+# this behavior; the stale "byte-identical to the pre-extraction inline loop"
+# claim this comment used to carry was removed there, not restated here.
 test_classify "WHITESPACE: whitespace-only line falls through to CODE (fail-toward-deny)" "
   " 1 0
 
@@ -220,6 +233,133 @@ else
     echo "FAIL: Task 6b-2 — hooks/pre-commit missing lib source or call"
     FAIL=$((FAIL+1))
 fi
+
+# ── Task 7: REFERENCE bucket coverage (M40 Task 17) ────────────────────────────
+#
+# GF_CLASSIFY_ROOT points the marker lookup at a throwaway plain directory
+# (no git init — the lib's marker check uses `[ -f ]`, never `git ls-files`,
+# per the lib header) so these tests never touch this repo's own tree.
+# Fixture layout:
+#   $REF_ROOT/reference/marked/SNAPSHOT.md    (marker present — SNAPSHOT.md)
+#   $REF_ROOT/reference/marked2/NOTE.md       (marker present — NOTE.md)
+#   $REF_ROOT/reference/unmarked/             (no marker file)
+REF_ROOT="$(mktemp -d)"
+mkdir -p "$REF_ROOT/reference/marked" "$REF_ROOT/reference/marked2" "$REF_ROOT/reference/unmarked"
+touch "$REF_ROOT/reference/marked/SNAPSHOT.md"
+touch "$REF_ROOT/reference/marked2/NOTE.md"
+# Markers planted where an UNGUARDED lookup for a `..` or empty bundle name
+# would resolve ($ROOT/reference/../SNAPSHOT.md and $ROOT/reference//SNAPSHOT.md)
+# so the dot-segment guard tests below (Case (5)) can actually go red when
+# the guard is removed. The first probe of 2026-08-30 stayed green without these: a guard
+# test that cannot fail proves nothing (G-RULES §H).
+touch "$REF_ROOT/SNAPSHOT.md" "$REF_ROOT/reference/SNAPSHOT.md"
+
+# test_classify_r <name> <paths_string> <exp_code> <exp_doc> <exp_reference> —
+# same convention as test_classify, extended to also assert HAS_REFERENCE.
+# `GF_CLASSIFY_ROOT=$REF_ROOT gf_classify_changeset` is a prefix assignment on
+# a simple command — bash scopes it to this one function invocation only (and
+# anything it calls), so REF_ROOT never leaks into any other test in this file.
+test_classify_r() {
+    local name="$1" paths="$2" exp_code="$3" exp_doc="$4" exp_ref="$5"
+    HAS_CODE=0
+    HAS_DOC=0
+    HAS_REFERENCE=0
+    GF_CLASSIFY_ROOT="$REF_ROOT" gf_classify_changeset <<EOF
+$paths
+EOF
+    if [ "$HAS_CODE" -eq "$exp_code" ] && [ "$HAS_DOC" -eq "$exp_doc" ] && [ "$HAS_REFERENCE" -eq "$exp_ref" ]; then
+        echo "PASS: $name"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected HAS_CODE=$exp_code HAS_DOC=$exp_doc HAS_REFERENCE=$exp_ref, got HAS_CODE=$HAS_CODE HAS_DOC=$HAS_DOC HAS_REFERENCE=$HAS_REFERENCE)"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# Case (1): marked reference-only file set — both the bundle's own marker
+# file (SNAPSHOT.md, which would otherwise hit the nested-*.md→CODE arm) and
+# a plain companion file classify as REFERENCE, never CODE or DOC. The
+# reference/*/* arm runs before the *.md arm specifically so this holds.
+test_classify_r "REFERENCE: marked bundle file set (SNAPSHOT.md + data file)" \
+"reference/marked/SNAPSHOT.md
+reference/marked/data.txt" 0 0 1
+
+# Second marker variant — NOTE.md also marks a bundle REFERENCE (not just
+# SNAPSHOT.md).
+test_classify_r "REFERENCE: marked bundle via NOTE.md marker" \
+    "reference/marked2/data.txt" 0 0 1
+
+# Case (2) — GUARD: an unmarked reference/<bundle>/... path (no SNAPSHOT.md or
+# NOTE.md in its bundle dir) still classifies as CODE, not REFERENCE —
+# fail-toward-deny, unmarked reference/ paths get no exemption.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_classify_r "CODE: unmarked reference/<bundle> path stays CODE" \
+    "reference/unmarked/data.txt" 1 0 0
+
+# Case (3) — GUARD: a code-extension file under a MARKED bundle still
+# classifies as CODE, never REFERENCE — the gate-softening-leaks premortem
+# mitigation (a marked snapshot dir must not be able to smuggle an executable
+# past the review gate). One assertion per representative extension named in
+# the dispatch spec (sh, js, py, ts) plus one more from the full list (go) to
+# exercise a later alternation member, not just the first.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_classify_r "CODE: .sh file under marked bundle stays CODE" \
+    "reference/marked/tool.sh" 1 0 0
+test_classify_r "CODE: .js file under marked bundle stays CODE" \
+    "reference/marked/tool.js" 1 0 0
+test_classify_r "CODE: .py file under marked bundle stays CODE" \
+    "reference/marked/tool.py" 1 0 0
+test_classify_r "CODE: .ts file under marked bundle stays CODE" \
+    "reference/marked/tool.ts" 1 0 0
+test_classify_r "CODE: .go file under marked bundle stays CODE" \
+    "reference/marked/tool.go" 1 0 0
+
+# Case (4) — GUARD: Session C fix round, lane A — the inert-set under a marked
+# bundle is now an ALLOWLIST (only .md/.markdown/.txt/.rst/.pdf/.png/.jpg/
+# .jpeg/.gif/.webp/.svg/.csv/.json/.html/.xml reach the marker lookup), never
+# a denylist — a denylist guarding this exemption could never make "must
+# never smuggle an executable past the review gate" true. Everything NOT on
+# the allowlist gates as CODE even under a marked bundle: extensionless
+# files, .ps1/.bat/.yml, Makefile, and an uppercase extension (matching is
+# case-sensitive by design — the safe direction).
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_classify_r "CODE: extensionless file under marked bundle stays CODE" \
+    "reference/marked/pre-commit" 1 0 0
+test_classify_r "CODE: .ps1 file under marked bundle stays CODE" \
+    "reference/marked/run.ps1" 1 0 0
+test_classify_r "CODE: .yml file under marked bundle stays CODE" \
+    "reference/marked/ci.yml" 1 0 0
+test_classify_r "CODE: Makefile under marked bundle stays CODE" \
+    "reference/marked/Makefile" 1 0 0
+test_classify_r "CODE: uppercase .PDF extension under marked bundle stays CODE (case-sensitive)" \
+    "reference/marked/doc.PDF" 1 0 0
+
+# Case (5) — GUARD: a path with a `..`, `.` or empty segment ANYWHERE in it
+# (as the bundle name, or below a marked bundle) never reaches the marker
+# lookup — all five classify as CODE outright (fail-toward-deny before the
+# marker lookup is even attempted).
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_classify_r "CODE: bundle name containing .. never reaches marker lookup" \
+    "reference/../marked/data.txt" 1 0 0
+test_classify_r "CODE: empty bundle name never reaches marker lookup" \
+    "reference//data.txt" 1 0 0
+# Traversal BELOW a marked bundle (code-lead r2, 2026-08-30): the bundle name
+# is clean, the marker exists, and the path escapes reference/ — the guard
+# must look at every segment, not the first one.
+test_classify_r "CODE: .. below a marked bundle escaping reference/ stays CODE" \
+    "reference/marked/../../CLAUDE.md" 1 0 0
+test_classify_r "CODE: . segment as bundle name stays CODE" \
+    "reference/./data.txt" 1 0 0
+test_classify_r "CODE: . segment below a marked bundle stays CODE" \
+    "reference/marked/./data.txt" 1 0 0
+
+# Positive control — an allowlisted extension under a marked bundle still
+# classifies as REFERENCE, proving the allowlist flip didn't also break the
+# exemption itself.
+test_classify_r "REFERENCE: allowlisted .html file under marked bundle stays REFERENCE" \
+    "reference/marked/spec.html" 0 0 1
+
+rm -rf "$REF_ROOT"
 
 # ── Summary ───────────────────────────────────────────────────────────────────
 

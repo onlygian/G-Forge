@@ -187,11 +187,12 @@ if is_git_commit "$CMD"; then
     # merely that a commit is happening. Two review surfaces, two sentinels:
     #   CODE (executable/instruction surface) → /g-review writes .claude/g-forge-approved
     #   DOC  (narrative documentation surface) → /g-doc-review writes .claude/g-forge-docs-approved
-    # A commit is classified by its staged file set into one of four buckets:
-    #   code  — only CODE paths            → require the code sentinel (unchanged behavior)
-    #   doc   — only DOC paths             → require the doc sentinel
-    #   mixed — both present               → require BOTH sentinels
-    #   none  — empty staged set / unknown → fall through to the code gate (fail safe)
+    # A commit is classified by its staged file set into one of five buckets:
+    #   code      — only CODE paths                 → require the code sentinel (unchanged behavior)
+    #   doc       — only DOC paths                  → require the doc sentinel
+    #   mixed     — both present                    → require BOTH sentinels
+    #   reference — only REFERENCE paths (M40 Task 17) → exempt with an advisory note, no sentinel
+    #   none      — empty staged set / unknown      → fall through to the code gate (fail safe)
     # Unmatched paths default to CODE (the stricter gate) so a misclassification
     # never weakens enforcement.
     STAGED=$(git diff --cached --name-only 2>/dev/null)
@@ -225,12 +226,18 @@ if is_git_commit "$CMD"; then
     fi
     # Classification bucket rules live in the shared lib (hooks/lib/classify-changeset.sh)
     # so this hook and the ADR-004 native pre-commit hook agree byte-for-byte —
-    # see that file's header for the bucket table. Sets HAS_CODE/HAS_DOC.
+    # see that file's header for the bucket table. Sets HAS_CODE/HAS_DOC/HAS_REFERENCE.
     gf_classify_changeset <<EOF
 $STAGED
 EOF
 
-    if [ "$HAS_CODE" -eq 1 ] && [ "$HAS_DOC" -eq 1 ]; then
+    # REFERENCE (M40 Task 17) is exempt-with-advisory: checked first, but
+    # ONLY wins when it is the sole bucket present — a REFERENCE path mixed
+    # with CODE or DOC never weakens either of those gates (they're checked
+    # next, unchanged).
+    if [ "$HAS_REFERENCE" -eq 1 ] && [ "$HAS_CODE" -eq 0 ] && [ "$HAS_DOC" -eq 0 ]; then
+        CLASS="reference"
+    elif [ "$HAS_CODE" -eq 1 ] && [ "$HAS_DOC" -eq 1 ]; then
         CLASS="mixed"
     elif [ "$HAS_DOC" -eq 1 ]; then
         CLASS="doc"
@@ -242,7 +249,11 @@ EOF
         CLASS="code"
     fi
 
-    if [ "$CLASS" = "doc" ]; then
+    if [ "$CLASS" = "reference" ]; then
+        # Exempt-with-advisory — no sentinel required, just a visible note
+        # naming the class so this never looks like a silent bypass.
+        echo "G-Forge: ℹ reference-only commit — REFERENCE class, exempt from the review gate"
+    elif [ "$CLASS" = "doc" ]; then
         if [ ! -f "$GF_CLAUDE_DIR/g-forge-docs-approved" ]; then
             deny "No doc-review sign-off. Run /g-doc-review and wait for its verdict before committing documentation."
         fi

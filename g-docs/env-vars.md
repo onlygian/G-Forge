@@ -35,6 +35,16 @@ not environment variables at all — listed below to prevent that confusion.
 | **Set in production?** | No — consumed only by the count-pinning suite and its probe. |
 | **Example value** | `GF_README_PATH=/tmp/README-probe.md` |
 
+## `GF_CLASSIFY_ROOT`
+
+| | |
+|---|---|
+| **Purpose** | Root directory for the `reference/<bundle>/` marker lookup (`SNAPSHOT.md` or `NOTE.md`) inside `gf_classify_changeset` in `hooks/lib/classify-changeset.sh`, which both gate consumers (`hooks/check-commit.sh`, `hooks/pre-commit`) run on every gated commit. Tests set it to point the lookup at a `mktemp -d` fixture instead of the repository. |
+| **Required/optional** | Optional. |
+| **Default when unset** | `.` (the current working directory, typically the repository root) — behavior unchanged. |
+| **Set in production?** | Read in production on every gated commit, but leave it unset: the default `.` is the hook's working directory, the tree being committed. Exporting it in a real shell relocates the marker lookup and changes which commits are gate-exempt. Set it only in tests. |
+| **Example value** | `GF_CLASSIFY_ROOT=/tmp/fixture` |
+
 ## Test-suite constants (not environment variables)
 
 Sourced from `tests/lib/timing-bounds.sh` — declared once as shell constants

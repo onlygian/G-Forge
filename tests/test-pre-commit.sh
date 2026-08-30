@@ -18,9 +18,9 @@
 # never a `local -n` nameref (the other historical break: bash's nameref
 # cannot bind an array literal the way that attempt tried).
 #
-# Total assertions: 15 (>= the dispatched 15-case floor). Count is the
-# RUNNER-OBSERVED total and must equal the `Results:` line — the finding-#20
-# cross-check that catches a suite silently dropping cases.
+# Total assertions: 16. Count is the RUNNER-OBSERVED total and must equal the
+# `Results:` line — the finding-#20 cross-check that catches a suite silently
+# dropping cases.
 
 # Resolve to ABSOLUTE paths once, before any fixture cd (tests/README.md).
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -220,10 +220,44 @@ printf 'full\n' > .claude/integration-tier
 rm -f "$CODE_SENTINEL" "$DOC_SENTINEL" .claude/integration-tier
 stage "hooks/code10.sh"
 run "no G-Forge project marker resolves inert" 0
+printf 'full\n' > .claude/integration-tier
+
+# 14: REFERENCE class (M40 Task 17) — a marked reference/<bundle>/... commit
+# (bundle dir contains SNAPSHOT.md) passes with NO sentinel — exempt with
+# advisory, no sign-off required. The marker file physically exists on disk
+# (stage() creates + stages it), which is what the lib's `[ -f ]` marker
+# lookup needs — GF_CLASSIFY_ROOT defaults to "." (this fixture's cwd).
+# Placed HERE deliberately, before case 15 below commits "conflict.txt" (a
+# file with unique, non-"x\n" content) to HEAD: every stage() call in this
+# fixture writes literal "x\n" to every path, so up to this point ALL
+# committed history is content-identical to whatever stage() creates next,
+# and git's rename detection folds the old committed path into an R100
+# rename with the new one instead of surfacing it as a stray deletion in
+# `git diff --cached --name-only` — verified empirically (scratch repro,
+# see this task's report) before picking this position. After case 15 seeds
+# a differently-content tracked file, that invisibility no longer holds and
+# a reference-only stage() there picks up an unrelated CODE-bucket deletion,
+# silently turning the changeset mixed. Do not move this case past case 15.
+rm -f "$CODE_SENTINEL" "$DOC_SENTINEL"
+stage "reference/mybundle/SNAPSHOT.md" "reference/mybundle/data.txt"
+# Also asserts the advisory line reaches STDOUT (Session C fix round, lane A)
+# — the exemption must stay visible, never a silent bypass. run()'s helper
+# captures stderr only (`2>&1 1>/dev/null`), so this case captures stdout
+# separately instead of reusing run().
+STDOUT_OUT=$(bash "$SCRIPT" </dev/null 2>/dev/null)
+STDOUT_CODE=$?
+if [ "$STDOUT_CODE" -eq 0 ] && printf '%s' "$STDOUT_OUT" | grep -qF 'reference-only commit — REFERENCE class, exempt from the review gate'; then
+    echo "PASS: marked reference-only commit allowed with no sentinel (REFERENCE, exempt) + advisory line on stdout"; PASS=$((PASS+1))
+else
+    echo "FAIL: marked reference-only commit (expected exit 0 + advisory line on stdout; got exit $STDOUT_CODE, stdout: $STDOUT_OUT)"; FAIL=$((FAIL+1))
+fi
+# Restore the local-tier-absent state case 13 left behind — case 15 below
+# depends on it (see that case's own comment).
+rm -f .claude/integration-tier
 
 # ── Group 4: deny edges ────────────────────────────────────────────────────
 
-# 14: ambiguous worktree/common-dir resolution. GIT_COMMON_DIR is a real git
+# 15: ambiguous worktree/common-dir resolution. GIT_COMMON_DIR is a real git
 # env var (not a G-Forge invention) that git rev-parse --git-common-dir
 # honors; pointing it at a non-existent path makes the underlying `git
 # rev-parse --git-common-dir` call fail outright, so
@@ -243,7 +277,7 @@ else
 fi
 printf 'full\n' > .claude/integration-tier
 
-# 15: git write-tree failure on a genuinely unmerged/conflicted index
+# 16: git write-tree failure on a genuinely unmerged/conflicted index
 # (hooks/pre-commit:146-153). Built with a real add/add merge conflict on
 # two branches off the seeded commit — confirmed via direct probe (this
 # task's authoring notes) that `git write-tree` exits 128 with no stdout on

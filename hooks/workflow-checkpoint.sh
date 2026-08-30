@@ -267,16 +267,16 @@ RED_THRESHOLD=$((BASE_RED - OFFSET))
 [ "$AMBER_THRESHOLD" -lt "$FLOOR_AMBER" ] && AMBER_THRESHOLD=$FLOOR_AMBER
 [ "$RED_THRESHOLD" -lt "$FLOOR_RED" ] && RED_THRESHOLD=$FLOOR_RED
 
-# Capacity floor (% remaining): at amber the model polls /context every turn and
-# resets the MOMENT remaining capacity drops below this — capacity-driven, before
-# the window ever fills enough to compact. This, not the exchange count, is what
-# actually prevents compaction; the count only decides when to start polling.
+# Capacity floor (% of window USED): at amber the model polls /context every turn
+# and resets the MOMENT window usage reaches this percentage — capacity-driven,
+# before the window ever fills enough to compact. This, not the exchange count, is
+# what actually prevents compaction; the count only decides when to start polling.
 CAP_FLOOR_PCT=25
 
 if [ "$PROMPT_COUNT" -ge "$RED_THRESHOLD" ]; then
     echo "  !! Context depth: ~${PROMPT_COUNT} exchanges [${SESSION_MODE}], threshold ${RED_THRESHOLD} — ENFORCED: finish task in flight, auto-trigger /g-retro, tell user to start fresh session NOW (do not let the window reach compaction)"
 elif [ "$PROMPT_COUNT" -ge "$AMBER_THRESHOLD" ]; then
-    echo "  ⚠ Context depth: ~${PROMPT_COUNT} exchanges [${SESSION_MODE}], threshold ${AMBER_THRESHOLD} — ACTIVE MONITORING: run /context THIS turn and every turn from now; the moment remaining capacity drops below ${CAP_FLOOR_PCT}%, reset immediately (finish in-flight work, /g-retro, fresh session) — do not wait for the red exchange count. Goal: reset before compaction, never after."
+    echo "  ⚠ Context depth: ~${PROMPT_COUNT} exchanges [${SESSION_MODE}], threshold ${AMBER_THRESHOLD} — ACTIVE MONITORING: run /context THIS turn and every turn from now; the moment ~${CAP_FLOOR_PCT}% of the window has been used, reset immediately (finish in-flight work, /g-retro, fresh session) — do not wait for the red exchange count. Goal: reset before compaction, never after."
 fi
 
 # Compaction escalation — auto-compaction is the strongest "context overloaded"

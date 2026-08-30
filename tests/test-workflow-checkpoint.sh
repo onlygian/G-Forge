@@ -9,7 +9,7 @@
 # listen mode. Direction-aware update-nudge cases (M46 W1 task 5): LATEST
 # newer/equal/older, pinning post-fix semver-comparison behavior.
 #
-# Total assertions: 86
+# Total assertions: 88
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
 # finding-#20 cross-check that catches a suite silently dropping cases.
 
@@ -43,6 +43,14 @@ check_match() { # name pattern actual
         echo "PASS: $1"; PASS=$((PASS+1))
     else
         echo "FAIL: $1 (expected pattern '$2', got '$3')"; FAIL=$((FAIL+1))
+    fi
+}
+
+check_no_match() { # name pattern actual — pins ABSENCE of pattern, not presence
+    if printf '%s' "$3" | LC_ALL=C grep -q "$2"; then
+        echo "FAIL: $1 (unexpected pattern '$2' found in output)"; FAIL=$((FAIL+1))
+    else
+        echo "PASS: $1"; PASS=$((PASS+1))
     fi
 }
 
@@ -459,7 +467,10 @@ OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
 
 check_match "amber: warning marker" "⚠ Context depth" "$OUTPUT"
 check_match "amber: ACTIVE MONITORING message" "ACTIVE MONITORING" "$OUTPUT"
-check_match "amber: 25% capacity floor mention" "25%" "$OUTPUT"
+check_match "amber: 25% of window USED direction (not remaining)" "of the window has been used" "$OUTPUT"
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+check_no_match "amber: old 'remaining capacity' direction absent" "remaining capacity" "$OUTPUT"
+check_no_match "amber: old 'drops below' direction absent" "drops below" "$OUTPUT"
 
 # ============================================================================
 # § 15. Red threshold message
