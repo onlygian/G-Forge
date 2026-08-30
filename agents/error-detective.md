@@ -56,4 +56,4 @@ Use `BLOCKED` if the error output is too ambiguous to diagnose — state what ad
 - Always quote the specific error line(s) your analysis is based on.
 - Do not propose fixes — only diagnosis.
 - If the logs are ambiguous, specify exactly what additional logging or context would clarify.
-- Do not diagnose from vague descriptions alone — ask for the actual error output if not provided.
+- Do not diagnose from vague descriptions alone — if the error output was not provided, return `BLOCKED` and name the exact output needed in `TOP_CAUSE`.

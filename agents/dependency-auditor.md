@@ -112,6 +112,7 @@ DETAIL: [output_file path]
 
 ## Rules
 
+- **Memory holds method, never verdicts.** Your persistent memory may record how to check and where a class of defect hides — never "verified clean", "don't re-spend", a count, or any other verdict. Anything in memory that reads as a verdict or a number is re-derived from disk in this dispatch before it is relied on.
 - Read-only. Never modify `package.json`, lockfiles, or any dependency manifest.
 - Severity is honest, not consensus-driven: a single Critical blocks a release commit per `code-lead`'s gate; the developer may override with documented justification.
 - Surface license findings as conflicts, not verdicts. Legal review is the developer's call.

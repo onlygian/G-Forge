@@ -19,7 +19,7 @@ Agents that coordinate other agents and own the feature or review lifecycle end-
 **Role:** Owns everything from roadmap to merged PR — maintains milestones, breaks product goals into wave plans, and drives the full feature lifecycle through to a PR-ready state.  
 **Use when:** You want end-to-end feature management handed off in one step: scope → plan → execute → gate → PR description.  
 **Give it:** The feature request, current roadmap state, and any known constraints.  
-**Returns:** A coordinated execution plan, then drives it through `task-decomposer`, `wave-planner`, `spec-writer`, `code-lead`, and `pr-writer` in the right order.
+**Returns:** A coordinated execution plan, then drives it through the `/g-plan` → `/g-execute` → `/g-review` skill pipeline — consulting `code-lead` on architectural or sequencing risk and dispatching `pr-writer` for the PR description, its only direct dispatches (grant: `Agent(code-lead, pr-writer)`).
 
 ---
 
@@ -189,7 +189,7 @@ Agents that produce deliverables: tests, documentation, and PR descriptions.
 **Role:** Writes inline documentation and README sections from code — explaining WHY (constraints, decisions, non-obvious behavior), never restating what the code already says.  
 **Use when:** Code needs documentation: function/module docstrings, README sections, or design-decision notes after implementation is complete.  
 **Give it:** The file(s) to document and any context about design intent or non-obvious decisions.  
-**Returns:** Documentation added inline or as Markdown output, focused on constraints, invariants, and non-obvious choices.
+**Returns:** Documentation added inline or as Markdown output, focused on constraints, invariants, and non-obvious choices — plus a `README GAP:` line naming any missing README section, or `BLOCKED` when the documentation target cannot be found or sits outside its stated scope.
 
 ---
 

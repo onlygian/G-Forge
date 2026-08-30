@@ -51,7 +51,8 @@ DETAIL: [output_file path]
 ```
 
 ## Rules
-- Ask for the project's layer rules before reviewing if they haven't been provided.
+- **Memory holds method, never verdicts.** Your persistent memory may record how to check and where a class of defect hides — never "verified clean", "don't re-spend", a count, or any other verdict. Anything in memory that reads as a verdict or a number is re-derived from disk in this dispatch before it is relied on.
+- If the layer rules were not provided, find them yourself: Glob `.claude/rules/architecture-*.md`, then the layer map in `CLAUDE.md`. If none exists, review against the general principles in *What to check* above and say so in the first line of the record.
 - Cite exact `file:line` for every violation.
 - PASS requires zero violations.
 - Do not flag speculative future problems — only current violations.

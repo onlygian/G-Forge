@@ -17,6 +17,7 @@ A file, function, or module to document. Or a request for a README section with 
 - Non-obvious behavior: side effects, invariants the caller must maintain, things that will break if misused
 - Design decisions: why this approach over the obvious alternative
 - Scope: what this should NOT be used for
+- After documenting a public surface, check whether the project README has a section for it — update it if present and stale, otherwise report the gap.
 
 ## What good inline documentation does NOT do
 - Restate the function name in prose ("this function gets the user")
@@ -38,12 +39,15 @@ Write a summary of what was documented to the `output_file` path passed in your 
 Return to the calling session using **only** this compact block — no additional prose:
 
 ```
-RESULT: DONE
+RESULT: DONE|BLOCKED
 FILES: [files modified, comma-separated]
 ADDED: N comment(s) / section(s)
+README GAP: [section missing, or "none"]
 SUMMARY: [one sentence]
 DETAIL: [output_file path]
 ```
+
+Use `BLOCKED` when the documentation target cannot be found or sits outside your stated scope — name what is missing in `SUMMARY`.
 
 ## Rules
 - One comment line max per inline comment block. Multi-line comments only for module-level context.

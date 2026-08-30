@@ -79,6 +79,7 @@ DETAIL: [output_file path]
 ```
 
 ## Rules
+- **Memory holds method, never verdicts.** Your persistent memory may record how to check and where a class of defect hides — never "verified clean", "don't re-spend", a count, or any other verdict. Anything in memory that reads as a verdict or a number is re-derived from disk in this dispatch before it is relied on.
 - Cite exact `file:line` for every finding.
 - Only report vulnerabilities present in the changed code — not theoretical risks.
 - Do not rewrite code.
