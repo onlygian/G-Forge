@@ -2,7 +2,7 @@
 
 > **Educated, enforced project management for AI development.** Make any model ship like a senior team — planned, reviewed, and context-clean.
 
-**Version 2.4.1** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
+**Version 2.5.0** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
 
 G-Forge installs a structured engineering *process* into any Claude Code project: a project-manager layer that challenges scope and sequences risk, parallel implementation waves, and a commit gate that **can't be skipped** — only opened by code-lead review. The point isn't a smarter model; it's discipline that lets the model you already have punch above its weight.
 
@@ -39,13 +39,13 @@ Each of those is a layer that has to run through everything the system does, and
 
 ### What's in 2.5
 
-**Planning that doesn't invent work.** Task breakdown used to split jobs that belong together and hand each fragment to its own agent. The sizing fix is in — *already shipped early, in v2.4.1* — so you stop paying for coordination you never needed.
+**Planning that doesn't invent work.** Task breakdown used to split jobs that belong together and hand each fragment to its own agent. The sizing fix is in, so you stop paying for coordination you never needed.
 
 **Reference material stops being mis-gated.** Committed reference material a project builds against was being blocked as though G-Forge owned it. That's fixed.
 
 **Forecast risk replaces a percentage that nobody believed.** Plan-time risk estimates now show what the formula actually predicts instead of a percentage you've learned to ignore.
 
-**Documentation that can't quietly rot.** The health check now flags anything in your CLAUDE.md that's a hand-typed fact rather than one sourced from a file. That's how those facts go stale without anyone noticing.
+**Documentation that can't quietly rot.** The health check now flags hand-typed facts in your CLAUDE.md that aren't sourced from a file (unless you've explicitly marked them as local). That's how those facts go stale without anyone noticing.
 
 ---
 
@@ -769,7 +769,7 @@ git push
 | M46 — Update Integrity (detect / diagnose / fix split) | ✅ Done — **v2.4.0** |
 | M47 — Planning-Pipeline Honesty | ✅ Done — **v2.4.1** |
 | M48 — Review-Pipeline Hardening | ✅ Done — **v2.4.1** |
-| **v2.5.0 — the final G-Forge release** ([ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md)): M52 Minimal Freeze (hand-cut release) | 🔄 In progress |
+| **v2.5.0 — the final G-Forge release** ([ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md)): M52 Minimal Freeze (hand-cut release) | ✅ Done — **v2.5.0** |
 | After v2.5.0: this repo freezes (maintenance-only) and the successor — **G-Proof** — follows. Versioning restarts at G-Proof 1.0; there is no G-Forge 3.0. | — |
 
 ---

@@ -5,7 +5,7 @@
 > **Owner:** HQ. Changes to the copy below are a developer decision, not an editing pass.
 > **Anchors:** [ADR-010](decisions/010-full-rebuild-on-current-platform.md) (rebuild + version identity: G-Proof ships as 1.0, there is no G-Forge 3.0).
 >
-> **§7 records the decision trail.** ~~The 2.5 scope described in §3c is in the committed record as of 2026-08-10 — [ADR-012](decisions/012-g-forge-2.5-final-release-scope.md) plus the roadmap re-scope pass: all eight milestones stamped v2.5.0, M47/M48 recorded, the "only M41" framing retired.~~ **Superseded 2026-08-28 ([ADR-012](decisions/012-g-forge-2.5-final-release-scope.md) amendment 4):** 2.5 is a minimal freeze — M47 ✅ + M48 ✅ (shipped v2.4.1) + M52, hand-cut when the F3 audit gate closes (moved from 2026-08-30). §3c is rewritten to match; see the 2026-08-28 re-scope block in §7. §7's formerly-blocking findings are closed or carried; one item (M38's delivery reconciliation) is decided at M38's plan gate.
+> **§7 records the decision trail.** ~~The 2.5 scope described in §3c is in the committed record as of 2026-08-10 — [ADR-012](decisions/012-g-forge-2.5-final-release-scope.md) plus the roadmap re-scope pass: all eight milestones stamped v2.5.0, M47/M48 recorded, the "only M41" framing retired.~~ **Superseded 2026-08-28 ([ADR-012](decisions/012-g-forge-2.5-final-release-scope.md) amendment 4):** 2.5 is a minimal freeze — M47 ✅ + M48 ✅ (shipped v2.4.1) + M52, hand-cut 2026-08-31. §3c is rewritten to match; see the 2026-08-28 re-scope block in §7. §7's formerly-blocking findings are closed or carried; one item (M38's delivery reconciliation) is decided at M38's plan gate.
 
 ---
 
@@ -63,13 +63,13 @@ Lift verbatim. Sub-headings are part of the copy.
 
 ### 3c — What's in 2.5 (release notes, CHANGELOG intro)
 
-> **Planning that doesn't invent work.** Task breakdown used to split jobs that belong together and hand each fragment to its own agent. The sizing fix is in — *already shipped early, in v2.4.1* — so you stop paying for coordination you never needed.
+> **Planning that doesn't invent work.** Task breakdown used to split jobs that belong together and hand each fragment to its own agent. The sizing fix is in, so you stop paying for coordination you never needed.
 >
 > **Reference material stops being mis-gated.** Committed reference material a project builds against was being blocked as though G-Forge owned it. That's fixed.
 >
 > **Forecast risk replaces a percentage that nobody believed.** Plan-time risk estimates now show what the formula actually predicts instead of a percentage you've learned to ignore.
 >
-> **Documentation that can't quietly rot.** The health check now flags anything in your CLAUDE.md that's a hand-typed fact rather than one sourced from a file. That's how those facts go stale without anyone noticing.
+> **Documentation that can't quietly rot.** The health check now flags hand-typed facts in your CLAUDE.md that aren't sourced from a file (unless you've explicitly marked them as local). That's how those facts go stale without anyone noticing.
 
 ---
 
@@ -79,7 +79,7 @@ Lift verbatim. Sub-headings are part of the copy.
 |---|---|---|
 | `README.md` | 3a then 3b (adjacent, in that order) then 3c as "What's in 2.5" | 3b is what makes 3a land; 3c placement per the §7 resolution, published 2026-08-10. **Heading updated 2026-08-28** (re-scope below): the hedged "What's coming in 2.5" is retired — §3c `:64` and `README.md:40` both read "What's in 2.5" |
 | `CHANGELOG.md` under `## [2.5.0]` | 3c, then the itemised entries | Keep-a-Changelog format below the prose |
-| Release announcement (wherever it goes) | 3a + 3c, 3b condensed to its closing paragraph | |
+| Release announcement (GitHub release body — decided 2026-08-31) | 3a then 3b (full) then 3c, followed by the [2.5.0] CHANGELOG section | Resolved at the cut — see §7; the condensed-3b draft is retired |
 | `.claude-plugin/marketplace.json` description | Neither. One line, unchanged in tone | Not a place for the freeze story |
 
 Publish nothing before 2.5.0 ships. A freeze announced ahead of the release that justifies it reads as abandonment. *(OVERRIDDEN for the README surface only — developer, 2026-08-10, recorded in this file's header; CHANGELOG 2.5.0 heading and the announcement still wait for release.)*
@@ -125,7 +125,7 @@ The arithmetic below is coincidental, not a mapping: of the eight warnings retur
 
 - ~~**"Four other projects" (§3a).**~~ **RESOLVED: number dropped** — copy now reads "my own projects". The commitment stands without a count to defend.
 - ~~**Freeze cause set (§1).**~~ **RESOLVED: single cause, deliberate.** ADR-010's full three-cause set (platform drift, genuine overlap, improvement opportunity) stays in the record; the announcement carries the third only.
-- **Announcement block order (§4) — STILL OPEN.** The announcement row orders 3a + 3c then 3b, which breaks the adjacency rule §1 and §6 both call load-bearing; and "3b condensed to its closing paragraph" leaves "Each of those is a layer…" without an antecedent. Decide at announcement time (release).
+- ~~**Announcement block order (§4).**~~ **RESOLVED 2026-08-31 (developer, at the cut):** the release body runs 3a → 3b (full — adjacency kept, antecedent intact) → 3c, then the [2.5.0] CHANGELOG section as detail. The §4 announcement row is updated to match; its earlier "3a + 3c, 3b condensed" draft is retired.
 - ~~**§2 vs §4.**~~ **RESOLVED: README carries 3c** (as "What's coming in 2.5" until release, present-tense at release) — per the developer's full-treatment decision, 2026-08-10.
 - **`/g-report` clarifier — RESOLVED 2026-08-10.** Publishing §3a ahead of release forced a truth fix: the command does not exist at v2.4.0, so the copy gains "(ships in 2.5)" — applied to the §3a block itself, so any verbatim lift (README now, announcement at release) carries it. Drop the clarifier at release if 2.5.0 ships `/g-report`, as a deliberate copy edit.
 
@@ -144,7 +144,7 @@ The 2026-08-10 full-scope decision is amended per [ADR-012 amendment 2026-08-28]
 
 **Re-verify at publish time (claims that outrun their evidence today):**
 
-- **"Same verdict, a fraction of the cost" (§3c).** M51's panel wiring (inheriting folded-M45's obligation, 2026-08-20 fold) treats verdict-equivalence as unproven until demonstrated on a real changeset — its done condition per the M51 ROADMAP entry. If the fallback is still live at release, this sentence asserts a property the milestone has not returned.
-- **"Risk percentages get recalibrated" (§3c).** The recorded field report offers two fixes: a cheap relabel that changes no number, and genuine calibration from ground truth. Only the second earns the word "recalibrated".
-- **Check 24 description (§3c).** Accurate for BARE-PROSE, imprecise for DECLARED-LOCAL: content inside a local-only block is hand-typed and not file-sourced, and is counted rather than flagged.
+- ~~**"Same verdict, a fraction of the cost" (§3c).**~~ **MOOT at the cut (2026-08-31):** no such sentence exists in the rewritten §3c — its bullet ("Lighter where you feel it most", the panel-wiring claim) was dropped in the 2026-08-28 re-scope (see :135).
+- ~~**"Risk percentages get recalibrated" (§3c).**~~ **MOOT at the cut (2026-08-31):** §3c's forecast bullet was rewritten in the 2026-08-28 re-scope to the relabel framing ("what the formula actually predicts") — it claims no recalibration.
+- ~~**Check 24 description (§3c).**~~ **RESOLVED 2026-08-31 at the cut:** §3c and README:48 both carry the declared-local carve-out — hand-typed facts not sourced from a file are flagged unless explicitly marked local.
 - **§3b vs R0 (§5).** ADR-010 authorizes R0 only and states no rebuild roadmap is published with it. Three named directions are the closest this plan comes to the public commitment the ADR exists to avoid; the "no date, not ready to describe" hedges are what keep it on the right side.

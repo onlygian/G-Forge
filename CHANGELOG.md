@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
-## [2.5.0] — unreleased (dated at the Session D cut)
+## [2.5.0] — 2026-08-31
 
 The final G-Forge release, hand-cut per G-RULES §D as v2.4.1 was on 2026-08-24 — no `/g-release` machinery. Filter: the rebuild map (`g-docs/audits/2026-07-rebuild-map.md`) verdict column — 2.5 ships only what SURVIVES the G-Proof rebuild or is an adopter-facing bug. Carried M47, M48 (both shipped in v2.4.1), and M52 — the minimal-freeze release milestone absorbing slimmed items from M51 (test CI, two `output_file` dispatch sites, A7 resync, S-fixes, forecast relabel, light-tier routing) and M40 Wave 1 (REFERENCE classifier arm + tests). Dropped to archive: M38/M41/M43/M49/M50 and M51 items 1/7/10 and M40 Waves 2–3 — all marked G-Proof candidates by the rebuild map (see [ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md) amendment 4). The README says only what is true; consumers running `/g-update` will resync.
 
@@ -44,7 +44,7 @@ The final G-Forge release, hand-cut per G-RULES §D as v2.4.1 was on 2026-08-24 
 - **A7 drift-set resync + test (M52 Task 10).** Installed `.claude/skills/architecture-<stack>/SKILL.md` copies now in `/g-doctor` Check 16's drift set, derived from `profiles/<stack>/rules/architecture.md` source. **Consumers:** run `/g-update` to resync installed skills.
 - **`/g-skill-validate` three-tool-class rewrite (M52 Task 13).** Agents now classified as reviewer (Read, Glob, Grep), diagnostic (+Bash), or writer (+Write/Edit) — `Agent(...)` dispatch grant is orthogonal to the class axis. "Agents are read-only" phrasing gone; three classes named and derived from the architecture profile. Carrier: `skills/g-skill-validate/SKILL.md`. **Consumers:** update the plugin (`/plugins`).
 - **§A7 wording — reset at "~25% of the window USED" (M52 Task 14–15).** `rules/g-rules/A-session.md` (amber-monitoring line and wave-boundary guard) and `skills/g-execute/SKILL.md` (capacity check) now read "~25% of the window used" not "remaining capacity below ~25%" — a 3× direction correction. Pinned by `tests/test-workflow-checkpoint.sh` (direction-pinned assertion + two `check_no_match` absence guards with dated falsifiability comments, both proven RED via scratch-copy probe; header count 86→88). The hook's amber echo message (`hooks/workflow-checkpoint.sh`) expresses the same direction. **Consumers:** run `/g-update` to resync the installed rule and hook.
-- **`/g-forecast` relabel (M52 Task 16).** Every user-facing/report-facing "miss-risk" is now "likelihood ≥1 premortem scenario fires" (or `Scenario-fire:` label paired with the definition sentence). Formula, calibration, banding, rounding, cold-start, and all mechanics unchanged. Carriers: `skills/g-forecast/SKILL.md`, `README.md` (`/g-forge forecast` row line 369), `g-docs/voice-profiles.md` (dev and mid samples). **Consumers:** update the plugin (`/plugins`); run `/g-update`.
+- **`/g-forecast` relabel (M52 Task 16).** Every user-facing/report-facing "miss-risk" is now "likelihood ≥1 premortem scenario fires" (or `Scenario-fire:` label paired with the definition sentence). Formula, calibration, banding, rounding, cold-start, and all mechanics unchanged. Carriers: `skills/g-forecast/SKILL.md`, `README.md` (`/g-forge forecast` row line 371), `g-docs/voice-profiles.md` (dev and mid samples). **Consumers:** update the plugin (`/plugins`); run `/g-update`.
 
 ### Fixed
 

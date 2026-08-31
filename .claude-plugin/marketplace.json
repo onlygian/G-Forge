@@ -9,7 +9,7 @@
       "name": "g-forge",
       "source": "./",
       "description": "Educated, enforced project management for AI development - make any model ship like a senior team. An opinionated Claude Code plugin: a PM layer that challenges scope and sequences risk, parallel implementation waves, and a git-hook commit gate that blocks merges until a multi-agent review issues MERGE READY (enforced, not advisory). Context-clean by design - single-use agents with a learnings-driven retry loop, off-context ADR deliberation, and a depth gate that resets before the window compacts. Three integration tiers (full / balanced / light) and three voice profiles (dev / mid / eli5). 19 agents, 38 skills, 48 stack profiles, 7 combo profiles, 1 supplementary profile (frontend-data-flow).",
-      "version": "2.4.1",
+      "version": "2.5.0",
       "author": {
         "name": "onlygian"
       },
