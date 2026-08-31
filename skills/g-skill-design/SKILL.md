@@ -1,6 +1,6 @@
 ---
 name: g-skill-design
-description: Design a new G-Forge skill from scratch. Gathers requirements, drafts SKILL.md with correct structure, and adds a single bare-token routing line to the g-forge router.
+description: Design a new G-Forge skill from scratch. Gathers requirements, drafts SKILL.md with correct structure, and registers the new skill's bare token on all three router surfaces.
 ---
 
 **Announce:** "Using g-skill-design to design the new skill."
@@ -76,14 +76,15 @@ description: [One sentence: what it does and when to use it.]
 - No Skill() tool invocations anywhere in the file
 - No hardcoded absolute paths (use Glob to discover dynamic paths)
 
-## Step 5 — Add a bare-token routing line to the g-forge router
+## Step 5 — Register the bare token on all three router surfaces
 
-Read `commands/g-forge.md`. Make two additions only — no per-skill prose (ADR-007: prose in the router re-opens the drift axis the ADR closed):
+Read `commands/g-forge.md`. Make three additions — all bare tokens, no per-skill prose (ADR-007: prose in the router re-opens the drift axis the ADR closed):
 
-1. In the `argument-hint` value: append `|[name]` to the pipe-separated list
-2. In the routing table: add a new bare-token line `- \`[name]\`       → \`skills/g-[name]/SKILL.md\`` — no description, no prose
+1. In the frontmatter `description:` value: append the new token to the comma-separated subcommand list (before the closing period)
+2. In the `argument-hint` value: append `|[name]` to the pipe-separated list
+3. In the routing table: add a new bare-token line `- \`[name]\`       → \`skills/g-[name]/SKILL.md\`` — no description, no prose
 
-Do not add anything to the subcommand description list at the bottom for the new skill.
+Add nothing else anywhere in the router — it carries no per-skill prose on any surface (ADR-007). `tests/test-router-skill-parity.sh` pins all three token surfaces against `skills/` and against each other; run it after the router edit.
 
 Write the updated file.
 
@@ -93,7 +94,7 @@ Write the updated file.
 Skill created ✓
 
   ✓ skills/g-[name]/SKILL.md — skill workflow written
-  ✓ commands/g-forge.md      — bare-token router line added
+  ✓ commands/g-forge.md      — bare token registered on all three surfaces
 
 Run /g-skill-validate [name] to validate the new skill's structure.
 ```
@@ -103,6 +104,6 @@ Run /g-skill-validate [name] to validate the new skill's structure.
 - Never use Skill() tool invocations in the generated SKILL.md.
 - Never add argument-hint to SKILL.md frontmatter.
 - If a similar skill already exists, surface it before drafting — do not create duplicates.
-- Never create a companion `commands/g-[name].md` file — per ADR-007, `skills/g-[name]/SKILL.md` is the sole authored source; only a bare-token routing line is added to `commands/g-forge.md`.
-- The router addition must be a bare token — no prose, no description — and must not touch the subcommand description list.
+- Never create a companion `commands/g-[name].md` file — per ADR-007, `skills/g-[name]/SKILL.md` is the sole authored source; only a bare token is registered across the router's three surfaces in `commands/g-forge.md`.
+- Every router addition is a bare token — no prose, no descriptions — on each of the three token surfaces (description list, argument-hint, routing list); the parity suite pins them against each other.
 - Router update must preserve all existing entries — read before writing.

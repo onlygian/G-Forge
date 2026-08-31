@@ -224,8 +224,18 @@ if is_git_commit "$CMD"; then
     # option) and, when present, widen the classifier's input to the UNION of
     # staged paths and modified-but-unstaged tracked paths (git diff
     # --name-only) — the exact set -a would fold into the index. Absent
-    # -a/--all, behavior is unchanged (staged set only).
-    if printf '%s' "$CMD" | grep -qE '(^|[[:space:]])(-[a-zA-Z]*a[a-zA-Z]*|--all)([[:space:]]|$)'; then
+    # -a/--all, behavior is unchanged (staged set only). The cluster's
+    # trailing anchor accepts whitespace/end-of-string OR an immediately
+    # glued quote character (`"`/`'`) — a cluster with an attached value
+    # (`-am"msg"`, `-am'msg'`) has no whitespace after it, so requiring
+    # whitespace/end alone missed it (C-3, 2026-08-30). Widens detection
+    # only — never narrows it, so a missed -a can never weaken the gate.
+    # New false-positive shape from the quote-glue widening: a commit
+    # MESSAGE ending in `-a"` (e.g. `git commit -m "revert -a"`) now also
+    # matches, widening the classifier's input to the staged+unstaged union
+    # on a commit that never used `-a` as a flag. Fail-toward-deny — the
+    # outcome is a possible false "mixed" deny, never a weakened gate.
+    if printf '%s' "$CMD" | grep -qE '(^|[[:space:]])(-[a-zA-Z]*a[a-zA-Z]*|--all)([[:space:]"'\'']|$)'; then
         UNSTAGED=$(git diff --name-only 2>/dev/null)
         STAGED=$(printf '%s\n%s\n' "$STAGED" "$UNSTAGED" | sort -u)
     fi
@@ -289,9 +299,12 @@ EOF
     elif [ ! -f "$GF_CLAUDE_DIR/g-forge-approved" ]; then
         deny "No code-lead sign-off. Run /g-review and wait for MERGE READY before committing."
     fi
-    # Advisory: warn when committing directly to main with approval
+    # Advisory: warn when committing directly to main with approval.
+    # stdout, not stderr (C-1, 2026-08-30): Claude Code discards exit-0
+    # stderr from a PreToolUse hook, so a stderr advisory on this allow path
+    # is invisible — same reasoning as the REFERENCE advisory above.
     BRANCH=$(git branch --show-current 2>/dev/null)
     if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
-        echo "G-Forge: Note — committing directly to main. Non-trivial work should be on a feature branch (feat/<slug>, fix/<slug>)." >&2
+        echo "G-Forge: Note — committing directly to main. Non-trivial work should be on a feature branch (feat/<slug>, fix/<slug>)."
     fi
 fi

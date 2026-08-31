@@ -40,6 +40,24 @@
 #                                          skip the same native hook (F1-2).
 #                                          False otherwise.
 
+# _GF_CD_NL_SENTINEL — out-of-band marker inserted in place of every UNQUOTED
+# newline before tokenization (row 16 fix, 2026-08-31): the deliberate
+# whole-string newline flatten below (_commit_detect_scan_segments) makes a
+# real unquoted line break invisible to every walk — needed so `git\ncommit
+# -m x` still detects (see tests/test-commit-detect.sh's Group P / NEWLINE-
+# BOUNDARY pins) — but that also let a gated `git commit` followed on the
+# NEXT LINE by a trailing command (e.g. `echo "rc=$?"`) have that command's
+# tokens walked by extract_pathspecs as false pathspecs (todo row 16). The
+# sentinel restores the line break as a real token: is_git_commit /
+# gf_commit_skips_hooks / gf_commit_overrides_hookspath (and
+# _commit_detect_walk_core's own internal walk) transparently skip it — same
+# detection outcome as before this fix — while extract_pathspecs stops dead
+# at the first one, since real shell argv never continues past an unquoted
+# newline. An unlikely-to-collide plain-word literal, not a control
+# character — a real pathspec or message token equal to this exact string is
+# the only way to defeat it.
+_GF_CD_NL_SENTINEL="__GF_CD_NL_SENTINEL__"
+
 # _commit_detect_tokenize <cmd> — split <cmd> into argv-like tokens, one per
 # output line. Uses `xargs -n1` (shell-style quote/whitespace splitting)
 # rather than `eval` — eval re-parses the string as shell code and would
@@ -101,6 +119,15 @@ _commit_detect_walk_core() {
     _CD_OK=0
     _CD_IDX=0
     local i=0
+
+    # Row 16 fix: skip any leading NL sentinels (e.g. a command that opens
+    # with a real newline, `\ngit commit -m x`) — this walk's own "is this
+    # git commit" detection is unaffected by where line breaks fell in the
+    # original command; only extract_pathspecs (below) treats a sentinel as
+    # a stop.
+    while [ "$i" -lt "$_CD_N" ] && [ "${_CD_TOKENS[$i]}" = "$_GF_CD_NL_SENTINEL" ]; do
+        i=$((i + 1))
+    done
 
     # Strip leading VAR=val assignments (env-style prefix, e.g. `FOO=bar git commit`).
     while [ "$i" -lt "$_CD_N" ] && _commit_detect_is_var_assign "${_CD_TOKENS[$i]}"; do
@@ -201,6 +228,7 @@ _commit_detect_walk_core() {
     # positives on flags we haven't verified.
     while [ "$i" -lt "$_CD_N" ]; do
         case "${_CD_TOKENS[$i]}" in
+            "$_GF_CD_NL_SENTINEL") i=$((i + 1)) ;;
             -c)
                 if [ "$((i + 1))" -lt "$_CD_N" ]; then
                     case "${_CD_TOKENS[$((i + 1))]}" in
@@ -295,6 +323,17 @@ _commit_detect_walk_core() {
 # Returns 0 iff some segment committed, 1 otherwise.
 _commit_detect_scan_segments() {
     local raw="$1"
+    # Row 16 fix: mark every literal newline with the out-of-band sentinel
+    # BEFORE the operator-padding sed pass below, so a real (unquoted) line
+    # break survives tokenization as a standalone token instead of vanishing
+    # as ordinary whitespace — see _GF_CD_NL_SENTINEL's header comment. Blind
+    # substring replacement, same quote-safety argument as the sed padding
+    # below: the quote-aware tokenizer (_commit_detect_tokenize, via xargs)
+    # folds a sentinel sitting INSIDE an open quote back into that one
+    # token's value (never its own token) while a sentinel OUTSIDE quotes
+    # isolates as its own token — exactly the "unquoted newline" signal this
+    # fix needs, without this file hand-rolling its own quote tracking.
+    raw="${raw//$'\n'/ $_GF_CD_NL_SENTINEL }"
     local _cd_norm
     _cd_norm=$(printf '%s' "$raw" | sed -e 's/&/ \& /g' -e 's/|/ | /g' -e 's/;/ ; /g' -e 's/(/ ( /g' -e 's/)/ ) /g' -e 's/{/ { /g' -e 's/}/ } /g' -e 's/`/ ` /g')
 
@@ -614,6 +653,13 @@ extract_pathspecs() {
 
     while [ "$i" -lt "$_CD_N" ]; do
         tok="${_CD_TOKENS[$i]}"
+        # Row 16 fix: stop dead at the first NL sentinel — real shell argv
+        # never continues past an unquoted newline, so nothing after it
+        # belongs to this commit's pathspec list (unlike every other
+        # consumer above, which transparently skips the sentinel instead).
+        if [ "$tok" = "$_GF_CD_NL_SENTINEL" ]; then
+            break
+        fi
         i=$((i + 1))
         if [ "$seen_dashdash" -eq 0 ]; then
             if [ "$tok" = "--" ]; then

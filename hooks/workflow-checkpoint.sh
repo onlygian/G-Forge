@@ -391,7 +391,31 @@ if [ "$PROMPT_COUNT" -eq 1 ]; then
         _has_handoff=true
     fi
     if [ "$_has_handoff" = true ]; then
-        if grep -qi 'verify ADR' g-docs/ROADMAP.md .claude/compact-state.md 2>/dev/null; then
+        # Scoped to the handoff's own Next-up line(s) — NOT a whole-file grep.
+        # A whole-file `verify ADR` match false-fired the ADR variant on
+        # ROADMAP body prose outside the handoff, and on ANY compact-state.md
+        # snapshot carrying the phrase anywhere (including a stale snapshot
+        # from another branch) — audit 2026-08-30
+        # fable-f3-survives-skills-ledger Part 2 row 18 item 2 / A-5. Reuses
+        # the same "## Active Session"-block awk extraction pre-compact.sh
+        # already uses for its own handoff snapshot (hooks/pre-compact.sh:74)
+        # so both readers agree on what counts as "the handoff"; compact-state.md
+        # wraps that same block under "## Handoff at compaction" (pre-compact.sh:92-93).
+        _gf_roadmap_block=""
+        if [ -f "g-docs/ROADMAP.md" ]; then
+            _gf_roadmap_block=$(awk '/^## Active Session/{cap=1; next} cap && /^## /{exit} cap{print}' g-docs/ROADMAP.md 2>/dev/null)
+        fi
+        _gf_compact_block=""
+        if [ -f ".claude/compact-state.md" ]; then
+            _gf_compact_block=$(awk '/^## Handoff at compaction/{cap=1; next} cap && (/^## /||/^---$/){exit} cap{print}' .claude/compact-state.md 2>/dev/null)
+        fi
+        # WHY: ^Next up: captures only the physical label line; a wrapped
+        # continuation item on an indented "· …" line below it is not
+        # matched, so an ADR mention that wraps onto a continuation line
+        # loses the ADR variant (generic nudge still prints). Accepted
+        # trade against the pre-fix whole-file false positive, 2026-08-31.
+        _gf_nextup=$(printf '%s\n%s\n' "$_gf_roadmap_block" "$_gf_compact_block" | grep -i '^Next up:')
+        if printf '%s' "$_gf_nextup" | grep -qi 'verify ADR'; then
             echo "  · Fresh session, pending handoff — run /g-resume to re-hydrate; a handed-off ADR needs verifying first"
         else
             echo "  · Fresh session, pending handoff — run /g-resume to re-hydrate context before new work"

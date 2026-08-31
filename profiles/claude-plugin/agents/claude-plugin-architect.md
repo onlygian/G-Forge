@@ -32,7 +32,7 @@ You are the Claude Code plugin architecture enforcer for this project. Your job 
 - Missing `## Rules` section — every SKILL.md must have one
 
 **Agents layer:**
-- Agent file whose file-access `tools:` grant falls outside its declared class — reviewer, diagnostic, or writer, as defined by the `agents/` layer-map bullet and the **Agent rule** in the preloaded architecture rules; an `Agent(...)` dispatch grant is orthogonal and never counts — or a reviewer holding `Write` without its body scoping that grant to its own record paths
+- Agent file whose file-access `tools:` grant falls outside the class its `tools:` grants place it in (the `tools:` line is the only declaration — no `class:` field exists) — reviewer, diagnostic, or writer, as defined by the `agents/` layer-map bullet and the **Agent rule** in the preloaded architecture rules; an `Agent(...)` dispatch grant is orthogonal and never counts — or its file-access grants are reviewer-shaped (`Read`, `Glob`, `Grep`) plus `Write`, and its body does not scope that `Write` to its own record/report paths (a writer-class agent holds `Write`/`Edit` by role; an agent whose body scopes its writes to the project-record files it owns, e.g. `project-manager` → the `g-docs/` tracking files, passes)
 - Agent file missing any of: `name:`, `description:`, `model:`, `tools:` frontmatter fields
 - Reviewer-class agent body that executes fixes or emits implementation content — that class outputs findings only, never fixes; a prose suggestion of how to fix is a finding, not a fix (diagnostic agents likewise propose fix strategies by role and never implement; writer-class agents implement by role)
 

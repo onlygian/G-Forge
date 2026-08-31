@@ -27,15 +27,12 @@
 #    A scratch-only stub jq is put on PATH for this section since this runner has no
 #    real jq installed, so the guarded code path is exercised deterministically.
 #
-# Total assertions: 42 (5 primary-tree + 6 linked-worktree wt-tagging + 5 light-tier +
-#                       7 start/stop pairing + 4 exit-code invariant + 2 JSON validity +
-#                       2 control-char escaping + 4 tier-gating idiom alignment +
-#                       7 empty/null jq guard)
+# See the Results line at the end of a run for the current total — not restated
+# here as a fixed number (an unpinned count is a review finding, G-RULES §G/ADR-013).
 # jq-gated strict-parse checks (control-char section) are SKIP-credited 0 when jq is
-# unavailable, per the same convention as the linked-worktree SKIP below — the count
-# above is this environment's runner-observed total (jq absent), not a design ceiling.
-# The count is the RUNNER-OBSERVED total, not a design target — it must equal the
-# `Results:` line. A header that over-claims defeats the finding-#20 cross-check,
+# unavailable, per the same convention as the linked-worktree SKIP below — the Results
+# line reflects this environment's runner-observed total (jq absent), not a design
+# ceiling. A header that over-claims a count defeats the finding-#20 cross-check,
 # which exists precisely to catch a suite silently dropping cases.
 
 # Resolve script dir and hooks dir to ABSOLUTE paths exactly once, before any
@@ -684,16 +681,27 @@ done
 # null-fields payload below) jq's actual `// default` substitution on an
 # explicit JSON null. It is not a general jq reimplementation -- only the two
 # fixed payloads below are ever fed to it.
+#
+# F3-survives-audit fix (row 15/F5): the stub also appends every filter arg
+# it receives to a side-effect log (GUARD_JQ_LOG). Test 11.0 below only ever
+# proved "command -v jq" resolves to the stub (instrument availability) — it
+# never proved the guarded jq tier inside hooks/agent-lifecycle.sh actually
+# executed and produced the observed output. The invocation log closes that
+# gap: assertions further down grep it for the exact filters the hook's
+# extract_agent_type/extract_agent_id functions issue.
 
 GUARD_STUB_DIR="$(mktemp -d)"
-cat > "$GUARD_STUB_DIR/jq" <<'STUB_EOF'
+GUARD_JQ_LOG="$GUARD_STUB_DIR/jq-invocations.log"
+: > "$GUARD_JQ_LOG"
+cat > "$GUARD_STUB_DIR/jq" <<STUB_EOF
 #!/bin/bash
-filt="$2"
-input="$(cat)"
-if [ -z "$input" ]; then
+filt="\$2"
+printf '%s\n' "\$filt" >> "$GUARD_JQ_LOG"
+input="\$(cat)"
+if [ -z "\$input" ]; then
     exit 0
 fi
-case "$filt" in
+case "\$filt" in
     '.agent_type // "unknown"') echo "unknown" ;;
     '.agent_id // empty') : ;;
     '.last_assistant_message // empty') : ;;
@@ -764,6 +772,22 @@ else
     echo "FAIL: empty/null jq guard — empty payload journal file not created"; FAIL=$((FAIL+1))
 fi
 
+# Test 11.3b (F5 fix): side-effect proof of WHICH code path produced the
+# "unknown"/"unknown start" result above. hooks/agent-lifecycle.sh's
+# extract_agent_type/extract_agent_id short-circuit BEFORE ever calling jq
+# when the payload is genuinely empty (lines ~90-92/~129-131 — the bash-level
+# guard against jq's rc=0/no-output-on-empty-stdin lie), so for THIS fixture
+# the jq tier must never be invoked at all. Test 11.0 above only proves the
+# stub resolves on PATH; it does not distinguish "the short-circuit fired" from
+# "jq (or a lower cascade tier) coincidentally produced the same output" — the
+# invocation log does, by proving zero jq calls happened for this hook_run.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+if [ ! -s "$GUARD_JQ_LOG" ]; then
+    echo "PASS: empty/null jq guard — empty payload's hook run never invoked jq (bash-level short-circuit handled it, not the jq tier)"; PASS=$((PASS+1))
+else
+    echo "FAIL: empty/null jq guard — empty payload's hook run unexpectedly invoked jq (got: $(cat "$GUARD_JQ_LOG" 2>/dev/null | tr '\n' ';'))"; FAIL=$((FAIL+1))
+fi
+
 # Test 11.4-11.6: explicit JSON null agent_type/agent_id, with jq present.
 # jq's own `// default` already treats null as falsy, so this is coverage of
 # already-correct behavior — proving the guard above didn't regress it.
@@ -798,6 +822,25 @@ if [ -n "$GUARD_JOURNAL_FILE" ] && [ -f "$GUARD_JOURNAL_FILE" ]; then
     fi
 else
     echo "FAIL: empty/null jq guard — null-fields payload journal file not created"; FAIL=$((FAIL+1))
+fi
+
+# Test 11.6b (F5 fix): side-effect proof the guarded jq tier actually
+# executed for THIS fixture. Unlike the empty payload above, the null-fields
+# payload '{"agent_type": null, "agent_id": null}' has non-whitespace
+# content, so extract_agent_type/extract_agent_id fall through the
+# short-circuit and reach `command -v jq` + the real jq call — this is the
+# one fixture in this section that actually exercises the guarded jq tier.
+# Requires exactly 1 occurrence of each filter (this hook_run is the only
+# contributor — the empty-payload run above proved it added zero), proving
+# the "unknown"/"unknown start" result came from jq's own `// default`
+# substitution, not a coincidental fallback tier or a dead code path.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+GUARD_JQ_AGENT_TYPE_CALLS=$(grep -cF '.agent_type // "unknown"' "$GUARD_JQ_LOG" 2>/dev/null)
+GUARD_JQ_AGENT_ID_CALLS=$(grep -cF '.agent_id // empty' "$GUARD_JQ_LOG" 2>/dev/null)
+if [ "$GUARD_JQ_AGENT_TYPE_CALLS" -eq 1 ] && [ "$GUARD_JQ_AGENT_ID_CALLS" -eq 1 ]; then
+    echo "PASS: empty/null jq guard — null-fields payload's hook run actually invoked the guarded jq tier (1 agent_type + 1 agent_id call)"; PASS=$((PASS+1))
+else
+    echo "FAIL: empty/null jq guard — expected 1 agent_type + 1 agent_id jq invocation, got agent_type=$GUARD_JQ_AGENT_TYPE_CALLS agent_id=$GUARD_JQ_AGENT_ID_CALLS"; FAIL=$((FAIL+1))
 fi
 
 export PATH="$GUARD_OLD_PATH"

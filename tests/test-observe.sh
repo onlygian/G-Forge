@@ -16,11 +16,13 @@
 # the naive [^"]* form, so a `command` field with an escaped inner quote
 # (\") and backslash (\\) is captured whole rather than truncated at the
 # first inner quote — regression pin below.
-# Total assertions: 34 (16 original observe tests + 2 W3-10 control-char pins
-# + 1 W3-11 UTF-8-boundary pin + 6 W2-20 session-source tests + 8 agent-
-# lifecycle extraction/regression tests + 1 S-fix task-12 sed-tier escape-
-# aware extraction pin). Runner-observed count (M-audit finding #20
-# discipline) — see this task's output file.
+#
+# Groups covered: original observe.sh command-kind/noise-skip tests, W3-10
+# control-char pins, W3-11 UTF-8-boundary pin, W2-20 session-source tests,
+# agent-lifecycle extraction/regression tests, and the S-fix task-12 sed-tier
+# escape-aware extraction pin. See the Results line at the end of a run for
+# the current total — not restated here as a fixed number (an unpinned count
+# is a review finding, G-RULES §G/ADR-013).
 
 SCRIPT="$(cd "$(dirname "$0")" && pwd)/../hooks/observe.sh"
 PASS=0

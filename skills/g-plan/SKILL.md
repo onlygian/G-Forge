@@ -75,7 +75,7 @@ If no tasks mention new packages, skip silently.
 
 ## Step 2b — Cross-cutting propagation scan (G-RULES §B)
 
-Scan the task list for any task that touches a *cross-cutting primitive* — a shared concept other skills must respect (lanes/claims, the shared Table, a new gate or sentinel). If the work introduces or extends one, it is not done as an isolated wave: run `/g-blast-radius` to enumerate the skills, hooks, and rules that must become aware of it, and add the missing touchpoints to the task list (so wave-planner schedules them) before Step 3. Note any deferred touchpoint as carry-over in the plan header. If the task touches no cross-cutting primitive, skip silently.
+Scan the task list for any task that touches a *cross-cutting primitive* — a shared concept other skills must respect (lanes/claims, the shared Roundtable, a new gate or sentinel). If the work introduces or extends one, it is not done as an isolated wave: run `/g-blast-radius` to enumerate the skills, hooks, and rules that must become aware of it, and add the missing touchpoints to the task list (so wave-planner schedules them) before Step 3. Note any deferred touchpoint as carry-over in the plan header. If the task touches no cross-cutting primitive, skip silently.
 
 ## Step 3 — Dispatch wave-planner
 

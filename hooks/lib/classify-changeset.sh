@@ -111,6 +111,16 @@ gf_classify_changeset() {
     local _f _bundle
     while IFS= read -r _f; do
         [ -z "$_f" ] && continue
+        # Normalize a Windows-style backslash pathspec to forward slashes
+        # BEFORE the case ladder below — classification only, the actual
+        # staged/committed path list is never rewritten. Left un-normalized,
+        # a backslash path (e.g. `skills\g-review\SKILL.md`) matches neither
+        # the `skills/*` CODE arm nor any `*/*` nested split — it has no
+        # forward slash at all — and falls through to the *.md root-only arm
+        # as a false DOC classification instead of the nested CODE bucket it
+        # should hit (C-4, 2026-08-30). An unmatched path still defaults to
+        # CODE either way (fail-toward-deny unchanged).
+        _f="${_f//'\'/'/'}"
         case "$_f" in
             # DOC paths — narrative documentation surface. Documentation
             # directories first.
@@ -126,8 +136,11 @@ gf_classify_changeset() {
                     # past the review gate" claim true — anything NOT on this
                     # list (extensionless files, .ps1/.bat/.yml, Makefile,
                     # unknown/uppercase extensions) falls through to the `*)`
-                    # arm below and gates as CODE. Only these genuinely inert
-                    # formats reach the marker lookup. Matching is
+                    # arm below and gates as CODE. Only these formats — inert
+                    # for THIS gate's purpose (rendered/data formats;
+                    # `.html`/`.svg`/`.json` can carry script but nothing on
+                    # the plugin surface executes them) — reach the marker
+                    # lookup. Matching is
                     # case-sensitive by design — e.g. `*.md` does not match
                     # `.MD` — so an uppercase-extension file also falls
                     # through to CODE, the safe direction. A path with a

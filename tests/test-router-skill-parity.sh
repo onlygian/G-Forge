@@ -1,10 +1,16 @@
 #!/bin/bash
-# Unit tests for router <-> skills directory bidirectional parity (audit-7 H5).
+# Unit tests for router <-> skills directory bidirectional parity (audit-7 H5),
+# extended to the router's other two token surfaces (F3-11).
 #
 # Verifies: the bare subcommand tokens listed in commands/g-forge.md's routing
-# list maintain bidirectional parity with the skills/ directory structure.
-# Every router token must map to an existing skills/g-<token>/SKILL.md, and
-# every skills/g-<name>/SKILL.md must have a corresponding router token.
+# list, frontmatter `description:` subcommand list, and `argument-hint` list
+# all maintain bidirectional parity with the skills/ directory structure AND
+# with each other. Every router token must map to an existing
+# skills/g-<token>/SKILL.md, every skills/g-<name>/SKILL.md must have a
+# corresponding router token, and the description-list / argument-hint token
+# sets must match the routing list exactly -- a token missing from either
+# surface leaves a shipped skill unreachable from the command palette even
+# though the routing list itself is correct.
 #
 # Both sides are derived from disk at run time -- never a typed list (ADR-013).
 #
@@ -48,15 +54,23 @@
 # A nested skills/g-foo/sub/SKILL.md is deliberately not a skill. The glob also
 # sidesteps Windows' find.exe shadowing /usr/bin/find on a stray PATH.
 #
-# Coverage scope limit: this suite checks the routing LIST (the `- `token`
-# -> `target`` lines) only. Frontmatter `description:` subcommand lists
-# (commands/g-forge.md's YAML header) are a separate, drift-prone surface
-# this suite deliberately does not check -- out of scope here.
+# Coverage: this suite pins THREE token surfaces against each other and
+# against skills/ -- the routing list (the `- `token` -> `target`` lines),
+# the frontmatter `description:` subcommand token list, and the
+# `argument-hint` pipe-separated token list. A token present on one surface
+# and missing from another is a parity failure, named in the FAIL message
+# (F3-11: g-skill-design previously registered only the routing-list line,
+# which left new skills unreachable from the router's description-list and
+# argument-hint surfaces without failing any test).
 #
-# Total assertions: 8 (helpers defined, router extraction coverage, canonical
-# shape self-check, real-files token/skills-dir parity, real-files
-# target-path integrity, synthetic router-only detection, synthetic
-# skills-only detection, synthetic target-path-mismatch detection).
+# Assertion groups: extraction-helper definitions, router-line extraction
+# coverage, canonical-shape self-check, real-files parity (token/skills-dir,
+# target-path, description-list, argument-hint), and synthetic-fixture
+# detection proving each parity/integrity check actually goes red on a real
+# mismatch (router-only, skills-only, target-path, description-list-missing,
+# argument-hint-missing). See the Results line at the end of a run for the
+# current total -- not restated here as a fixed number (an unpinned count is
+# a review finding, G-RULES §G/ADR-013).
 
 # Byte collation for sort/comm, and fixed character classes for sed/grep.
 # sort and comm MUST agree on ordering or comm silently mis-diffs.
@@ -110,6 +124,27 @@ extract_router_fields() {
 # independently-written parse of the router line format.
 extract_router_tokens() {
     extract_router_fields "$1" | cut -f1
+}
+
+# Bare token set from the frontmatter `description:` line's "Subcommands —
+# a, b, c." clause (F3-11). Trailing [[:space:]]* before $ absorbs a stray CR
+# on a CRLF checkout, same as canonicalize() does downstream for every other
+# extractor here. Per-token trim is done HERE, not left to canonicalize():
+# the list is comma-SPACE separated ("help, status"), so splitting on `,`
+# alone leaves a leading space baked into every token but the first --
+# add_g_prefix would then turn it into "g- status" (space stuck mid-token,
+# past where canonicalize()'s ^/$ trim can reach it).
+extract_description_tokens() {
+    local file="$1"
+    sed -n 's/^description:.*Subcommands — \(.*\)\.[[:space:]]*$/\1/p' "$file" \
+        | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//'
+}
+
+# Bare token set from the frontmatter `argument-hint` line's `<a|b|c>` clause
+# (F3-11). The trailing `.*` swallows " [args]" and any CR.
+extract_arghint_tokens() {
+    local file="$1"
+    sed -n 's/^argument-hint: <\(.*\)>.*/\1/p' "$file" | tr '|' '\n'
 }
 
 # Count the routing lines the extractor is expected to cover.
@@ -215,8 +250,16 @@ SKILLS_DIR="$REPO_ROOT/skills"
 ROUTER_SET="$SUITE_TMP/live-router.txt"
 SKILLS_SET="$SUITE_TMP/live-skills.txt"
 ROUTER_FIELDS="$SUITE_TMP/live-router-fields.txt"
+DESC_SET="$SUITE_TMP/live-description.txt"
+ARGHINT_SET="$SUITE_TMP/live-arghint.txt"
 
 derive_sets "$ROUTER_FILE" "$SKILLS_DIR" "$ROUTER_SET" "$SKILLS_SET" "$ROUTER_FIELDS"
+
+# The description-list and argument-hint token sets go through the SAME
+# add_g_prefix + canonicalize normalizer as the routing-list set above, so
+# all three land in one comparable canonical form (F3-11).
+extract_description_tokens "$ROUTER_FILE" | add_g_prefix | canonicalize > "$DESC_SET"
+extract_arghint_tokens "$ROUTER_FILE" | add_g_prefix | canonicalize > "$ARGHINT_SET"
 
 # ── Test 1: extraction coverage — every routing line yields exactly one token ──
 #
@@ -371,6 +414,51 @@ make_fixture_router_bad_target() {
     printf '%s\n' '' 'If $ARGUMENTS is empty or unrecognized, print the bare subcommand tokens.' >> "$out"
 }
 
+# Small join helper -- bash's "$*" only honors the FIRST character of $IFS as
+# separator, which can't produce ", " or other multi-char separators. Used
+# below to build the description-list ("a, b, c") and argument-hint
+# ("a|b|c") clauses for the F3-11 fixtures.
+join_by() {
+    local sep="$1"
+    shift
+    local result="$1"
+    shift
+    local tok
+    for tok in "$@"; do
+        result="${result}${sep}${tok}"
+    done
+    printf '%s' "$result"
+}
+
+# Fixture router with all three token surfaces present (routing list,
+# description-list, argument-hint) built from the SAME token set, so all
+# three agree unless a caller deliberately omits one token from one surface.
+# desc_missing / hint_missing name (at most) one token each to drop from the
+# description-list / argument-hint clause respectively while the routing
+# list keeps every token -- driving exactly one surface out of parity with
+# the other two, the F3-11 defect class. Pass "" for either to omit nothing.
+make_fixture_router_surfaces() {
+    local out="$1" desc_missing="$2" hint_missing="$3"
+    shift 3
+    local full_tokens=("$@")
+    local desc_tokens=() hint_tokens=()
+    local t
+    for t in "${full_tokens[@]}"; do
+        [ "$t" = "$desc_missing" ] || desc_tokens+=("$t")
+        [ "$t" = "$hint_missing" ] || hint_tokens+=("$t")
+    done
+    : > "$out"
+    printf '%s\n' "---" \
+        "description: fixture router. Subcommands — $(join_by ', ' "${desc_tokens[@]}")." \
+        "argument-hint: <$(join_by '|' "${hint_tokens[@]}")> [args]" \
+        "---" '' >> "$out"
+    printf '%s\n' 'Route to the correct skill file based on the subcommand in $ARGUMENTS.' '' >> "$out"
+    for t in "${full_tokens[@]}"; do
+        printf -- '- `%s`        → `skills/g-%s/SKILL.md`  (remaining args: $ARGUMENTS)\n' "$t" "$t" >> "$out"
+    done
+    printf '%s\n' '' 'If $ARGUMENTS is empty or unrecognized, print the bare subcommand tokens.' >> "$out"
+}
+
 # ── Test 5: synthetic mismatch — router token with no skills/ directory ────────
 #
 # Proves the detector goes RED on a real divergence. The fixture router lists
@@ -456,6 +544,111 @@ else
     echo "  expected exactly one offender: plan -> got skills/g-planX/SKILL.md, expected skills/g-plan/SKILL.md"
     echo "  got ($SYN3_BAD_COUNT offender(s)):"
     printf '%s\n' "$SYN3_BAD" | sed 's/^/    /'
+    FAIL=$((FAIL+1))
+fi
+
+# ── Test 8: real files — description-list parity with the routing list ────────
+# provenance: shares extract_description_tokens with Test 10, the
+# RED-proving synthetic case (extract_description_tokens neutered in scratch
+# copy -- Test 8 stayed green, Test 10 went red) -- scratch probe run
+# 2026-08-31, output in g-docs/agent-output/wave-f3/task-40-router-parity.md
+#
+# Guards the F3-11 gap: g-skill-design registered only the routing-list line,
+# never the frontmatter `description:` subcommand list, so a new skill's
+# token could resolve at dispatch while staying invisible in the command
+# palette. This asserts the description-list token set matches the routing
+# list exactly, in both directions.
+
+if sets_equal "$ROUTER_SET" "$DESC_SET"; then
+    echo "PASS: real files description-list parity — routing list and frontmatter description-list tokens match ($ROUTER_SET_COUNT entries each)"
+    PASS=$((PASS+1))
+else
+    ROUTER_ONLY_DESC=$(comm -23 "$ROUTER_SET" "$DESC_SET" | tr '\n' ',' | sed 's/,$//')
+    DESC_ONLY=$(comm -13 "$ROUTER_SET" "$DESC_SET" | tr '\n' ',' | sed 's/,$//')
+    echo "FAIL: real files description-list parity mismatch"
+    [ -n "$ROUTER_ONLY_DESC" ] && echo "  Routing-list tokens missing from the description list: $ROUTER_ONLY_DESC"
+    [ -n "$DESC_ONLY" ] && echo "  Description-list tokens missing from the routing list: $DESC_ONLY"
+    FAIL=$((FAIL+1))
+fi
+
+# ── Test 9: real files — argument-hint parity with the routing list ───────────
+# provenance: shares extract_arghint_tokens with Test 11, the RED-proving
+# synthetic case (extract_arghint_tokens neutered in scratch copy -- Test 9
+# stayed green, Test 11 went red) -- scratch probe run 2026-08-31, output in
+# g-docs/agent-output/wave-f3/task-40-router-parity.md
+#
+# Same F3-11 gap, the third surface: the `argument-hint` pipe-separated list
+# must also match the routing list exactly.
+
+if sets_equal "$ROUTER_SET" "$ARGHINT_SET"; then
+    echo "PASS: real files argument-hint parity — routing list and argument-hint tokens match ($ROUTER_SET_COUNT entries each)"
+    PASS=$((PASS+1))
+else
+    ROUTER_ONLY_HINT=$(comm -23 "$ROUTER_SET" "$ARGHINT_SET" | tr '\n' ',' | sed 's/,$//')
+    HINT_ONLY=$(comm -13 "$ROUTER_SET" "$ARGHINT_SET" | tr '\n' ',' | sed 's/,$//')
+    echo "FAIL: real files argument-hint parity mismatch"
+    [ -n "$ROUTER_ONLY_HINT" ] && echo "  Routing-list tokens missing from argument-hint: $ROUTER_ONLY_HINT"
+    [ -n "$HINT_ONLY" ] && echo "  Argument-hint tokens missing from the routing list: $HINT_ONLY"
+    FAIL=$((FAIL+1))
+fi
+
+# ── Test 10: synthetic mismatch — description-list omits a routed token ───────
+#
+# Fixture routes `help`, `status`, `plan` but the description-list clause
+# omits `plan` (argument-hint stays complete). PASSES when exactly
+# 'g-plan' is reported missing from the description list.
+
+SYN4="$SUITE_TMP/syn4"
+mkdir -p "$SYN4"
+make_fixture_router_surfaces "$SYN4/router.md" "plan" "" help status plan
+
+SYN4_ROUTER_SET="$SUITE_TMP/syn4-router-set.txt"
+SYN4_DESC_SET="$SUITE_TMP/syn4-desc-set.txt"
+extract_router_tokens "$SYN4/router.md" | add_g_prefix | canonicalize > "$SYN4_ROUTER_SET"
+extract_description_tokens "$SYN4/router.md" | add_g_prefix | canonicalize > "$SYN4_DESC_SET"
+
+SYN4_ROUTER_ONLY=$(comm -23 "$SYN4_ROUTER_SET" "$SYN4_DESC_SET" | tr '\n' ',' | sed 's/,$//')
+SYN4_DESC_ONLY=$(comm -13 "$SYN4_ROUTER_SET" "$SYN4_DESC_SET" | tr '\n' ',' | sed 's/,$//')
+
+if ! sets_equal "$SYN4_ROUTER_SET" "$SYN4_DESC_SET" \
+   && [ "$SYN4_ROUTER_ONLY" = "g-plan" ] \
+   && [ -z "$SYN4_DESC_ONLY" ]; then
+    echo "PASS: description-list-missing token detected — routing list has 'g-plan' but the description list omits it"
+    PASS=$((PASS+1))
+else
+    echo "FAIL: description-list-missing token NOT detected as expected"
+    echo "  expected router-only 'g-plan' and no description-only entries"
+    echo "  got router-only [$SYN4_ROUTER_ONLY] description-only [$SYN4_DESC_ONLY]"
+    FAIL=$((FAIL+1))
+fi
+
+# ── Test 11: synthetic mismatch — argument-hint omits a routed token ──────────
+#
+# Fixture routes `help`, `status`, `plan` but the argument-hint clause omits
+# `plan` (description list stays complete). PASSES when exactly 'g-plan' is
+# reported missing from argument-hint.
+
+SYN5="$SUITE_TMP/syn5"
+mkdir -p "$SYN5"
+make_fixture_router_surfaces "$SYN5/router.md" "" "plan" help status plan
+
+SYN5_ROUTER_SET="$SUITE_TMP/syn5-router-set.txt"
+SYN5_HINT_SET="$SUITE_TMP/syn5-hint-set.txt"
+extract_router_tokens "$SYN5/router.md" | add_g_prefix | canonicalize > "$SYN5_ROUTER_SET"
+extract_arghint_tokens "$SYN5/router.md" | add_g_prefix | canonicalize > "$SYN5_HINT_SET"
+
+SYN5_ROUTER_ONLY=$(comm -23 "$SYN5_ROUTER_SET" "$SYN5_HINT_SET" | tr '\n' ',' | sed 's/,$//')
+SYN5_HINT_ONLY=$(comm -13 "$SYN5_ROUTER_SET" "$SYN5_HINT_SET" | tr '\n' ',' | sed 's/,$//')
+
+if ! sets_equal "$SYN5_ROUTER_SET" "$SYN5_HINT_SET" \
+   && [ "$SYN5_ROUTER_ONLY" = "g-plan" ] \
+   && [ -z "$SYN5_HINT_ONLY" ]; then
+    echo "PASS: argument-hint-missing token detected — routing list has 'g-plan' but argument-hint omits it"
+    PASS=$((PASS+1))
+else
+    echo "FAIL: argument-hint-missing token NOT detected as expected"
+    echo "  expected router-only 'g-plan' and no argument-hint-only entries"
+    echo "  got router-only [$SYN5_ROUTER_ONLY] argument-hint-only [$SYN5_HINT_ONLY]"
     FAIL=$((FAIL+1))
 fi
 

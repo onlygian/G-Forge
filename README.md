@@ -93,7 +93,7 @@ A **wave** is a batch of tasks that can run in parallel without depending on eac
 
 ### 3. The commit gate
 
-Every `git commit` in a G-Forge project is blocked by a pre-commit hook. The hook classifies the staged file set as **code**, **doc**, or **mixed** and requires the matching review sentinel:
+Every `git commit` in a G-Forge project is blocked by a pre-commit hook. The hook classifies the staged file set into one of five buckets: **code** (code only), **doc** (documentation only), **mixed** (both), **reference** (reference material only — exempt with an advisory, no sentinel), or **none** (empty staged set — fall through to the code gate). Based on the classification, it requires the matching review sentinel:
 
 - **Code commits** require `.claude/g-forge-approved`, written only when `/g-review` issues a **MERGE READY** verdict after the full review pipeline passes.
 - **Doc-only commits** (README, `g-wiki/`, ADRs, etc.) require `.claude/g-forge-docs-approved`, written only when `/g-doc-review` issues a **DOCS READY** verdict — so documentation is gated even when there's no code change.
@@ -112,7 +112,7 @@ You don't configure G-Forge per session. You configure it once via G-RULES.md an
 Seven shell scripts registered in `.claude/settings.json` keep Claude oriented automatically:
 
 - **UserPromptSubmit** (`workflow-checkpoint.sh`) — fires on every message. Reports branch, milestone context, active wave, review gate status, and context depth. Claude reads this output and auto-triggers the right skill (`/g-plan` for a new task, `/g-execute` once a plan is approved, `/g-review` when waves finish).
-- **PreToolUse** (`check-commit.sh`) — classifies the staged file set (code / doc / mixed) and blocks `git commit` unless the matching review sentinel exists.
+- **PreToolUse** (`check-commit.sh`) — classifies the staged file set (code / doc / mixed / reference / none) and blocks `git commit` unless the matching review sentinel exists; reference-only commits are exempt with an advisory note.
 - **PostToolUse** (`post-commit-cleanup.sh`, `observe.sh`) — clears both sentinels after a successful commit, and runs the **silent observer**, which journals meaningful events (commits, branches, tests, pushes, reverts) to `.claude/journal/YYYY-MM-DD.jsonl`.
 - **SessionStart** (`session-start.sh`, `observe.sh`) — checks local and remote git state (uncommitted changes, stash count, ahead/behind), marks the session open in the journal, and resets the context-depth counters on a genuine open — carrying them across a `compact` or `resume` restart so auto-compaction (or a reloaded transcript) can't silently reset the gate.
 - **SubagentStart / SubagentStop** (`agent-lifecycle.sh`) — records every agent dispatch into the same journal.
@@ -299,7 +299,7 @@ Context depth uses mode-aware thresholds. **The goal is to reset before the wind
 
 Amber is **active monitoring**, not a one-time warning: Claude runs `/context` every turn and resets once ~25% of the window is used — capacity-driven, not waiting for the red exchange count (only `/context` reads true context pressure, and only the model can run it). `/g-execute` adds the same `/context` check at every wave boundary — the heaviest token-burn point — catching fast-burning sessions the exchange count misses. At red it's enforced: no new scope, `/g-retro` auto-triggers, the user is told to open a fresh session. If a compaction still slips through, it's recorded as a backstop and tightens the threshold so it doesn't recur.
 
-**`check-commit.sh`** (`PreToolUse`) — classifies the staged file set (code / doc / mixed) and blocks `git commit` unless the matching sentinel exists: `.claude/g-forge-approved` for code, `.claude/g-forge-docs-approved` for docs, both for mixed. Prints a non-blocking advisory when committing directly to `main` with approval.
+**`check-commit.sh`** (`PreToolUse`) — classifies the staged file set into one of five buckets: code (code paths only), doc (doc paths only), mixed (both), reference (reference paths only — exempt with an advisory note, no sentinel), or none (empty/unknown — fall through to code gate). Blocks `git commit` unless the matching sentinel exists: `.claude/g-forge-approved` for code, `.claude/g-forge-docs-approved` for docs, both for mixed. Prints a non-blocking advisory when committing directly to `main` with approval.
 
 **`post-commit-cleanup.sh`** (`PostToolUse`) — clears both sentinels after a successful commit.
 
@@ -309,7 +309,9 @@ Amber is **active monitoring**, not a one-time warning: Claude runs `/context` e
 
 **`pre-compact.sh`** (`PreCompact`) — fires before context compression. Writes `.claude/compact-state.md` with the current branch, last 5 commits, and the `## Active Session` handoff block from `g-docs/ROADMAP.md`. Also records the compaction: it bumps a per-session count (the red backstop) and grows the persistent calibration offset so the context gate fires earlier next time.
 
-The sentinel is written by `/g-review` only on a MERGE READY verdict, and removed automatically after each commit. Every commit goes through code-lead review — no exceptions. Subagents are prohibited from committing; HQ commits once after MERGE READY.
+The code sentinel is written by `/g-review` only on a MERGE READY verdict, and removed automatically after each commit. Code, mixed, and unclassifiable commits require the code sentinel (the code-lead gate); doc-only commits require the doc sentinel (`/g-doc-review`); mixed commits require both sign-offs (each written by its own gate); reference-only commits are exempt with a printed advisory. Subagents are prohibited from committing; HQ commits once after the gate clears.
+
+**Using the reference class:** a file is REFERENCE only when all three hold — it lives under `reference/<bundle>/`; the bundle root carries a `SNAPSHOT.md` or `NOTE.md` marker; and its extension is on the inert allowlist owned by `hooks/lib/classify-changeset.sh` (case-sensitive, rendered/data formats only). Everything else — extensionless files, unknown or uppercase extensions, unmarked bundles, any path with a `..`, `.` or empty segment — gates as CODE, fail-toward-deny. `GF_CLASSIFY_ROOT` is a test-suite override — leave it unset in real use: pointing it elsewhere changes which commits the gate exempts (`g-docs/env-vars.md`).
 
 To bypass in an emergency (not recommended) — the gate is two layers, both must go:
 
@@ -405,15 +407,16 @@ Projects that track `CLAUDE.md` as committed project record (consumer projects, 
 
 ### Agent output architecture
 
-Specialist agents that hold a Write grant write their full findings to disk (`g-docs/agent-output/wave-N/<task-slug>.md` for wave agents; `g-docs/agent-output/review/<agent>-YYYY-MM-DD.md` for review agents). All agents return a compact summary to the calling session:
+Specialist agents that hold a Write grant write their full findings to disk (`g-docs/agent-output/wave-N/<task-slug>.md` for wave agents; `g-docs/agent-output/review/<agent>-YYYY-MM-DD-<slug>-r<N>.md` for review agents). Most agents return a compact summary to the calling session; `pr-writer` is excluded — its inline PR description is the deliverable — and `project-manager` skips the block only in its interactive session role (a dispatched PM returns a compact RESULT/VERDICT/QUESTIONS/SUMMARY block):
 
 ```
-RESULT: DONE|FAILED|BLOCKED  (or PASS|HOLD for review agents)
-ISSUES: N critical · M major · K minor
+RESULT: DONE|FAILED|BLOCKED (implementers), MERGE READY|HOLD|ESCALATE (code-lead), DOCS READY|DOCS HOLD (doc-reviewer), or PASS|HOLD (review agents)
+ISSUES: N critical · M major · K minor (or "none")
 SUMMARY: [one sentence]
 FILES: [files changed]
+DONE_CONDITION: met|not met — [how verified]
 LEARNINGS: [FAILED only — approach tried, why it broke, what's ruled out, recommended different approach]
-DETAIL: [output file path]
+DETAIL: [record path on disk, or `inline` when no output_file was passed]
 ```
 
 The calling session reads the detail file only when the result is HOLD, FAILED, or BLOCKED. This keeps main-session context growth at ~70 tokens per agent return rather than 1,500–3,000 tokens of inline output — larger waves stay within budget, and the full audit trail is preserved on disk.

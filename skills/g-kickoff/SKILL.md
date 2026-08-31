@@ -15,37 +15,7 @@ If it **exists**: skip to Step 1. Profile is already set.
 
 If it **does not exist**: run this intake before the project interview begins.
 
-> "Before we start — two quick questions so I can communicate in a way that actually helps."
-
-**Question 1:**
-> "How long have you been writing code?
-> a) New or just getting started — under a year
-> b) A year or two in — built some things, still learning
-> c) Three or more years — shipping regularly"
-
-Wait for the answer.
-
-**Question 2:**
-> "When things happen during the project — a test failing, a review finding issues, a wave finishing — how much explanation do you want?
-> a) Plain language — explain what it means
-> b) A brief note of context alongside the result
-> c) Just the result — I'll read what I need"
-
-Wait for the answer. Derive the profile using this table:
-
-| Q1 | Q2 | Profile |
-|----|----|---------|
-| a (new) | a (plain) | `eli5` |
-| a (new) | b (context) | `eli5` |
-| a (new) | c (just result) | `mid` |
-| b (some) | a (plain) | `mid` |
-| b (some) | b (context) | `mid` |
-| b (some) | c (just result) | `dev` |
-| c (experienced) | a (plain) | `mid` |
-| c (experienced) | b (context) | `dev` |
-| c (experienced) | c (just result) | `dev` |
-
-Write the profile name to `.claude/voice-profile`.
+Run the language intake exactly as `/g-voice` defines it: Glob `skills/g-voice/SKILL.md` and follow its Step 1a — the same 2-question plain-language interview and profile-derivation table — then write the derived profile name to `.claude/voice-profile`.
 
 Tell the developer (rendered in the profile just written):
 - `eli5`: "Got it — I'll explain things in plain language as we go. You can run `/g-forge voice` any time to change this."
@@ -209,7 +179,7 @@ If the developer overrides a recommendation, accept it without argument. Note th
 
 ## Step 7 — Produce and lock g-docs/project_brief.md
 
-Once the developer approves (or amends and approves), write `g-docs/project_brief.md` at the project root:
+Once the developer approves (or amends and approves), write `g-docs/project_brief.md`:
 
 ```
 # Project Brief — [Project Name]

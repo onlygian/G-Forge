@@ -174,7 +174,7 @@ Follow up: new feature → "What specifically?", refactor → "Which area, what'
 Ask:
 > "Should I dispatch code-lead to audit the current architecture before planning? Worth it if you're planning significant changes. (y/n)"
 
-**If yes:** dispatch `code-lead` with the structure, stack, architecture signals, and planned work. Ask it to flag BLOCKING / HIGH / MEDIUM / LOW violations. Present findings. Ask: "Address these first, or factor them into the brief as known risks?"
+**If yes:** dispatch `code-lead` with the structure, stack, architecture signals, and planned work. Ask it to flag violations at code-lead's own severity scale — Critical / Major / Minor. Present findings. Ask: "Address these first, or factor them into the brief as known risks?"
 
 **If no:** proceed.
 

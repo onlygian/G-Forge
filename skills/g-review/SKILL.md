@@ -82,7 +82,7 @@ Before reviewing any code, verify the test suite passes.
 **If any tests fail:**
 - Do NOT write `.claude/g-forge-approved`
 - Report the failing tests verbatim
-- Dispatch `error-detective` with the full test output and the current diff (`git diff main...HEAD`). Ask it to identify the root cause of each failure — file, line, pattern.
+- Dispatch `error-detective` with the full test output and the current diff (`git diff <mainline>...HEAD` — `<mainline>` per Step 2's resolution). Ask it to identify the root cause of each failure — file, line, pattern.
 - After error-detective returns, dispatch `debugger` with error-detective's findings and the relevant source files. Ask for a concrete fix strategy.
 - Present both diagnoses to the developer, then stop with verdict: `HOLD — tests failing. Diagnosis above. Fix all failures before re-running /g-review.`
 - Do not proceed to Step 2.
@@ -105,7 +105,7 @@ git diff --name-only
 ```
 Combine both into the diff under review — this is what `git write-tree` will hash if the developer commits as-is (including via `git commit -a`), so reviewing it here is what makes the Step 6 sentinel binding coherent (ADR-004).
 
-If that union is empty, fall back to `git diff main...HEAD` — this covers resuming review on a branch that already carries committed-but-unreviewed history (e.g. an interrupted multi-commit session). This fallback role is unchanged from before; only the priority is inverted.
+If that union is empty, fall back to `git diff <mainline>...HEAD` — this covers resuming review on a branch that already carries committed-but-unreviewed history (e.g. an interrupted multi-commit session). This fallback role is unchanged from before; only the priority is inverted. Resolve `<mainline>` once here and reuse it wherever this skill diffs against the mainline: the current branch's configured remote (`git config --get branch.<branch>.remote`, else `origin`), then the first of `refs/remotes/<remote>/HEAD` (short name, remote prefix stripped), `main`, `master` that `git rev-parse --verify` accepts.
 
 If both are empty, ask the developer: "What branch or commit range should I review?"
 
@@ -136,7 +136,7 @@ Dispatch the `code-lead` agent. Provide **all of the following** in the prompt s
 
 code-lead will verify remaining done conditions structurally (file checks, grep, read) and review the diff itself — it holds no `Agent(` grant, so this is a solo review, not a panel (see Step 0). It must NOT re-run tests or type-check when attested results are provided. Pass the telemetry profile from Step 0 to code-lead so it can scale its own scrutiny; no pre-review additions are dispatched for it by anyone as shipped — see the Step 0 note.
 
-If `manifest_changed` is true, dispatch `dependency-auditor` **in parallel** with code-lead. Provide it the changed manifest file(s), the diff context, and mint its `output_file` with the same round-ordinal discipline as code-lead's path above: `g-docs/agent-output/review/dependency-auditor-[YYYY-MM-DD]-r[N].md`, where `[N]` is **1 + the highest ordinal among existing files matching `dependency-auditor-[same date]-r*.md`** in `g-docs/agent-output/review/` (glob that pattern before minting the path; no matches → `r1`, highest-plus-one otherwise — round records are never deleted). Wait for both to return, then include dependency-auditor's findings in the materials passed to code-lead for its final verdict (so any dependency risks are factored into MERGE READY / HOLD). If dependency-auditor returns `RESULT: HOLD` or any **CRITICAL or MAJOR** severity findings (its shared Critical/Major/Minor scale — a CRITICAL is a security advisory, a MAJOR is a deprecated/unmaintained or license-conflict dep), include them as blocking items in the HOLD verdict regardless of code-lead's position on other issues.
+If `manifest_changed` is true, dispatch `dependency-auditor` **in parallel** with code-lead. Provide it the changed manifest file(s), the diff context, and mint its `output_file` with the same round-ordinal discipline as code-lead's path above: `g-docs/agent-output/review/dependency-auditor-[YYYY-MM-DD]-r[N].md`, where `[N]` is **1 + the highest ordinal among existing files matching `dependency-auditor-[same date]-r*.md`** in `g-docs/agent-output/review/` (glob that pattern before minting the path; no matches → `r1`, highest-plus-one otherwise — round records are never deleted). (dependency-auditor holds a `Write` grant scoped to its own report files, so it writes this record itself.) Wait for both to return, then include dependency-auditor's findings in the materials passed to code-lead for its final verdict (so any dependency risks are factored into MERGE READY / HOLD). If dependency-auditor returns `RESULT: HOLD` or any **CRITICAL or MAJOR** severity findings (its shared Critical/Major/Minor scale — a CRITICAL is a security advisory, a MAJOR is a deprecated/unmaintained or license-conflict dep), include them as blocking items in the HOLD verdict regardless of code-lead's position on other issues.
 
 Wait for code-lead's complete verdict.
 
@@ -205,7 +205,7 @@ Append any round-3 consolidation note from Step 4c under the finding class it ap
   - `commit_sentinel_ts`: binds the sentinel to the exact tree reviewed in Step 2, computed in order:
     - First, stage any unstaged-but-tracked files that were part of the Step 2 staged + unstaged-tracked union (`git add -u`), so the index now holds exactly what was reviewed.
     - Then take `git write-tree` of the now-staged index. This reproduces the same tree `hooks/pre-commit`'s own `git write-tree` will hash at commit time (whether the developer commits with plain `git commit` or `git commit -a`), keeping the stamped tree and the committed tree identical.
-    - If Step 2 instead fell back to `git diff main...HEAD` (nothing staged or unstaged to review), the index already equals HEAD's tree and no extra staging is needed.
+    - If Step 2 instead fell back to `git diff <mainline>...HEAD` (nothing staged or unstaged to review), the index already equals HEAD's tree and no extra staging is needed.
   - `commit_sentinel_head`: `git rev-parse --verify HEAD`
   - `commit_sentinel_worktree`: `git rev-parse --show-toplevel`
 - Write `.claude/g-forge-approved` with content: `commit_sentinel_ts=<write-tree output> commit_sentinel_head=<rev-parse --verify HEAD output> commit_sentinel_worktree=<show-toplevel output>` (one line, space-separated `key=value` fields, exact field names — do not rename them)

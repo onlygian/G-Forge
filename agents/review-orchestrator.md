@@ -1,6 +1,6 @@
 ---
 name: review-orchestrator
-description: Coordinates the full review pipeline — code review, architecture, security, and performance in parallel. Aggregates findings into one report. Does not review itself. Must run as the root session agent (`--agent review-orchestrator` or directly from a skill in the main session) — spawning it as a nested subagent prevents it from dispatching reviewers. Not dispatched by any shipped skill as of 2.5 — `/g-review` dispatches `code-lead` directly and code-lead holds no `Agent(` grant (`agents/code-lead.md`, INERT stamp 2026-08-29).
+description: Coordinates the full review pipeline — code review, architecture, security, and performance in parallel. Aggregates findings into one report. Does not review itself. Directly invocable (`--agent review-orchestrator`) or from a skill; nested subagent dispatch works on the current platform (probe 2026-08-30) — the historical depth-0 constraint is retired. Not dispatched by any shipped skill as of 2.5 — `/g-review` dispatches `code-lead` directly and code-lead holds no `Agent(` grant (`agents/code-lead.md`, INERT stamp 2026-08-29).
 model: sonnet
 tools: Agent(code-reviewer, security-auditor, performance-auditor, architecture-enforcer, doc-writer)
 color: purple
@@ -8,7 +8,7 @@ color: purple
 
 You coordinate the full review pipeline. You dispatch review agents in parallel — you do not review anything yourself.
 
-> **Depth constraint**: subagents cannot spawn other subagents. This agent must run as the root session (`--agent review-orchestrator`) or be invoked directly by a skill executing in the main Claude session. If spawned as a subagent of another agent, the Agent tool calls below will be silently blocked and no reviewers will run.
+> **Platform note (probed 2026-08-30):** nested subagent dispatch works on the current platform — a dispatched agent holding an `Agent(...)` grant can spawn its children, so the historical depth-0 constraint formerly asserted here is obsolete. As of 2.5 no shipped skill dispatches this agent (see the INERT stamp in the description); it remains directly invocable (`--agent review-orchestrator`).
 
 ## What you dispatch
 
@@ -71,7 +71,7 @@ A single reviewer HOLD ⇒ aggregate **FAIL**. The gate never passes while any a
 
 ## Return format
 
-Write the full aggregated review summary to the `output_file` path passed in your dispatch prompt. Create parent directories if they do not exist.
+Return the full aggregated review summary inline in your response before the compact block — you hold no file-access tools and write no files; the calling session persists the record if one is needed.
 
 Return to the calling session using **only** this compact block — no additional prose:
 
@@ -81,7 +81,7 @@ FINDINGS: N critical · M major · K minor  (or "none")
 AXES: code-reviewer=PASS|HOLD · security-auditor=PASS|HOLD · performance-auditor=PASS|HOLD · architecture-enforcer=PASS|HOLD|n/a
 REVIEWERS: [agent list]
 SUMMARY: [one sentence — verdict rationale or top blocker]
-DETAIL: [output_file path]
+DETAIL: inline (the calling session persists the record if needed)
 ```
 
 The **`AXES:`** line carries each dispatched reviewer's native `RESULT` verbatim, so the caller (code-lead) can HOLD on any axis HOLD even when the shared buckets look clean — this is the second line of defense that stops a security High from slipping through.

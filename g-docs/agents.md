@@ -6,27 +6,28 @@ All **19** agents ship with every install. Stack-specific architect *and impleme
 
 Agent `model:` fields use family aliases (`haiku`, `sonnet`, `opus`), which Claude Code resolves to the latest model in each family — the tier strategy needs no update when a new Opus, Sonnet, or Haiku ships. Models released *above* the Opus tier (e.g. Fable) are a separate case: they satisfy any "Opus" requirement in skills and rules (an orchestration check must never ask the user to downgrade from one), and dispatched agents keep their pinned tier regardless of which model runs the main session.
 
-Review agents run at `effort: xhigh` — the recommended depth for review work on current top-tier models. `max` is intentionally not used: on Opus 4.7+ and newer families it trades significant latency for diminishing returns and is prone to overthinking, which turns the review gate into a bottleneck.
+Review agents on the Opus tier run at `effort: xhigh` — the recommended depth for review work. (The Sonnet-tier agents `performance-auditor` and `dependency-auditor` carry no `effort:` key.) `max` is intentionally not used: on Opus 4.7+ and newer families it trades significant latency for diminishing returns and is prone to overthinking, which turns the review gate into a bottleneck.
 
 ---
 
 ## Orchestration
 
-Agents that coordinate other agents and own the feature or review lifecycle end-to-end. They never write or edit code themselves.
+Agents that own strategic coordination. `project-manager` and `review-orchestrator` hold dispatch grants (`Agent(...)`); `code-lead` guards the merge verdict solo and holds no dispatch grant. None of them write or edit implementation code.
 
 ### `project-manager`
 **Tier:** Sonnet  
-**Role:** Owns everything from roadmap to merged PR — maintains milestones, breaks product goals into wave plans, and drives the full feature lifecycle through to a PR-ready state.  
-**Use when:** You want end-to-end feature management handed off in one step: scope → plan → execute → gate → PR description.  
+**Role:** Governs the session's PM voice and challenges scope — maintains milestones, breaks product goals into wave plans, and challenges scope through three questions before accepting a feature.  
+**Use when:** You want the session to adopt an interactive PM role that challenges scope before decomposing work, or to dispatch the PM for scope evaluation and approval routing.  
 **Give it:** The feature request, current roadmap state, and any known constraints.  
-**Returns:** A coordinated execution plan, then drives it through the `/g-plan` → `/g-execute` → `/g-review` skill pipeline — consulting `code-lead` on architectural or sequencing risk and dispatching `pr-writer` for the PR description, its only direct dispatches (grant: `Agent(code-lead, pr-writer)`).
+**Returns:** In the interactive role, responds in prose throughout the feature lifecycle. When dispatched as a subagent, returns a `RESULT / VERDICT / QUESTIONS / SUMMARY` block consulting `code-lead` on technical feasibility and requesting the calling session run `/g-plan`, with dispatch grant `Agent(code-lead, pr-writer)` for the PM's strategic consultations.
 
 ---
 
 ### `review-orchestrator`
 **Tier:** Sonnet  
+**Status:** Shipped but not currently dispatched by any skill as of 2.5. May be invoked directly if needed. (Nested subagent dispatch works on the current platform.)  
 **Role:** Coordinates the full review pipeline — code review, architecture, security, and performance in parallel — and aggregates findings into one report.  
-**Use when:** Running a full pre-merge review. Usually dispatched by `code-lead`, not directly.  
+**Use when:** Running a full pre-merge review outside the standard `/g-review` gate. Directly invocable; does not run as part of the default review pipeline.  
 **Give it:** The branch diff and the list of changed files.  
 **Returns:** An aggregated findings report across all reviewers: Critical findings first, then Major, then Minor, with an overall PASS / PASS WITH NOTES / FAIL verdict.
 
@@ -34,10 +35,10 @@ Agents that coordinate other agents and own the feature or review lifecycle end-
 
 ### `code-lead`
 **Tier:** Opus  
-**Role:** Guards technical quality at every level — milestone feasibility, commit reviews, and merge gates — by verifying done conditions and running the full review pipeline via `review-orchestrator`.  
+**Role:** Guards technical quality at every level — milestone feasibility, commit reviews, and merge gates — by verifying done conditions and reviewing code changes solo.  
 **Use when:** Running `/g-review` after implementation waves complete; this is the merge gate. Also consult during milestone planning for technical feasibility and sequencing risk.  
 **Give it:** The branch diff, done conditions, branch name, and task list.  
-**Returns:** MERGE READY or HOLD with a prioritised fix list; at the roadmap level, a sequencing recommendation with reasoning.
+**Returns:** MERGE READY, HOLD, or ESCALATE with a prioritised fix list; at the roadmap level, a sequencing recommendation with reasoning.
 
 ---
 
@@ -127,7 +128,7 @@ Agents that audit code changes and report findings. None of them fix what they f
 **Role:** Validates layer boundary integrity, import directions, and separation of concerns — reporting violations with `file:line` refs.  
 **Use when:** Changes touch more than one layer, introduce a new component, or cross a module boundary. Dispatched conditionally by `review-orchestrator` when layer-boundary files are changed.  
 **Give it:** The diff or files to review, plus the project's layer map (from CLAUDE.md if present).  
-**Returns:** Violations with `file:line`, the rule broken, the correct fix pattern, and a PASS / FAIL verdict.
+**Returns:** Violations with `file:line`, the rule broken, the correct fix pattern, and a PASS | HOLD verdict.
 
 ---
 
@@ -197,5 +198,5 @@ Agents that produce deliverables: tests, documentation, and PR descriptions.
 **Tier:** Haiku  
 **Role:** Generates a PR description from `git diff` output — what changed, why it changed, and how to test it.  
 **Use when:** Changes are ready to merge and you need a PR description written for a human reviewer who has not seen the code before.  
-**Give it:** The `git diff main...HEAD` output (or equivalent) and the done conditions for the work.  
+**Give it:** The branch diff against the resolved mainline (`git diff <mainline>...HEAD`, or equivalent) and the done conditions for the work.  
 **Returns:** A structured PR description: feature/fix title, "What changed" bullets, a mandatory "Why" section, and an actionable test checklist.

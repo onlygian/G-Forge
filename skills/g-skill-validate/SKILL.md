@@ -67,20 +67,19 @@ If present, check and record ✓ or ✗:
 
 **Body checks:**
 - Output Format section present (agents must define their report structure)
-- Tool grants match the agent's declared class (see below) — a grant outside every class, or an unscoped Write grant on a reviewer, is a violation
+- Tool grants are consistent with the class its `tools:` file-access grants place it in (the `tools:` line is the only declaration — no `class:` field exists; see below) — a grant outside every class, or an unscoped Write grant on a reviewer, is a violation
 - Body outputs findings, never fixes — a prose suggestion of how to fix is a finding; executing a fix or emitting implementation content is not (look for steps that instruct the agent itself to edit files) — applies to the reviewer class only: diagnostic-class agents likewise propose fix strategies by role and never implement, and writer-class agents implement by role
+- Transitive-write check: a reviewer- or diagnostic-class agent holding an `Agent(...)` grant that names a writer-class child is flagged (the dispatch grant is a transitive write path, G-RULES §C); as of this writing no shipped agent triggers this.
 
 **Determining the permitted tool grants:**
 
-Do not hardcode a tool list here — read the class definitions from the installed architecture profile: `.claude/rules/architecture-<stack>.md` (or, in this repo's self-hosted case, `profiles/claude-plugin/rules/architecture.md:6` and `:19`, the `agents/` layer-map bullet and the **Agent rule** paragraph). Those bullets define three tool classes:
-
-- **reviewer** — `Read`, `Glob`, `Grep` only; findings, never fixes. A `Write` grant is sanctioned only when the agent body scopes it explicitly to its own record/report paths (e.g. `code-lead` writing review records), never to implementation files.
-- **diagnostic** — reviewer's grants plus `Bash`, for verification runs (e.g. `code-lead`, `debugger`, `error-detective`).
-- **writer** — reviewer's grants plus `Write`/`Edit`, for outputs the agent owns (e.g. `doc-writer`, `test-writer`, `<stack>`-implementers, `refactor-executor`).
+Do not hardcode a tool list here — read the class definitions from the installed architecture profile: `.claude/rules/architecture-<stack>.md` (or, in this repo's self-hosted case, the `agents/` layer-map bullet and the **Agent rule** paragraph of `profiles/claude-plugin/rules/architecture.md`). (Orientation only — the profile is authoritative: reviewer = read-only findings; diagnostic = +Bash for verification runs; writer = +Write/Edit for outputs it owns.)
 
 An `Agent(...)` dispatch grant is orthogonal to these classes — it names which children the holder may dispatch, never what it may read or write — and is disregarded when classifying (e.g. `review-orchestrator` holds only a dispatch grant; `feature-implementer` is a writer that also dispatches `doc-writer`).
 
-Classify the agent under validation by its declared `tools:` frontmatter field, then fail only if: (a) it holds a file-access tool outside all three classes (the `Agent(...)` dispatch grant is not counted), or (b) it holds `Write` while its body does not scope that grant to its own record/report paths and it is not otherwise a declared writer-class agent.
+Classify the agent under validation by the class its `tools:` file-access grants place it in (the `tools:` line is the only declaration — no `class:` field exists), then fail only if: (a) it holds a file-access tool outside all three classes (the `Agent(...)` dispatch grant is not counted), or (b) its file-access grants are reviewer-shaped (`Read`, `Glob`, `Grep`) plus `Write`, and its body does not scope that `Write` to its own record/report paths. A writer-class agent holds `Write`/`Edit` by role; an agent whose body scopes its writes to the project-record files it owns (e.g. `project-manager` → the `g-docs/` tracking files) passes.
+
+An agent whose `tools:` carries only an `Agent(...)` dispatch grant (empty file-access set — e.g. `review-orchestrator`) belongs to no class by design: validate its frontmatter and dispatch grant, record `dispatch-only`, and do not fail it against the class rules.
 
 ## Step 6 — Report
 

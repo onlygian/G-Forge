@@ -61,7 +61,7 @@ Never tag a task `general-purpose`.
 
 ## Return format
 
-You hold no `Write` grant (`tools: Read, Glob` only) — you cannot write the `output_file` yourself. Return the full Wave Schedule (per the Output format above) inline in your result; the calling session writes it to the `output_file` path passed in your dispatch prompt.
+You hold no `Write` grant (`tools: Read, Glob` only) — you cannot write the `output_file` yourself; the calling session writes it to the `output_file` path passed in your dispatch prompt. Return the full Wave Schedule (per the Output format above) inline in your result.
 
 Return to the calling session using **only** this structure — no additional prose beyond it:
 

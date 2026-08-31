@@ -8,22 +8,25 @@
 # assertion was flipped to pin observed fail-toward-deny behavior (see the
 # polarity note on that case; lib header corrected in the same pass).
 # W1.6 additions: +5 tests (shadowed .md dirs, pathspec fidelity, pre-commit scan).
-# Total assertions: 47. Runner-attested (W1.6 Wave 7 r2: 47/47).
 # M-audit W3 task 12 additions: +3 tests (README*/CHANGELOG*/LICENSE* non-root
-# over-match fix). Total assertions: 50.
+# over-match fix).
 # M40 Task 17 additions: +8 tests (REFERENCE bucket coverage: marked bundle
 # file set via SNAPSHOT.md, marked via NOTE.md, unmarked-stays-CODE guard,
-# code-extension-under-marked-bundle-stays-CODE guard x5 extensions). Total
-# assertions: 58.
+# code-extension-under-marked-bundle-stays-CODE guard x5 extensions).
 # Session C fix round, lane A additions: +8 tests (allowlist-flip guard —
 # extensionless/.ps1/.yml/Makefile/uppercase-.PDF under a marked bundle stay
 # CODE, a bundle name containing ".." or empty never reaches the marker
 # lookup, and a positive control confirming an allowlisted extension under a
-# marked bundle still classifies REFERENCE). Total assertions: 66.
+# marked bundle still classifies REFERENCE).
 # Session C code-gate r2 fix (HQ): +3 tests (dot-segment guard on the whole
 # path — `..` below a marked bundle escaping reference/, and `.` segments as
-# or below the bundle name, all stay CODE). Total assertions: 69.
-# Runner-attested 2026-08-30: 69/69.
+# or below the bundle name, all stay CODE).
+# C-4 fix (2026-08-31): +2 tests (backslash-pathspec normalization — a
+# backslash path classifies into the same bucket its forward-slash twin
+# would, instead of falling through to the *.md root-only DOC arm).
+# See the Results line at the end of a run for the current total — not
+# restated here as a fixed number (an unpinned count is a review finding,
+# G-RULES §G/ADR-013).
 
 LIB="$(cd "$(dirname "$0")" && pwd)/../hooks/lib/classify-changeset.sh"
 source "$LIB" || { echo "FAIL: could not source $LIB"; exit 1; }
@@ -107,6 +110,15 @@ test_classify "CODE: nested *.md in docs dir" "content/pages/article.md" 1 0
 test_classify "CODE: file in docs.md directory (no match)" "docs.md/README" 1 0
 test_classify "CODE: file in api.md directory (no match)" "api.md/guide.txt" 1 0
 test_classify "CODE: nested .md file in .md-named directory" "docs.md/file.md" 1 0
+
+# CODE/DOC bucket: backslash pathspec normalization (C-4, 2026-08-30) — a
+# Windows-style backslash path has no forward slash for the `*/*` nested
+# split or the `skills/*` etc. CODE arms to match, so it fell through to the
+# *.md root-only arm and misclassified DOC instead of nested CODE. The
+# classifier now normalizes `\` to `/` before the case ladder; a backslash
+# path classifies into the SAME bucket its forward-slash twin would.
+test_classify "CODE: backslash pathspec normalizes to nested-md CODE (skills\\g-review\\SKILL.md)" "skills\\g-review\\SKILL.md" 1 0
+test_classify "DOC: backslash pathspec classifies as its forward-slash twin (docs\\notes.md)" "docs\\notes.md" 0 1
 
 # CODE bucket: hooks/* directory
 test_classify "CODE: hooks/check-commit.sh" "hooks/check-commit.sh" 1 0
@@ -336,7 +348,7 @@ test_classify_r "CODE: uppercase .PDF extension under marked bundle stays CODE (
 
 # Case (5) — GUARD: a path with a `..`, `.` or empty segment ANYWHERE in it
 # (as the bundle name, or below a marked bundle) never reaches the marker
-# lookup — all five classify as CODE outright (fail-toward-deny before the
+# lookup — each classifies as CODE outright (fail-toward-deny before the
 # marker lookup is even attempted).
 # falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
 test_classify_r "CODE: bundle name containing .. never reaches marker lookup" \

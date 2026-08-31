@@ -5,13 +5,16 @@
 # context depth thresholds (amber/red) and offset calibration, session-mode
 # detection (conversation vs implementation), compaction escalation, milestone-
 # health assembly, worktree-bound sentinel read (ADR-004/005), and non-gating
-# exit-0 contract. Nudges tested: coverage, trim, align, handoff, roundtable,
-# listen mode. Direction-aware update-nudge cases (M46 W1 task 5): LATEST
-# newer/equal/older, pinning post-fix semver-comparison behavior.
+# exit-0 contract. Nudges tested: coverage, trim, align, handoff (block-scoped
+# ADR-variant vs generic, A-5), roundtable, listen mode. Direction-aware
+# update-nudge cases (M46 W1 task 5): LATEST newer/equal/older, pinning
+# post-fix semver-comparison behavior.
 #
-# Total assertions: 88
-# Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
-# finding-#20 cross-check that catches a suite silently dropping cases.
+# Assertion groups: numbered `# § N` section headings throughout the file body —
+# derive the section set from the file itself, never from this header.
+# See the Results line at the end of a run for the current total — not
+# restated here as a fixed number (an unpinned count is a review finding,
+# G-RULES §G/ADR-013).
 
 # Resolve script dir / hooks dir to ABSOLUTE paths exactly once, before any
 # fixture cd. Relative $0 would otherwise break after the sandbox cd below.
@@ -687,6 +690,123 @@ check_match "duplicate-heading warning: fires with two Active Session headings" 
 # restore at :242-247 — leaving the two-heading fixture in place would leak
 # a replace-never-append violation into sections that assume a well-formed
 # ROADMAP).
+cat > g-docs/ROADMAP.md <<'EOF'
+# ROADMAP
+## Active Session
+Active context:   · hooks/workflow-checkpoint.sh
+EOF
+
+# ============================================================================
+# § 22b. Handoff nudge — block-scoped, not whole-file (audit 2026-08-30
+# fable-f3-survives-skills-ledger Part 2 row 18 item 2 / A-5)
+# ============================================================================
+#
+# Pre-fix, `grep -qi 'verify ADR' g-docs/ROADMAP.md .claude/compact-state.md`
+# ran whole-file, so a `verify ADR` phrase anywhere in ROADMAP body prose (or
+# a stale compact-state.md snapshot) printed the ADR-variant nudge on every
+# fresh session regardless of whether the phrase was actually part of the
+# handed-off Next-up item. Post-fix, only the `## Active Session` block's
+# Next-up line(s) — and compact-state.md's mirrored "## Handoff at
+# compaction" section — are tested.
+
+echo "§ 22b. Handoff nudge — block-scoped Next-up test"
+
+# (a) Next-up line itself carries "verify ADR-014" — ADR-variant fires.
+rm -f .claude/session-prompt-count .claude/compact-state.md
+cat > g-docs/ROADMAP.md <<'EOF'
+# ROADMAP
+## Active Session
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HANDOFF — test | branch: feat/test
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Done this pass:   · fixture setup
+Next up:          · verify ADR-014 before continuing
+Active context:   · hooks/workflow-checkpoint.sh
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+EOF
+OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+# provenance: case (a) is the positive-path case -- the phrase legitimately
+# IS in the Next-up line, so this assertion stays green under the pre-fix
+# whole-file guard too (non-discriminating). The RED-proving probes are
+# cases (b)/(c) below -- probe run 2026-08-31, task-46 record
+# (task-46-checkpoint-nudge.md:86-90).
+check_match "A-5 (a): Next-up carries 'verify ADR' — ADR-variant nudge fires" \
+    "a handed-off ADR needs verifying first" "$OUTPUT"
+# falsifiability: this check_no_match is guard-shaped (passes by the generic
+# message NOT appearing) -- neutered the mutual exclusivity of the ADR/generic
+# branches in a scratch copy of hooks/workflow-checkpoint.sh (both branches
+# forced to always print), reproduced this fixture, confirmed RED: the
+# generic-absent assertion failed with "re-hydrate context before new work"
+# present in output while the ADR-variant assertion stayed green. Scratch
+# probe run 2026-08-31, production tree untouched
+# (g-docs/agent-output/wave-f3/task-49-marker-truth.md).
+check_no_match "A-5 (a): generic-only variant absent when the ADR variant correctly fires" \
+    "re-hydrate context before new work" "$OUTPUT"
+
+# (b) "verify ADR" appears ONLY in ROADMAP body prose, outside the Active
+# Session block — generic nudge fires, NOT the ADR variant.
+rm -f .claude/session-prompt-count .claude/compact-state.md
+cat > g-docs/ROADMAP.md <<'EOF'
+# ROADMAP
+## Active Session
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HANDOFF — test | branch: feat/test
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Done this pass:   · fixture setup
+Next up:          · write tests
+Active context:   · hooks/workflow-checkpoint.sh
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## Milestone Notes
+Remember to verify ADR-009 before the next release cut — this line lives in
+body prose, outside the Active Session block.
+EOF
+OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+check_match "A-5 (b): generic nudge fires when 'verify ADR' is only in body prose outside the block" \
+    "re-hydrate context before new work" "$OUTPUT"
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+check_no_match "A-5 (b): ADR-variant absent when the phrase sits outside the Active Session block" \
+    "a handed-off ADR needs verifying first" "$OUTPUT"
+
+# (c) .claude/compact-state.md carries "verify ADR" outside its own Next-up
+# line(s) (in the "## Recent commits" section) — generic nudge fires, NOT
+# the ADR variant. ROADMAP itself is clean (no "verify ADR" anywhere) so
+# only the compact-state.md path is under test here.
+rm -f .claude/session-prompt-count
+cat > g-docs/ROADMAP.md <<'EOF'
+# ROADMAP
+## Active Session
+Active context:   · hooks/workflow-checkpoint.sh
+EOF
+cat > .claude/compact-state.md <<'EOF'
+# Compact State — 2026-08-16T00:00:00Z
+
+## Branch
+main
+
+## Recent commits
+abc1234 verify ADR-014 fix
+
+## Handoff at compaction
+Done this pass:   · fixture setup
+Next up:          · write tests
+Active context:   · hooks/workflow-checkpoint.sh
+
+---
+*Written by pre-compact hook at 2026-08-16T00:00:00Z. Load this file at session start to recover context.*
+EOF
+OUTPUT=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+check_match "A-5 (c): generic nudge fires when compact-state.md carries 'verify ADR' outside its Next-up line" \
+    "re-hydrate context before new work" "$OUTPUT"
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+check_no_match "A-5 (c): ADR-variant absent when the phrase sits outside compact-state.md's Next-up line" \
+    "a handed-off ADR needs verifying first" "$OUTPUT"
+
+# Clean up compact-state.md and restore the clean single-heading ROADMAP for
+# §23 onward.
+rm -f .claude/compact-state.md .claude/session-prompt-count
 cat > g-docs/ROADMAP.md <<'EOF'
 # ROADMAP
 ## Active Session

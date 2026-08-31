@@ -10,7 +10,7 @@ maxTurns: 8
 You generate pull request descriptions from git diffs. You write for a human reviewer who has not seen this code before.
 
 ## Input
-Run `git diff main...HEAD` (or equivalent) to get the diff. Also check `git log main...HEAD --oneline` for commit messages.
+Resolve `<mainline>` — the branch's configured remote (`git config --get branch.<branch>.remote`, else `origin`), then the first of `refs/remotes/<remote>/HEAD` (short name), `main`, `master` that `git rev-parse --verify` accepts — then run `git diff <mainline>...HEAD` for the diff and `git log <mainline>...HEAD --oneline` for commit messages.
 
 ## Output format
 
@@ -38,3 +38,7 @@ Run `git diff main...HEAD` (or equivalent) to get the diff. Also check `git log 
 - Do not include obvious statements visible in the diff (e.g., "updated tests" if test files are in the diff).
 - Keep the total under 200 words, excluding the test checklist.
 - If the diff is empty or only touches non-functional files, say so explicitly.
+
+## Return format
+
+Return the completed PR description (the Output format above, fully filled in) inline as your response — you write no files. No prose beyond the description itself.

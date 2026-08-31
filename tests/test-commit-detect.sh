@@ -281,8 +281,19 @@ test_pathspecs "HEREDOC-o: git commit -F - docs/README.md <<'MSG' (real pathspec
 # that direction if the strip logic changed later. Empirically confirmed
 # 2026-08-27: pins CURRENT behaviour only, does not change
 # hooks/lib/commit-detect.sh.
-test_pathspecs "HEREDOC-p: git commit -m x <<A <<B (two heredoc operators, one opener line) leaks second operator/body/terminator as unstripped pathspecs (fail-toward-deny)" \
-    $'git commit -m x <<A <<B\nbody A line\nA\nbody B line\nB' $'<<B\nbody\nB\nline\nB'
+# Expected value NARROWED 2026-08-31 by the row-16 fix (extract_pathspecs
+# now stops at the first NL sentinel — see _GF_CD_NL_SENTINEL): the leftover
+# `<<A <<B\nbody B line\nB` text still contains a real unquoted newline right
+# after the leaked `<<B` token, so the walk now stops there instead of
+# continuing into `body`/`B`/`line`/`B`. This is a strictly SMALLER leak of
+# the same still-open, still-not-blocking gap (fewer tokens reach
+# extract_pathspecs' output, not more) — gate strength is unaffected either
+# way, since check-commit.sh's unmatched-path default already classified
+# every leaked token as CODE (fail-toward-deny) before and after. Confirmed
+# empirically: this exact narrowed value is what the fixed lib now returns
+# (g-docs/agent-output/wave-f3/task-44-hooks.md).
+test_pathspecs "HEREDOC-p: git commit -m x <<A <<B (two heredoc operators, one opener line) leaks second operator as an unstripped pathspec, narrowed by the row-16 NL-sentinel stop (fail-toward-deny)" \
+    $'git commit -m x <<A <<B\nbody A line\nA\nbody B line\nB' '<<B'
 
 # Same command string: is_git_commit must still return DETECTED despite the
 # pathspec leak above — classification stays fail-toward-deny either way.
@@ -396,6 +407,22 @@ test_overrides_hookspath_true "HOOKSPATH: GIT_CONFIG_KEY_0=core.hooksPath env tr
 
 # falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
 test_overrides_hookspath_false "HOOKSPATH: -c user.name=x (unrelated config key) not flagged" 'git -c user.name=x commit -m x'
+
+# ── Group ROW16 — trailing-command false deny (todo row 16, 2026-08-30) ──────
+# A gated `git commit` followed on the NEXT LINE by a trailing command (e.g.
+# `echo "rc=$?"`) had that trailing command's tokens walked by
+# extract_pathspecs as false pathspecs — the deliberate whole-string newline
+# flatten (needed so `git\ncommit -m x` still detects, see the P/
+# NEWLINE-BOUNDARY groups above) makes a real unquoted line break invisible
+# to every walk, so the trailing command's tokens looked like positional
+# pathspecs. is_git_commit must stay DETECTED (this really is a git commit);
+# extract_pathspecs must emit nothing past the real line break, since real
+# shell argv never continues past an unquoted newline.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+test_detected "ROW16: git commit followed by echo on the next line — is_git_commit still DETECTED" \
+    $'git commit -m "x"\necho "rc=$?"'
+test_pathspecs "ROW16: git commit followed by echo on the next line emits no pathspecs (no trailing-command leak)" \
+    $'git commit -m "x"\necho "rc=$?"' ""
 
 # ── Summary ───────────────────────────────────────────────────────────────────────
 

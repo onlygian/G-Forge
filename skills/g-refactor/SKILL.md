@@ -90,7 +90,7 @@ Dispatch `spec-writer` with:
 > 4. Flag any step that carries HIGH change risk due to test coverage gaps.
 > 5. If the scope would produce >10 implementation steps, split into waves and note which steps are independent.
 
-Wait for spec-writer to return. spec-writer holds no Write tool (reviewer-class per the installed `.claude/rules/architecture-<stack>.md` — in this repo's self-hosted case `profiles/claude-plugin/rules/architecture.md:6` and `:19`) — it returns the full spec content in its result rather than writing the file itself. Write that returned content to the `output_file` path assigned above using your own Write tool before proceeding to Step 6.
+Wait for spec-writer to return. spec-writer holds no Write tool (reviewer-class per the installed `.claude/rules/architecture-<stack>.md` — in this repo's self-hosted case the `agents/` layer-map bullet and the **Agent rule** paragraph of `profiles/claude-plugin/rules/architecture.md`) — it returns the full spec content in its result rather than writing the file itself. Write that returned content to the `output_file` path assigned above using your own Write tool before proceeding to Step 6.
 
 ## Step 6 — Human approval gate
 
@@ -152,7 +152,7 @@ If code-lead issues **MERGE READY**: report success and stop.
 If code-lead issues **HOLD**: present the blocking findings. Ask:
 > "The review has [N] blocking findings. Fix them now and re-run `/g-review`, or open a follow-up task? (fix / defer)"
 
-- **"fix"**: for each blocking finding, dispatch `spec-writer` to produce a targeted fix spec — assign each an `output_file` path following the Step 5 convention (e.g. `g-docs/agent-output/g-refactor/spec-writer-[YYYY-MM-DD]-[slug]-fix.md`) and write the returned content there as in Step 5 — get approval (Step 6 abbreviated), execute. Re-run `/g-review` after all fixes.
+- **"fix"**: for each blocking finding, dispatch `spec-writer` to produce a targeted fix spec — assign each an `output_file` path following the Step 5 convention (one per finding, discriminated: `g-docs/agent-output/g-refactor/spec-writer-[YYYY-MM-DD]-[slug]-fix-r[N].md`, `[N]` = 1 + the highest existing ordinal for that date+slug — never overwrite a prior fix spec) and write the returned content there as in Step 5 — get approval (Step 6 abbreviated), execute. Re-run `/g-review` after all fixes.
 - **"defer"**: add each unresolved finding as a follow-up task to `g-docs/todo.md`. Stop.
 
 ## Step 9 — Update the milestone (if launched from audit/optimize milestone)

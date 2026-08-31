@@ -35,7 +35,7 @@ For each task in the wave, check its done condition mechanically:
 - Report every result: `[task N] done condition: PASS (attested) | PASS (verified) | FAIL — [detail]`
 
 ### Step 2 — Review the diff
-Run `git diff main...HEAD` (or the branch range provided in the calling prompt). Review the diff directly — cover every axis below:
+Run `git diff <mainline>...HEAD` (or the branch range provided in the calling prompt) — resolve `<mainline>` once: the current branch's configured remote (`git config --get branch.<branch>.remote`, else `origin`), then the first of `refs/remotes/<remote>/HEAD` (short name, remote prefix stripped), `main`, `master` that `git rev-parse --verify` accepts. Review the diff directly — cover every axis below:
 - **Logic errors**: off-by-one, wrong operators, always-true/false conditions, incorrect precedence
 - **Security**: injection vectors, hardcoded secrets, missing auth checks, unvalidated external input
 - **Performance**: O(n²) loops over unbounded collections, N+1 query patterns, hot-path waste

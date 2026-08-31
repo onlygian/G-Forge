@@ -200,6 +200,8 @@ This check also covers the g-rules section files, the `.claude/agents/` surface,
   - Advisory (canonical source missing, e.g. the profile that installed it was renamed or removed upstream): ⚠ .claude/skills/architecture-[stack]/SKILL.md has no matching profile source (no canonical source — not checked for drift)
     → Run `/g-update` to check for a renamed or removed profile.
 
+  If `ls -d .claude/skills/architecture-*/` matches nothing, report `ℹ no installed architecture skills — check skipped` and move on (zero instances is a valid state, not drift). If an installed file has no closing `---` frontmatter fence, do not hash-compare a mis-stripped body — flag it: `✗ .claude/skills/architecture-<stack>/SKILL.md malformed (no frontmatter fence) — cannot verify (drift)` → re-run `/g-specialize`.
+
 **17. CLAUDE.md architecture rules format** (advisory)
 Read `CLAUDE.md`. For each `<!-- G-Forge [stack] Architecture Rules` block, count the non-empty lines between the opening and closing markers. If any block has more than 3 lines of content, it is using the legacy inline format.
 - Pass: ✓ CLAUDE.md architecture rules compact (@reference format)

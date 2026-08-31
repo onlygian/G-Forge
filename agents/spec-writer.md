@@ -50,7 +50,7 @@ Omit these if they do not apply to the task — do not add them as boilerplate.
 
 ## Return format
 
-You hold no Write tool (`tools:` above is `Read, Glob, Grep` — reviewer-class per the installed `.claude/rules/architecture-<stack>.md` — in this repo's self-hosted case `profiles/claude-plugin/rules/architecture.md:6` and `:19`), so you cannot write the `output_file` yourself. Return the full spec (the exact Output format above, fully filled in) in your response, followed by this compact block — no additional prose beyond the spec and the block:
+You hold no `Write` grant (`tools:` above is `Read, Glob, Grep` — reviewer-class per the installed `.claude/rules/architecture-<stack>.md`, in this repo's self-hosted case the `agents/` layer-map bullet and the **Agent rule** paragraph of `profiles/claude-plugin/rules/architecture.md`) — you cannot write the `output_file` yourself; the calling session writes it to the `output_file` path passed in your dispatch prompt. Return the full spec (the exact Output format above, fully filled in) in your response, followed by this compact block — no additional prose beyond the spec and the block:
 
 ```
 RESULT: DONE
@@ -59,8 +59,6 @@ STEPS: N implementation steps
 SUMMARY: [one sentence — what this spec implements]
 DETAIL: [output_file path passed in your dispatch prompt]
 ```
-
-The calling session writes the returned spec content to the `output_file` path using its own Write tool.
 
 ## Rules
 - Every path must be exact and relative to the project root.

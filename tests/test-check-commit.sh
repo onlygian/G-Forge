@@ -539,6 +539,49 @@ run "light tier: --no-verify commit allowed (gate off, predicate never evaluated
     0
 printf 'full\n' > .claude/integration-tier
 
+# 33: Regression — C-3 fix: `-a` inside an attached-value cluster
+# (`-am"msg"`, no space before the glued message) is still detected as the
+# -a form and widens the classifier to the modified-but-unstaged tracked
+# file — same fixture shape as case 21. Before the C-3 fix, the cluster's
+# trailing anchor required whitespace or end-of-string immediately after it,
+# which a glued value never provides, so this would wrongly pass as doc-only.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+echo "approved" > "$DOCS_SENTINEL"
+mkdir -p hooks
+printf 'x\n' > hooks/thing.sh
+git add hooks/thing.sh >/dev/null 2>&1
+git commit -q -m "case 33: track code file" 2>/dev/null
+printf 'y\n' > hooks/thing.sh
+git reset -q 2>/dev/null
+mkdir -p g-docs
+printf 'x\n' > g-docs/notes.md
+git add g-docs/notes.md >/dev/null 2>&1
+run 'git commit -am"fix: code + docs" (attached-value -a cluster) blocked when only doc sentinel present' \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit -am\"fix: code + docs\""}}' \
+    2
+rm -f "$DOCS_SENTINEL"
+
+# 34: Regression — C-3 fix, space-separated variant: `-am msg` (the `m`
+# value is a separate token, no glued value) already matched before the fix
+# since the cluster is followed by whitespace — kept as an explicit
+# regression pin alongside case 33's glued-value variant, same fixture shape,
+# so both forms the C-3 fix note names stay pinned side by side.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+echo "approved" > "$DOCS_SENTINEL"
+mkdir -p hooks
+printf 'x\n' > hooks/thing.sh
+git add hooks/thing.sh >/dev/null 2>&1
+git commit -q -m "case 34: track code file" 2>/dev/null
+printf 'y\n' > hooks/thing.sh
+git reset -q 2>/dev/null
+mkdir -p g-docs
+printf 'x\n' > g-docs/notes.md
+git add g-docs/notes.md >/dev/null 2>&1
+run "git commit -am msg (space-separated -a cluster) blocked when only doc sentinel present" \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit -am msg"}}' \
+    2
+rm -f "$DOCS_SENTINEL"
+
 # Reset the index so any later cases see a clean (empty) staged set.
 stage
 

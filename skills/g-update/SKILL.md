@@ -252,6 +252,8 @@ Report: `✓ .claude/rules/[filename] — updated` for each updated file.
 3. Replace the body with the current `[plugin-root]/profiles/<stack>/rules/architecture.md` content, verbatim.
 4. If `[plugin-root]/profiles/<stack>/rules/architecture.md` no longer exists (profile renamed or removed), skip it and report: "Could not find a current profile for `architecture-<stack>` — skipping. It may have been renamed or removed." Do not delete the file.
 
+If no `.claude/skills/architecture-*/` directories exist, skip 6c with a one-line report (`ℹ no installed architecture skills — nothing to realign`). If an installed file has no closing `---` frontmatter fence, skip it and report it malformed — do not guess at a frontmatter/body boundary; `/g-specialize` regenerates it cleanly.
+
 Report: `✓ .claude/skills/architecture-[stack]/SKILL.md — realigned` for each updated file.
 
 ---
