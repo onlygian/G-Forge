@@ -173,6 +173,92 @@ test_pathspecs "PS: git commit -m msg file1.txt (positional pathspec without --)
 test_pathspecs "PS-QUOTED: git commit -- \"file with spaces.txt\"" 'git commit -- "file with spaces.txt"' "file with spaces.txt"
 test_pathspecs "PS-QUOTED: git commit with quoted pathspec containing shell chars" "git commit -- \"path/with\$vars.txt\"" "path/with\$vars.txt"
 
+# ── Group PS-QUOTED-PAD — quoted-pathspec fidelity vs boundary padding (M52 Session D todo row 19; F1-r1 Minor: blind pad mutated quoted values) ─
+# The boundary pad in _commit_detect_scan_segments must never mutate bytes
+# INSIDE a quoted region — only an unquoted, unescaped boundary character
+# becomes its own token.
+
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"docs/report (final).md\" (parens stay inside quotes)" 'git commit -- "docs/report (final).md"' "docs/report (final).md"
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"a&b.md\" (ampersand stays inside quotes)" 'git commit -- "a&b.md"' "a&b.md"
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"brace {x}.md\" (braces stay inside quotes)" 'git commit -- "brace {x}.md"' "brace {x}.md"
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"semi;colon.md\" (semicolon stays inside quotes)" 'git commit -- "semi;colon.md"' "semi;colon.md"
+test_detected "PS-QUOTED-PAD: git commit -- \"docs/report (final).md\" still DETECTED" 'git commit -- "docs/report (final).md"'
+test_pathspecs "PS-QUOTED-PAD: git commit -- docs/file\\(1\\).md (unquoted backslash-escaped paren stays literal)" 'git commit -- docs/file\(1\).md' "docs/file(1).md"
+
+# Fidelity-gap close (Session D code gate r1): quoted `|` and quoted
+# backtick were the enumerated boundary characters still without a fidelity
+# pin (both already behaved correctly, just unpinned). With these two,
+# every character of the boundary set has a quoted-fidelity pin in this
+# group.
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"pipe|name.md\" (pipe stays inside quotes)" 'git commit -- "pipe|name.md"' "pipe|name.md"
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"back\`tick.md\" (backtick stays inside quotes)" 'git commit -- "back`tick.md"' 'back`tick.md'
+
+# Boundary-set behavioral coverage (Session D code gate r2 finding — the
+# boundary set is spelled in both the awk pad and _commit_detect_scan_segments'
+# case): one assertion per character of the hand-maintained list below —
+# each unquoted glued boundary must still split a following `git commit`
+# into a detected segment. The list is a third spelling of the set and
+# makes no agreement-oracle claim in either direction: additions are
+# appended by hand, and a removal can stay green through another detection
+# arm (e.g. the glued-`;` suffix arm). Fixed inputs only (§D).
+for _cd_bchar in '&' '|' ';' '(' ')' '{' '}' '`'; do
+    test_detected "PS-QUOTED-PAD-BOUNDARY: x${_cd_bchar}git commit -m t (glued '${_cd_bchar}' still a boundary)" "x${_cd_bchar}git commit -m t"
+done
+
+# Sentinel-mutation residual (Session D code gate r1 Major 2 fix): hooks/lib/commit-detect.sh's
+# row-16 newline-sentinel substitution (in _commit_detect_scan_segments,
+# directly above the pad call) is BLIND, not quote-aware
+# (unlike the boundary pad above) — a sentinel landing INSIDE a quoted value
+# is not folded back out, it gets tokenized as part of that token's VALUE.
+# Pinning CURRENT behavior for a quoted pathspec containing a literal
+# newline: a positive equality assertion of known, accepted, pre-existing
+# behavior (fails toward deny, not toward a silent miss) — not a claim that
+# it is desirable. No falsifiability marker: this pins what the code does
+# today, not a guard/negative case.
+test_pathspecs "PS-QUOTED-PAD: git commit -- quoted pathspec containing a literal newline (sentinel mutates the value, pinned known residual, Session D gate r1 Major 2)" \
+    $'git commit -- "weird\nname.md"' "weird __GF_CD_NL_SENTINEL__ name.md"
+
+# Pad-boundary timing guard (Session D code gate r1 Major 1 fix): _commit_detect_pad_boundaries
+# was reimplemented as a single-pass awk program (was a bash character loop,
+# quadratic on long input — measured live 6ms@132ch -> 460ms@8012ch,
+# end-to-end is_git_commit 1174ms@12013ch vs the retired sed's flat
+# ~41-46ms). GF_PAD_TIMING_MS: loaded-worst observed for the awk version at
+# ~12KB (nproc-core busy-loop saturating the machine during the run) was
+# 1022ms; bound set generously above 2x that floor (2044ms) for CI/dev-machine
+# headroom, per the repo's timing-assertion convention
+# (profiles/claude-plugin/rules/architecture.md) — 2026-08-31.
+# Instrument scope, stated precisely (§H instrument-claim rule): this guard
+# is a CEILING on gross pathological cost at ~12KB, not a discriminator of
+# the retired quadratic implementation at this size — that one measured
+# 1174ms quiet end-to-end here and would also pass this bound. The
+# PS-QUOTED-PAD fidelity pins carry the correctness contract; this guard
+# fails only on runaway growth well past the measured loaded-worst.
+GF_PAD_TIMING_MS=6000
+
+# Deterministic ~12KB single quoted pathspec (fixed repeated pattern, no
+# Date.now()/random per G-RULES H) — isolates the pad function's per-byte
+# cost inside a long quoted region, the same shape the gate measured.
+_cd_timing_unit='ab(c)d{e}f&g|h;i`j'
+_cd_timing_body=""
+while [ "${#_cd_timing_body}" -lt 12000 ]; do
+    _cd_timing_body+="$_cd_timing_unit"
+done
+_cd_timing_cmd="git commit -m x -- \"${_cd_timing_body}.md\""
+
+_cd_timing_start=$(date +%s%3N)
+is_git_commit "$_cd_timing_cmd" > /dev/null
+_cd_timing_end=$(date +%s%3N)
+_cd_timing_elapsed=$((_cd_timing_end - _cd_timing_start))
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+if [ "$_cd_timing_elapsed" -lt "$GF_PAD_TIMING_MS" ]; then
+    echo "PASS: PS-QUOTED-PAD-TIMING: is_git_commit on a ~12KB quoted pathspec stays under ${GF_PAD_TIMING_MS}ms (${_cd_timing_elapsed}ms)"
+    PASS=$((PASS+1))
+else
+    echo "FAIL: PS-QUOTED-PAD-TIMING: is_git_commit took ${_cd_timing_elapsed}ms, expected <${GF_PAD_TIMING_MS}ms"
+    FAIL=$((FAIL+1))
+fi
+
 # ── Group HEREDOC — heredoc-content false positive, M-audit finding #21 residual ─
 # Characterized in g-docs/agent-output/wave-w2-1/heredoc-characterization.md;
 # fixed in hooks/lib/commit-detect.sh via _commit_detect_strip_heredocs.

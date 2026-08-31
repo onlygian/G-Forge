@@ -265,6 +265,73 @@ _commit_detect_walk_core() {
     return 0
 }
 
+# _commit_detect_pad_boundaries <raw> — quote-aware boundary pad (M52
+# Session D, todo row 19; F1-r1 Minor — an interim bash-loop version was
+# quadratic on long input and was replaced by this awk pass at the same
+# session's code gate). Pads each unquoted, unescaped boundary
+# character with surrounding spaces so it isolates as its own token; the
+# boundary set itself is owned by `_commit_detect_scan_segments`'s `case`
+# below, not restated here. Quote rules mirror xargs's own (verified live
+# against _commit_detect_tokenize before this was written):
+# outside quotes `\` escapes exactly the next character; `'`/`"` open a
+# quote state only their own character closes; backslash has NO meaning
+# inside either quote state.
+# Contract: for NEWLINE-FREE input, tokenizing the padded string yields
+# exactly the tokens tokenizing the unpadded string would, except that
+# each unquoted, unescaped boundary character becomes its own boundary
+# token. The precondition is load-bearing: awk's default record split
+# makes a literal LF a record boundary (the byte is dropped and quote
+# state resets), so equivalence is NOT guaranteed for input containing
+# newlines. The sole caller (`_commit_detect_scan_segments`) substitutes
+# the NL sentinel for every newline BEFORE calling this — that ordering is
+# what discharges the precondition.
+#
+# Implementation: one `awk` pass under LC_ALL=C. Byte-wise walking is safe
+# because every byte the state machine reacts to (quotes, backslash, the
+# boundary set) is plain ASCII and a UTF-8 continuation byte is always
+# >= 0x80, so it can never falsely match. O(n): each byte visited once,
+# output built by awk string concatenation and printed at END — never by
+# repeated shell-level `+=` (the bash loop's quadratic mechanism).
+_commit_detect_pad_boundaries() {
+    printf '%s' "$1" | LC_ALL=C awk '
+    {
+        n = length($0)
+        st = "u"
+        seg = ""
+        i = 1
+        while (i <= n) {
+            c = substr($0, i, 1)
+            if (st == "u") {
+                if (c == "\\") {
+                    seg = seg c
+                    i++
+                    if (i <= n) seg = seg substr($0, i, 1)
+                } else if (c == "\047") {
+                    seg = seg c
+                    st = "s"
+                } else if (c == "\042") {
+                    seg = seg c
+                    st = "d"
+                } else if (c == "&" || c == "|" || c == ";" || c == "(" || c == ")" || c == "{" || c == "}" || c == "`") {
+                    seg = seg " " c " "
+                } else {
+                    seg = seg c
+                }
+            } else if (st == "s") {
+                seg = seg c
+                if (c == "\047") st = "u"
+            } else {
+                seg = seg c
+                if (c == "\042") st = "u"
+            }
+            i++
+        }
+        buf = buf seg
+    }
+    END { printf "%s", buf }
+    '
+}
+
 # _commit_detect_scan_segments <raw> — normalize <raw>, tokenize it, and
 # split the token stream into segments at shell command-separator
 # boundaries: the tokens `&&`, `||`, `;`, `|`, `&`, and a `;` glued onto the
@@ -277,41 +344,30 @@ _commit_detect_walk_core() {
 # `true|git commit`, `echo hi;git commit`) is NOT isolated as its own
 # xargs token — it survives as part of a larger word (`x&&git`, `true|git`,
 # `hi;git`) and the boundary `case` below never sees it, so the chained
-# `git commit` slips through undetected. Fixed by a `sed` pass that pads
-# every bare `&`, `|`, `;` in the RAW string with surrounding spaces
-# BEFORE tokenizing — done on the string, never on the already-split
-# tokens, because after xargs a quoted `"a&&b"` and a glued `a&&b` are
-# indistinguishable as tokens; splitting post-tokenization would corrupt
-# quoted content with no way back. Padding on the raw string is safe
-# because it composes correctly with xargs's own quote handling: the sed
-# pass doesn't (and doesn't need to) know about quotes — it blindly pads
-# every bare operator character, including ones that happen to sit inside
-# a quoted region (e.g. a commit message `-m "a && b"`). But the quote
-# characters themselves are untouched by sed, so when xargs tokenizes the
-# padded string it still sees the same opening/closing quotes and folds
-# everything between them back into ONE token — the extra padding just
-# becomes harmless extra whitespace inside that token's value. So an
-# operator glued OUTSIDE quotes becomes a real boundary token, while the
-# same character sitting INSIDE quotes never becomes its own token and
-# so is never treated as a boundary — a real commit message containing
-# `&&`/`|`/`;` is never split. `&&`/`||` need no special-case handling:
-# padding each `&` independently turns `&&` into two adjacent `&` tokens
-# (two boundaries with an empty segment between them, which the loop below
-# already skips via the `${#_cd_seg[@]} -gt 0` guard); same for `||`.
+# `git commit` slips through undetected. Fixed by padding every bare `&`,
+# `|`, `;` in the RAW string with surrounding spaces BEFORE tokenizing —
+# done on the string, never on the already-split tokens, because after
+# xargs a quoted `"a&&b"` and a glued `a&&b` are indistinguishable as
+# tokens; splitting post-tokenization would corrupt quoted content with no
+# way back. Padding on the raw string via `_commit_detect_pad_boundaries`
+# (quote-aware, see its own header) leaves an operator sitting INSIDE a
+# quoted region (e.g. a commit message `-m "a && b"`) byte-identical and
+# folded back into ONE token by the tokenizer, while the same character
+# OUTSIDE quotes becomes a real boundary token — a real commit message
+# containing `&&`/`|`/`;` is never split. `&&`/`||` need no special-case
+# handling: padding each `&` independently turns `&&` into two adjacent `&`
+# tokens (two boundaries with an empty segment between them, which the loop
+# below already skips via the `${#_cd_seg[@]} -gt 0` guard); same for `||`.
 #
 # WRAPPER-SHAPE NORMALIZATION (F1-3): the same reasoning extends to `(`, `)`,
 # `{`, `}`, and a backtick — a `git commit` wrapped in a subshell
 # `(git commit -m x)`, a command substitution `$(git commit -m x)` or
 # `` `git commit -m x` ``, or a brace group `{ git commit -m x; }` is
 # likewise invisible to the boundary `case` unless these characters are
-# padded into their own tokens first. Same sed pass, same quote-safety
-# argument: a message body containing a literal `(`/`)`/`{`/`}`/backtick
+# padded into their own tokens first. Same pad pass, same quote-safety
+# guarantee: a message body containing a literal `(`/`)`/`{`/`}`/backtick
 # (e.g. `-m "a (b) {c}"`) stays inside its quotes and folds back into one
 # token, so it is never mistaken for a wrapper boundary.
-#
-# NOTE: an unescaped `&` in a sed REPLACEMENT means "the matched text" —
-# the `&` replacement below is written `s/&/ \& /g` (escaped) so it
-# inserts a literal ampersand rather than relying on that coincidence.
 #
 # Runs _commit_detect_walk_core on each segment in order and stops at the
 # FIRST one that resolves to a real `git commit`: `_CD_TOKENS`/`_CD_N`/
@@ -324,18 +380,30 @@ _commit_detect_walk_core() {
 _commit_detect_scan_segments() {
     local raw="$1"
     # Row 16 fix: mark every literal newline with the out-of-band sentinel
-    # BEFORE the operator-padding sed pass below, so a real (unquoted) line
+    # BEFORE the operator-padding pass below, so a real (unquoted) line
     # break survives tokenization as a standalone token instead of vanishing
-    # as ordinary whitespace — see _GF_CD_NL_SENTINEL's header comment. Blind
-    # substring replacement, same quote-safety argument as the sed padding
-    # below: the quote-aware tokenizer (_commit_detect_tokenize, via xargs)
-    # folds a sentinel sitting INSIDE an open quote back into that one
-    # token's value (never its own token) while a sentinel OUTSIDE quotes
-    # isolates as its own token — exactly the "unquoted newline" signal this
-    # fix needs, without this file hand-rolling its own quote tracking.
+    # as ordinary whitespace — see _GF_CD_NL_SENTINEL's header comment. This
+    # substring replacement is BLIND, not quote-aware (unlike the boundary
+    # pad below, which had to become quote-aware — todo row 19): a sentinel
+    # landing INSIDE an open quote is not folded back out, it stays put and
+    # gets tokenized as part of that one token's VALUE, mutating it. Live
+    # counter-example (gate-verified, M52 Session D): a quoted pathspec containing a
+    # literal newline, `git commit -- "weird\nname.md"`, extracts as
+    # `weird __GF_CD_NL_SENTINEL__ name.md` — the sentinel text embedded in
+    # the value instead of a clean split. This is pre-existing, rare
+    # (requires an actual embedded newline inside a quoted argv value), and
+    # fails toward deny, not toward a silent miss — accepted as a deliberate
+    # trade: the sentinel must survive tokenization to mark an unquoted line
+    # break, and doing that without hand-rolling a second quote-tracking
+    # pass here means accepting this mutation as the cost. Pinned as CURRENT
+    # behavior (not "safe") in tests/test-commit-detect.sh's PS-QUOTED-PAD
+    # group — see the case there for the exact expected output.
     raw="${raw//$'\n'/ $_GF_CD_NL_SENTINEL }"
     local _cd_norm
-    _cd_norm=$(printf '%s' "$raw" | sed -e 's/&/ \& /g' -e 's/|/ | /g' -e 's/;/ ; /g' -e 's/(/ ( /g' -e 's/)/ ) /g' -e 's/{/ { /g' -e 's/}/ } /g' -e 's/`/ ` /g')
+    # Ordering is load-bearing: the sentinel substitution above removed every
+    # literal newline, which is what discharges _commit_detect_pad_boundaries'
+    # newline-free input precondition (see its header).
+    _cd_norm=$(_commit_detect_pad_boundaries "$raw")
 
     local -a _cd_flat=()
     while IFS= read -r _cd_tok; do
