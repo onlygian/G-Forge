@@ -12,6 +12,51 @@
 #   is_git_commit <cmd>      — return 0 iff <cmd> really invokes `git commit`
 #   extract_pathspecs <cmd>  — print, one per line, <cmd>'s positional
 #                              pathspec arguments (assumes is_git_commit true)
+#   gf_commit_skips_hooks <cmd>          — return 0 iff <cmd> is a real
+#                                          `git commit` carrying --no-verify
+#                                          (or any prefix of it the function's
+#                                          `case` arm lists — every prefix, so
+#                                          the arm never depends on which ones
+#                                          git treats as ambiguous), or a
+#                                          single-dash short-flag
+#                                          cluster in which `n` appears before
+#                                          any value-taking short flag — the
+#                                          set is the one the function's own
+#                                          cluster-walk `case` arm names; a
+#                                          value-taking flag consumes the rest
+#                                          of the cluster, so `-mnote` is a
+#                                          message and `-na` is a skip. Both
+#                                          skip the native ADR-004 pre-commit
+#                                          hook (F1-2). False on a non-commit
+#                                          or a commit with no such flag.
+#   gf_commit_overrides_hookspath <cmd>  — return 0 iff <cmd> is a real
+#                                          `git commit` whose tokens BEFORE
+#                                          `commit` name core.hooksPath (key
+#                                          case-insensitive) in any of the
+#                                          forms the function's `case` arms
+#                                          match — a global `-c` (separate or
+#                                          glued value) or an env-assignment
+#                                          prefix token; each redirects git to
+#                                          skip the same native hook (F1-2).
+#                                          False otherwise.
+
+# _GF_CD_NL_SENTINEL — out-of-band marker inserted in place of every UNQUOTED
+# newline before tokenization (row 16 fix, 2026-08-31): the deliberate
+# whole-string newline flatten below (_commit_detect_scan_segments) makes a
+# real unquoted line break invisible to every walk — needed so `git\ncommit
+# -m x` still detects (see tests/test-commit-detect.sh's Group P / NEWLINE-
+# BOUNDARY pins) — but that also let a gated `git commit` followed on the
+# NEXT LINE by a trailing command (e.g. `echo "rc=$?"`) have that command's
+# tokens walked by extract_pathspecs as false pathspecs (todo row 16). The
+# sentinel restores the line break as a real token: is_git_commit /
+# gf_commit_skips_hooks / gf_commit_overrides_hookspath (and
+# _commit_detect_walk_core's own internal walk) transparently skip it — same
+# detection outcome as before this fix — while extract_pathspecs stops dead
+# at the first one, since real shell argv never continues past an unquoted
+# newline. An unlikely-to-collide plain-word literal, not a control
+# character — a real pathspec or message token equal to this exact string is
+# the only way to defeat it.
+_GF_CD_NL_SENTINEL="__GF_CD_NL_SENTINEL__"
 
 # _commit_detect_tokenize <cmd> — split <cmd> into argv-like tokens, one per
 # output line. Uses `xargs -n1` (shell-style quote/whitespace splitting)
@@ -23,8 +68,21 @@
 # partial tokens, not zero tokens. That partial argv typically still starts
 # `git commit ...` and so is typically DETECTED: fail-toward-deny, the safe
 # direction for a commit gate.
+#
+# F1-2 fix: `xargs -n1` with NO command given runs its default, `echo` — GNU
+# coreutils `echo`, not the bash builtin — and GNU `echo` treats a bare `-n`
+# (also `-e`, `-E`, `--help`, `--version`, ...) argument as ITS OWN flag
+# rather than printing it as literal output, so that token vanished from the
+# tokenized stream entirely (discovered live: `git commit -n -m x` tokenized
+# to `git commit -m x`, silently dropping the very flag
+# gf_commit_skips_hooks needs to see). Passing `printf '%s\n'` explicitly as
+# the command xargs runs sidesteps this — printf has no flag-like arguments
+# of its own to swallow, so every token, including a bare `-n`, reaches the
+# output unchanged. Malformed-input behavior (partial tokens + stderr error)
+# is unaffected — that error path is xargs's own quote handling, not the
+# command it invokes.
 _commit_detect_tokenize() {
-    printf '%s' "$1" | xargs -n1 2>/dev/null
+    printf '%s' "$1" | xargs -n1 printf '%s\n' 2>/dev/null
 }
 
 # _commit_detect_is_var_assign <tok> — true iff <tok> is a shell env-style
@@ -61,6 +119,15 @@ _commit_detect_walk_core() {
     _CD_OK=0
     _CD_IDX=0
     local i=0
+
+    # Row 16 fix: skip any leading NL sentinels (e.g. a command that opens
+    # with a real newline, `\ngit commit -m x`) — this walk's own "is this
+    # git commit" detection is unaffected by where line breaks fell in the
+    # original command; only extract_pathspecs (below) treats a sentinel as
+    # a stop.
+    while [ "$i" -lt "$_CD_N" ] && [ "${_CD_TOKENS[$i]}" = "$_GF_CD_NL_SENTINEL" ]; do
+        i=$((i + 1))
+    done
 
     # Strip leading VAR=val assignments (env-style prefix, e.g. `FOO=bar git commit`).
     while [ "$i" -lt "$_CD_N" ] && _commit_detect_is_var_assign "${_CD_TOKENS[$i]}"; do
@@ -104,6 +171,32 @@ _commit_detect_walk_core() {
 
     [ "$i" -lt "$_CD_N" ] || return 0
 
+    # F1-3: strip a bounded run of "transparent" prefix tokens — each of
+    # these wraps or introduces a command without changing which program
+    # actually runs (an `if`/`elif`/`while`/`until` conditional test, a `!`
+    # negation, `command`/`exec` wrapping, `time`/`nohup`/`builtin`
+    # instrumentation, or a bare `$(` subshell/command-substitution opener —
+    # normally split off as its own boundary token by the paren padding in
+    # _commit_detect_scan_segments, but stripped here too for any caller that
+    # hands this function an unpadded segment directly). Closed on purpose —
+    # no general "skip unknown words", which would let arbitrary tokens
+    # masquerade as transparent and silently swallow a real command. Runs
+    # AFTER the var-assign/env strip above and BEFORE the `git` test below, so
+    # `if git commit`, `command git commit`, `exec git commit`, `time git
+    # commit`, and `$( git commit` all still land on the `git` token next.
+    while [ "$i" -lt "$_CD_N" ]; do
+        case "${_CD_TOKENS[$i]}" in
+            if | elif | while | until | "!" | command | exec | time | nohup | builtin | '$(')
+                i=$((i + 1))
+                ;;
+            *)
+                break
+                ;;
+        esac
+    done
+
+    [ "$i" -lt "$_CD_N" ] || return 0
+
     # The first real token must be `git` (bare, or a path ending in /git) —
     # anything else means this isn't a git invocation at all.
     case "${_CD_TOKENS[$i]}" in
@@ -135,6 +228,7 @@ _commit_detect_walk_core() {
     # positives on flags we haven't verified.
     while [ "$i" -lt "$_CD_N" ]; do
         case "${_CD_TOKENS[$i]}" in
+            "$_GF_CD_NL_SENTINEL") i=$((i + 1)) ;;
             -c)
                 if [ "$((i + 1))" -lt "$_CD_N" ]; then
                     case "${_CD_TOKENS[$((i + 1))]}" in
@@ -171,6 +265,73 @@ _commit_detect_walk_core() {
     return 0
 }
 
+# _commit_detect_pad_boundaries <raw> — quote-aware boundary pad (M52
+# Session D, todo row 19; F1-r1 Minor — an interim bash-loop version was
+# quadratic on long input and was replaced by this awk pass at the same
+# session's code gate). Pads each unquoted, unescaped boundary
+# character with surrounding spaces so it isolates as its own token; the
+# boundary set itself is owned by `_commit_detect_scan_segments`'s `case`
+# below, not restated here. Quote rules mirror xargs's own (verified live
+# against _commit_detect_tokenize before this was written):
+# outside quotes `\` escapes exactly the next character; `'`/`"` open a
+# quote state only their own character closes; backslash has NO meaning
+# inside either quote state.
+# Contract: for NEWLINE-FREE input, tokenizing the padded string yields
+# exactly the tokens tokenizing the unpadded string would, except that
+# each unquoted, unescaped boundary character becomes its own boundary
+# token. The precondition is load-bearing: awk's default record split
+# makes a literal LF a record boundary (the byte is dropped and quote
+# state resets), so equivalence is NOT guaranteed for input containing
+# newlines. The sole caller (`_commit_detect_scan_segments`) substitutes
+# the NL sentinel for every newline BEFORE calling this — that ordering is
+# what discharges the precondition.
+#
+# Implementation: one `awk` pass under LC_ALL=C. Byte-wise walking is safe
+# because every byte the state machine reacts to (quotes, backslash, the
+# boundary set) is plain ASCII and a UTF-8 continuation byte is always
+# >= 0x80, so it can never falsely match. O(n): each byte visited once,
+# output built by awk string concatenation and printed at END — never by
+# repeated shell-level `+=` (the bash loop's quadratic mechanism).
+_commit_detect_pad_boundaries() {
+    printf '%s' "$1" | LC_ALL=C awk '
+    {
+        n = length($0)
+        st = "u"
+        seg = ""
+        i = 1
+        while (i <= n) {
+            c = substr($0, i, 1)
+            if (st == "u") {
+                if (c == "\\") {
+                    seg = seg c
+                    i++
+                    if (i <= n) seg = seg substr($0, i, 1)
+                } else if (c == "\047") {
+                    seg = seg c
+                    st = "s"
+                } else if (c == "\042") {
+                    seg = seg c
+                    st = "d"
+                } else if (c == "&" || c == "|" || c == ";" || c == "(" || c == ")" || c == "{" || c == "}" || c == "`") {
+                    seg = seg " " c " "
+                } else {
+                    seg = seg c
+                }
+            } else if (st == "s") {
+                seg = seg c
+                if (c == "\047") st = "u"
+            } else {
+                seg = seg c
+                if (c == "\042") st = "u"
+            }
+            i++
+        }
+        buf = buf seg
+    }
+    END { printf "%s", buf }
+    '
+}
+
 # _commit_detect_scan_segments <raw> — normalize <raw>, tokenize it, and
 # split the token stream into segments at shell command-separator
 # boundaries: the tokens `&&`, `||`, `;`, `|`, `&`, and a `;` glued onto the
@@ -183,31 +344,30 @@ _commit_detect_walk_core() {
 # `true|git commit`, `echo hi;git commit`) is NOT isolated as its own
 # xargs token — it survives as part of a larger word (`x&&git`, `true|git`,
 # `hi;git`) and the boundary `case` below never sees it, so the chained
-# `git commit` slips through undetected. Fixed by a `sed` pass that pads
-# every bare `&`, `|`, `;` in the RAW string with surrounding spaces
-# BEFORE tokenizing — done on the string, never on the already-split
-# tokens, because after xargs a quoted `"a&&b"` and a glued `a&&b` are
-# indistinguishable as tokens; splitting post-tokenization would corrupt
-# quoted content with no way back. Padding on the raw string is safe
-# because it composes correctly with xargs's own quote handling: the sed
-# pass doesn't (and doesn't need to) know about quotes — it blindly pads
-# every bare operator character, including ones that happen to sit inside
-# a quoted region (e.g. a commit message `-m "a && b"`). But the quote
-# characters themselves are untouched by sed, so when xargs tokenizes the
-# padded string it still sees the same opening/closing quotes and folds
-# everything between them back into ONE token — the extra padding just
-# becomes harmless extra whitespace inside that token's value. So an
-# operator glued OUTSIDE quotes becomes a real boundary token, while the
-# same character sitting INSIDE quotes never becomes its own token and
-# so is never treated as a boundary — a real commit message containing
-# `&&`/`|`/`;` is never split. `&&`/`||` need no special-case handling:
-# padding each `&` independently turns `&&` into two adjacent `&` tokens
-# (two boundaries with an empty segment between them, which the loop below
-# already skips via the `${#_cd_seg[@]} -gt 0` guard); same for `||`.
+# `git commit` slips through undetected. Fixed by padding every bare `&`,
+# `|`, `;` in the RAW string with surrounding spaces BEFORE tokenizing —
+# done on the string, never on the already-split tokens, because after
+# xargs a quoted `"a&&b"` and a glued `a&&b` are indistinguishable as
+# tokens; splitting post-tokenization would corrupt quoted content with no
+# way back. Padding on the raw string via `_commit_detect_pad_boundaries`
+# (quote-aware, see its own header) leaves an operator sitting INSIDE a
+# quoted region (e.g. a commit message `-m "a && b"`) byte-identical and
+# folded back into ONE token by the tokenizer, while the same character
+# OUTSIDE quotes becomes a real boundary token — a real commit message
+# containing `&&`/`|`/`;` is never split. `&&`/`||` need no special-case
+# handling: padding each `&` independently turns `&&` into two adjacent `&`
+# tokens (two boundaries with an empty segment between them, which the loop
+# below already skips via the `${#_cd_seg[@]} -gt 0` guard); same for `||`.
 #
-# NOTE: an unescaped `&` in a sed REPLACEMENT means "the matched text" —
-# the `&` replacement below is written `s/&/ \& /g` (escaped) so it
-# inserts a literal ampersand rather than relying on that coincidence.
+# WRAPPER-SHAPE NORMALIZATION (F1-3): the same reasoning extends to `(`, `)`,
+# `{`, `}`, and a backtick — a `git commit` wrapped in a subshell
+# `(git commit -m x)`, a command substitution `$(git commit -m x)` or
+# `` `git commit -m x` ``, or a brace group `{ git commit -m x; }` is
+# likewise invisible to the boundary `case` unless these characters are
+# padded into their own tokens first. Same pad pass, same quote-safety
+# guarantee: a message body containing a literal `(`/`)`/`{`/`}`/backtick
+# (e.g. `-m "a (b) {c}"`) stays inside its quotes and folds back into one
+# token, so it is never mistaken for a wrapper boundary.
 #
 # Runs _commit_detect_walk_core on each segment in order and stops at the
 # FIRST one that resolves to a real `git commit`: `_CD_TOKENS`/`_CD_N`/
@@ -219,8 +379,31 @@ _commit_detect_walk_core() {
 # Returns 0 iff some segment committed, 1 otherwise.
 _commit_detect_scan_segments() {
     local raw="$1"
+    # Row 16 fix: mark every literal newline with the out-of-band sentinel
+    # BEFORE the operator-padding pass below, so a real (unquoted) line
+    # break survives tokenization as a standalone token instead of vanishing
+    # as ordinary whitespace — see _GF_CD_NL_SENTINEL's header comment. This
+    # substring replacement is BLIND, not quote-aware (unlike the boundary
+    # pad below, which had to become quote-aware — todo row 19): a sentinel
+    # landing INSIDE an open quote is not folded back out, it stays put and
+    # gets tokenized as part of that one token's VALUE, mutating it. Live
+    # counter-example (gate-verified, M52 Session D): a quoted pathspec containing a
+    # literal newline, `git commit -- "weird\nname.md"`, extracts as
+    # `weird __GF_CD_NL_SENTINEL__ name.md` — the sentinel text embedded in
+    # the value instead of a clean split. This is pre-existing, rare
+    # (requires an actual embedded newline inside a quoted argv value), and
+    # fails toward deny, not toward a silent miss — accepted as a deliberate
+    # trade: the sentinel must survive tokenization to mark an unquoted line
+    # break, and doing that without hand-rolling a second quote-tracking
+    # pass here means accepting this mutation as the cost. Pinned as CURRENT
+    # behavior (not "safe") in tests/test-commit-detect.sh's PS-QUOTED-PAD
+    # group — see the case there for the exact expected output.
+    raw="${raw//$'\n'/ $_GF_CD_NL_SENTINEL }"
     local _cd_norm
-    _cd_norm=$(printf '%s' "$raw" | sed -e 's/&/ \& /g' -e 's/|/ | /g' -e 's/;/ ; /g')
+    # Ordering is load-bearing: the sentinel substitution above removed every
+    # literal newline, which is what discharges _commit_detect_pad_boundaries'
+    # newline-free input precondition (see its header).
+    _cd_norm=$(_commit_detect_pad_boundaries "$raw")
 
     local -a _cd_flat=()
     while IFS= read -r _cd_tok; do
@@ -245,7 +428,7 @@ _commit_detect_scan_segments() {
 
         _cd_cur="${_cd_flat[$_cd_i]}"
         case "$_cd_cur" in
-            "&&" | "||" | ";" | "|" | "&")
+            "&&" | "||" | ";" | "|" | "&" | "(" | ")" | "{" | "}" | "\`")
                 if [ "${#_cd_seg[@]}" -gt 0 ]; then
                     _CD_TOKENS=("${_cd_seg[@]}")
                     _CD_N=${#_CD_TOKENS[@]}
@@ -538,6 +721,13 @@ extract_pathspecs() {
 
     while [ "$i" -lt "$_CD_N" ]; do
         tok="${_CD_TOKENS[$i]}"
+        # Row 16 fix: stop dead at the first NL sentinel — real shell argv
+        # never continues past an unquoted newline, so nothing after it
+        # belongs to this commit's pathspec list (unlike every other
+        # consumer above, which transparently skips the sentinel instead).
+        if [ "$tok" = "$_GF_CD_NL_SENTINEL" ]; then
+            break
+        fi
         i=$((i + 1))
         if [ "$seen_dashdash" -eq 0 ]; then
             if [ "$tok" = "--" ]; then
@@ -559,4 +749,144 @@ extract_pathspecs() {
         fi
         printf '%s\n' "$tok"
     done
+}
+
+# gf_commit_skips_hooks <cmd> — true (exit 0) iff <cmd> is a real `git commit`
+# (per is_git_commit) carrying `--no-verify` (or any prefix of it — the
+# `case` arm below lists every one, fail-toward-deny, so this predicate never
+# depends on which prefixes git would accept), or a single-dash short-flag
+# cluster in which `n` appears before any value-taking short flag (`-n`,
+# `-an`, `-na`, `-anm` — but not `-mnote`, where `m` consumes `note` as its
+# glued value) — both skip the native ADR-004 pre-commit hook (F1-2). Walks
+# argv strictly after the `commit` subcommand token, using the SAME
+# flag/value-skip rules as extract_pathspecs above (so a `-m` value, e.g. a
+# message body that merely mentions "-n", is skipped whole and never misread
+# as the flag). False on a non-commit, or a commit with no such flag.
+gf_commit_skips_hooks() {
+    _commit_detect_parse "$1"
+    [ "$_CD_OK" -eq 1 ] || return 1
+
+    local i=$_CD_IDX
+    local seen_dashdash=0
+    local tok
+
+    while [ "$i" -lt "$_CD_N" ]; do
+        tok="${_CD_TOKENS[$i]}"
+        i=$((i + 1))
+        if [ "$seen_dashdash" -eq 0 ]; then
+            if [ "$tok" = "--" ]; then
+                seen_dashdash=1
+                continue
+            fi
+            case "$tok" in
+                --no-verify | --no-verif | --no-veri | --no-ver | --no-ve | --no-v)
+                    # git's parse-options accepts any UNAMBIGUOUS long-option
+                    # prefix (probed: `git status --shor` runs --short), so
+                    # every prefix of --no-verify is matched, exact-literal.
+                    # `--no-ver` and shorter are expected to collide with
+                    # --no-verbose and be rejected by git as ambiguous — that
+                    # was NOT probed (permission-denied in review), so they
+                    # are denied here anyway: fail-toward-deny costs nothing on
+                    # a form git would refuse, and removes the unverified
+                    # claim. `--no-verbose` itself is not in the alternation
+                    # (code-lead F1 r1/r2, 2026-08-30).
+                    return 0
+                    ;;
+                -m | --message | -c | -C | --reuse-message | --reedit-message | -F | --file | -A | --author | --date | --template | --fixup | --squash | --trailer)
+                    i=$((i + 1)) # skip the flag's separate value token
+                    continue
+                    ;;
+                --message=* | --reuse-message=* | --reedit-message=* | --file=* | --author=* | --date=* | --template=* | --fixup=* | --squash=* | --trailer=*)
+                    continue
+                    ;;
+                -[a-zA-Z]*)
+                    # Single-dash short-flag cluster — -n itself, or -n fused
+                    # with other boolean short flags (-an, -anm, ...). Walked
+                    # char by char, not matched with a bare `*n*`: the first
+                    # VALUE-taking short flag (m C c F t S u — message,
+                    # reuse/reedit, file, template, gpg-sign, untracked-files)
+                    # consumes the rest of the cluster as its glued value, so
+                    # `-mnote` / `-m"no…"` is a message, never a hook-skip
+                    # flag (HQ F1 self-review 2026-08-30: `*n*` produced a
+                    # false --no-verify deny on a glued -m value).
+                    local _cd_cl="${tok#-}" _cd_ch
+                    while [ -n "$_cd_cl" ]; do
+                        _cd_ch="${_cd_cl:0:1}"
+                        _cd_cl="${_cd_cl:1}"
+                        case "$_cd_ch" in
+                            n) return 0 ;;
+                            m | C | c | F | t | S | u) break ;;
+                        esac
+                    done
+                    continue
+                    ;;
+                -*)
+                    continue
+                    ;;
+            esac
+        fi
+    done
+    return 1
+}
+
+# gf_commit_overrides_hookspath <cmd> — true (exit 0) iff <cmd> is a real
+# `git commit` (per is_git_commit) whose tokens BEFORE `commit` carry
+# core.hooksPath (key compared case-insensitively) in any of three forms:
+# separate-value `-c core.hooksPath=X`, glued `-ccore.hooksPath=X`, or an
+# env-assignment prefix token naming it (`GIT_CONFIG_PARAMETERS='core.hooksPath=X'`,
+# or the `GIT_CONFIG_COUNT`/`GIT_CONFIG_KEY_<n>=core.hooksPath` triple) —
+# each redirects git to a different hooks directory, skipping the same native
+# ADR-004 hook `--no-verify` does (F1-2). False on a non-commit, or a commit
+# whose pre-`commit` tokens name no such key.
+gf_commit_overrides_hookspath() {
+    _commit_detect_parse "$1"
+    [ "$_CD_OK" -eq 1 ] || return 1
+
+    local i=0
+    local _cd_commit_idx=$((_CD_IDX - 1))
+    local tok
+
+    while [ "$i" -lt "$_cd_commit_idx" ]; do
+        tok="${_CD_TOKENS[$i]}"
+        case "$tok" in
+            -c)
+                if [ "$((i + 1))" -lt "$_cd_commit_idx" ]; then
+                    case "$(_commit_detect_lower "${_CD_TOKENS[$((i + 1))]}")" in
+                        core.hookspath=*) return 0 ;;
+                    esac
+                fi
+                i=$((i + 2))
+                continue
+                ;;
+            -c*)
+                case "$(_commit_detect_lower "$tok")" in
+                    -ccore.hookspath=*) return 0 ;;
+                esac
+                ;;
+            *=*)
+                # Env-assignment form of the same override, sitting in the
+                # VAR=val prefix the walk strips: `GIT_CONFIG_PARAMETERS=
+                # 'core.hooksPath=x' git commit`, or the GIT_CONFIG_COUNT /
+                # GIT_CONFIG_KEY_<n>=core.hooksPath triple. Either reaches git
+                # exactly as `-c` does. A message body can never sit before
+                # `commit`, so a substring test on these tokens is safe (HQ F1
+                # self-review 2026-08-30).
+                case "$(_commit_detect_lower "$tok")" in
+                    *core.hookspath*) return 0 ;;
+                esac
+                ;;
+        esac
+        i=$((i + 1))
+    done
+    return 1
+}
+
+# _commit_detect_lower <str> — print <str> lower-cased. `tr`, not bash's
+# `${var,,}`: that operator is bash 4.0+ and is a *bad substitution* on the
+# bash 3.2 that macOS ships at /bin/bash (which `#!/bin/bash` pins), so the
+# predicate above would abort — fail-OPEN at PreToolUse — on exactly the
+# `-c core.hooksPath=` input it exists to catch (code-lead F1 r1, 2026-08-30).
+# Nothing else in hooks/ uses a bash-4-only construct; keep it that way.
+_commit_detect_lower() {
+    printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
 }

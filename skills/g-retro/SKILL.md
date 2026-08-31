@@ -23,10 +23,12 @@ State the chosen topic in one line and proceed: `Retro topic: [topic]`. If the d
 
 Read the following in parallel:
 
-- **The observer journal** — `.claude/journal/*.jsonl`. Read today's file in full and the two most recent prior days (the work being retro'd may span sessions). Each line is `{"ts","kind","detail"}` with `kind` ∈ `session · agent · commit · branch · test · push · merge · revert · destructive · note`.
+- **The observer journal** — `.claude/journal/*.jsonl`. Read today's file in full and the two most recent prior days (the work being retro'd may span sessions). Each line is `{"ts","kind","detail"}` with `kind` ∈ `session · agent · commit · branch · test · push · merge · revert · destructive`.
 - `g-docs/ROADMAP.md` — the `## Active Session` handoff (Done this pass / Next up / Active context) and the active milestone.
 - `g-docs/todo.md` — the Tasks table (tactical ledger; no handoff lives here).
 - `g-docs/todo-done.md` — last 10 entries (read from the end of the file).
+- **The active milestone file** — the `g-docs/milestones/M*.md` marked 🔄 In progress in `g-docs/ROADMAP.md`, if one exists — Step 3's Next-up derivation reads its next unchecked task.
+- **The active plan** — the `g-docs/plans/*.md` for the current branch slug or milestone, if one exists — Step 3's Next-up derivation reads its next incomplete wave.
 - `git log --oneline -15` via Bash.
 - `git branch --show-current` via Bash.
 
@@ -42,7 +44,7 @@ Derive each section from evidence. Do not ask the developer questions — read t
   - *Worked well*: clean signal — tests run before commits (`test` entries preceding `commit` entries), no reverts, no `destructive` flags, agents finishing without re-dispatch.
   - *Avoid / do differently*: friction signal — `revert` entries, repeated `test` failures before a commit, `destructive` flags, the same agent dispatched repeatedly on one task, or commits with `fix-of-fix`/`take 2`/`retry` messages.
   - If a category has no signal, write `None observed.`
-- **Cold-start context** — branch, active milestone (from `g-docs/ROADMAP.md`), next-up line (verbatim from the `## Active Session` handoff in `g-docs/ROADMAP.md`), key files touched (unique basenames across the git log this session), and carry-over context (from the handoff "Active context" line).
+- **Cold-start context** — branch, active milestone (from `g-docs/ROADMAP.md`), **Next up derived from evidence** — in order: (1) an explicit developer directive given this session about what happens next (stated in-session or recorded in the journal); (2) the next incomplete wave in the active `g-docs/plans/*.md`; (3) the active milestone's next unchecked task in `g-docs/milestones/M*.md`; (4) the lead open row of `g-docs/todo.md`'s `## Tasks` table; (5) else fall back to the old handoff's "Next up" line (verbatim from the `## Active Session` handoff in `g-docs/ROADMAP.md`), marked `(carried — no open task found)` (intent-proximate sources first — a todo lead row is often a long-lived carry, not the next action) — key files touched (unique basenames across the git log this session), and carry-over context (from the handoff "Active context" line).
 
 ## Step 4 — Forecast outcome reconciliation (conditional, evidence-based)
 
@@ -80,7 +82,8 @@ Write the file with this exact structure:
 ## Cold-start context
 **Branch:** [current branch]
 **Active milestone:** [milestone name and status]
-**Next up:** [the "Next up" line from the ROADMAP `## Active Session` handoff, verbatim]
+**Next up:** [derived from evidence per Step 3 — developer directive this session, else the active plan's next incomplete wave, else the active milestone's next unchecked task, else the lead open `g-docs/todo.md` row, else the old handoff's "Next up" line marked "(carried — no open task found)"]
+**Handoff at retro:** [the "Next up" line the handoff carried when the retro ran, verbatim]
 **Key files touched:** [comma-separated basenames from git log this session]
 **Carry-over context:** [the "Active context" line from the ROADMAP `## Active Session` handoff]
 
@@ -96,7 +99,7 @@ Do not add extra sections.
 
 Rewrite that block (replace, never append) using the canonical format defined in **G-RULES §I** (Project Tracking) — don't restate the format here, fill it from this retro:
 - **Done this pass** ← one-line summary of "What was done"
-- **Next up** ← the lead next action
+- **Next up** ← the derived Next up from this retro's Cold-start context (Step 3) — never the previous handoff's Next up line
 - **Active context** ← the carry-over context line
 
 If `g-docs/ROADMAP.md` has no `## Active Session` block yet (older project), insert one directly after the top `# ` title. Committing the change is the developer's choice (same as the retro file), but the block must be written.

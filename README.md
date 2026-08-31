@@ -2,9 +2,9 @@
 
 > **Educated, enforced project management for AI development.** Make any model ship like a senior team — planned, reviewed, and context-clean.
 
-**Version 2.4.1** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
+**Version 2.5.0** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
 
-G-Forge installs a structured engineering *process* into any Claude Code project: a project-manager layer that challenges scope and sequences risk, parallel implementation waves, and a commit gate that **can't be skipped** — only opened by a full multi-agent review. The point isn't a smarter model; it's discipline that lets the model you already have punch above its weight.
+G-Forge installs a structured engineering *process* into any Claude Code project: a project-manager layer that challenges scope and sequences risk, parallel implementation waves, and a commit gate that **can't be skipped** — only opened by code-lead review. The point isn't a smarter model; it's discipline that lets the model you already have punch above its weight.
 
 ---
 
@@ -23,7 +23,7 @@ G-Forge runs on its own repository, so the records below are the ones it produce
 
 **G-Forge 2.5 is the last feature release.** Where I want to take this next needs a rework deep enough that I couldn't honestly promise stable releases while it was underway. Quietly destabilising something people rely on is worse than drawing a clean line, so this is the line.
 
-Frozen isn't abandoned. I run G-Forge on my own projects, so its bugs are my bugs and they'll keep getting fixed — that's what `/g-report` (ships in 2.5) is for: when something breaks or gets in your way, it writes a scrubbed report you can send me, and reasonable feature feedback travels the same route. And 2.5 is the version I'll build the next thing with, which is the real reason for freezing it: you want something stable under your feet while you're building its successor.
+Frozen isn't abandoned. I run G-Forge on my own projects, so its bugs are my bugs and they'll keep getting fixed — that's what GitHub issues on this repo are for: when something breaks or gets in your way, file an issue, and reasonable feature feedback travels the same route. And 2.5 is the version I'll build the next thing with, which is the real reason for freezing it: you want something stable under your feet while you're building its successor.
 
 ### What's next
 
@@ -37,23 +37,15 @@ Three things G-Forge kept running into and can't reach from where it stands.
 
 Each of those is a layer that has to run through everything the system does, and you don't retrofit that. That's the rebuild, and it's called G-Proof. There's more to it than these three, and it isn't ready to be described. No date.
 
-### What's coming in 2.5
+### What's in 2.5
 
-**Lighter where you feel it most.** The review gate runs before every commit, and today it's one enormous pass that costs a fortune and starts losing the thread by the time it reaches the last thing it checks. 2.5 scopes it to what actually changed and splits it into small parallel passes with a cheap assembly step at the end. This one is measured, not promised: on this repo, an unscoped review ran ~3 hours and ~130k tokens before being killed; the same gate scoped ran 11 tool calls, 79k tokens, one round — and still caught a real blocker ([2026-08-17 retro](g-docs/retros/2026-08-17-m50-scope-and-scoped-review.md)).
+**Planning that doesn't invent work.** Task breakdown used to split jobs that belong together and hand each fragment to its own agent. The sizing fix is in, so you stop paying for coordination you never needed.
 
-**Planning that doesn't invent work.** Task breakdown currently splits jobs that belong together and hands each fragment to its own agent. 2.5 fixes the sizing, so you stop paying for coordination you never needed. *(Already shipped early — in v2.4.1.)*
+**Reference material stops being mis-gated.** Committed reference material a project builds against was being blocked as though G-Forge owned it. That's fixed.
 
-**Every setting in one place you can see.** `/g-settings` lists every variable that governs G-Forge's behaviour: what it's set to, what writes it, and what it changes. Safe edits go through it. No more hidden files quietly deciding how your sessions run.
+**Forecast risk replaces a percentage that nobody believed.** Plan-time risk estimates now show what the formula actually predicts instead of a percentage you've learned to ignore.
 
-**A way to tell me when it breaks.** `/g-report` fires when something actually goes wrong, or whenever you call it. It asks what you want to report, writes it against an incident template, scrubs your project's specifics out, and hands you a file to send. Bugs and reasonable feature requests travel the same route.
-
-**Gates that stop misfiring.** A passing review could fail to unlock the commit gate on some machines, which reads as G-Forge being broken. Committed reference material a project builds against was getting blocked as though G-Forge owned it. Both fixed. Plan-time risk percentages get recalibrated too, because a number you've learned to ignore is worse than no number at all. *(The recalibration already shipped early — in v2.4.1; the rest of this item is still coming.)*
-
-**Instruments that measure what they claim.** G-Forge grades itself with telemetry, risk forecasts and coverage reports — and some of those gauges turned out structurally unable to register the failures they exist to catch (the agent-coverage table couldn't count two of the agents). 2.5 makes each instrument read the live ground truth it reports on, with tests that go red the moment the two drift apart.
-
-**Documentation that can't quietly rot.** The health check now flags anything in your CLAUDE.md that's a hand-typed fact rather than one sourced from a file. That's how those facts go stale without anyone noticing. *(Already shipped early — in v2.4.1.)*
-
-**Releases in one step.** Cutting a release stops being a manual walk through several files that has to be remembered correctly every time.
+**Documentation that can't quietly rot.** The health check now flags hand-typed facts in your CLAUDE.md that aren't sourced from a file (unless you've explicitly marked them as local). That's how those facts go stale without anyone noticing.
 
 ---
 
@@ -66,7 +58,7 @@ G-Forge is built on a different assumption: **the human is the most valuable par
 Most tools in this space are **agent orchestrators** — they dispatch and review agents. G-Forge is something else: a **governance layer**. Three pillars carry it:
 
 - **Educated** — a PM that *reasons*: it challenges scope before it's a commitment, sequences milestones by dependency, runs a premortem when the plan changes, and checks drift against the brief. Judgment-shaped, not a template.
-- **Enforced** — gates with *teeth*. The commit gate is a git hook, not a suggestion: nothing merges until a full review pipeline issues MERGE READY. Every comparable workflow enforces review advisorily; G-Forge enforces it infrastructurally.
+- **Enforced** — gates with *teeth*. The commit gate is a git hook, not a suggestion: nothing merges until code-lead issues MERGE READY. Every comparable workflow enforces review advisorily; G-Forge enforces it infrastructurally.
 - **Context-clean** — reliability held session-wide. Single-use agents, off-context decision deliberation, and a depth gate that resets *before* the window compacts keep the model trustworthy deeper into the work.
 
 The result is the bet: discipline lets a cheaper or smaller model ship at a higher success and hygiene rate than it would raw. Not a smarter model — a better-run one. *(It is a bet, not a measurement: [g-docs/benchmark.md](g-docs/benchmark.md) holds the head-to-head methodology written to test it, and the pilot that sent that methodology back for revision before any number was produced.)*
@@ -89,7 +81,7 @@ Six concepts explain almost everything.
 
 **Skills** are commands you type (`/g-forge plan`, `/g-forge review`, etc.). They run in the main Claude session — the one you're talking to. Skills read the project state, make decisions, and coordinate work. You interact with them directly.
 
-**Agents** are spawned subagents. Skills dispatch agents to do the actual work — implementing, reviewing, writing tests. Agents run in isolated sessions, write their output to disk, and return a compact summary. You never talk to an agent directly.
+**Agents** are spawned subagents. Skills dispatch agents to do the actual work — implementing, reviewing, writing tests. Agents run in isolated sessions and return a compact summary. You never talk to an agent directly.
 
 The main session stays thin. Agent sessions spend tokens doing work.
 
@@ -101,7 +93,7 @@ A **wave** is a batch of tasks that can run in parallel without depending on eac
 
 ### 3. The commit gate
 
-Every `git commit` in a G-Forge project is blocked by a pre-commit hook. The hook classifies the staged file set as **code**, **doc**, or **mixed** and requires the matching review sentinel:
+Every `git commit` in a G-Forge project is blocked by a pre-commit hook. The hook classifies the staged file set into one of five buckets: **code** (code only), **doc** (documentation only), **mixed** (both), **reference** (reference material only — exempt with an advisory, no sentinel), or **none** (empty staged set — fall through to the code gate). Based on the classification, it requires the matching review sentinel:
 
 - **Code commits** require `.claude/g-forge-approved`, written only when `/g-review` issues a **MERGE READY** verdict after the full review pipeline passes.
 - **Doc-only commits** (README, `g-wiki/`, ADRs, etc.) require `.claude/g-forge-docs-approved`, written only when `/g-doc-review` issues a **DOCS READY** verdict — so documentation is gated even when there's no code change.
@@ -120,7 +112,7 @@ You don't configure G-Forge per session. You configure it once via G-RULES.md an
 Seven shell scripts registered in `.claude/settings.json` keep Claude oriented automatically:
 
 - **UserPromptSubmit** (`workflow-checkpoint.sh`) — fires on every message. Reports branch, milestone context, active wave, review gate status, and context depth. Claude reads this output and auto-triggers the right skill (`/g-plan` for a new task, `/g-execute` once a plan is approved, `/g-review` when waves finish).
-- **PreToolUse** (`check-commit.sh`) — classifies the staged file set (code / doc / mixed) and blocks `git commit` unless the matching review sentinel exists.
+- **PreToolUse** (`check-commit.sh`) — classifies the staged file set (code / doc / mixed / reference / none) and blocks `git commit` unless the matching review sentinel exists; reference-only commits are exempt with an advisory note.
 - **PostToolUse** (`post-commit-cleanup.sh`, `observe.sh`) — clears both sentinels after a successful commit, and runs the **silent observer**, which journals meaningful events (commits, branches, tests, pushes, reverts) to `.claude/journal/YYYY-MM-DD.jsonl`.
 - **SessionStart** (`session-start.sh`, `observe.sh`) — checks local and remote git state (uncommitted changes, stash count, ahead/behind), marks the session open in the journal, and resets the context-depth counters on a genuine open — carrying them across a `compact` or `resume` restart so auto-compaction (or a reloaded transcript) can't silently reset the gate.
 - **SubagentStart / SubagentStop** (`agent-lifecycle.sh`) — records every agent dispatch into the same journal.
@@ -305,9 +297,9 @@ Context depth uses mode-aware thresholds. **The goal is to reset before the wind
 | implementation | ~30 exchanges | ~45 exchanges |
 | conversation | ~45 exchanges | ~65 exchanges |
 
-Amber is **active monitoring**, not a one-time warning: Claude runs `/context` every turn and resets the moment remaining capacity drops below ~25% — capacity-driven, not waiting for the red exchange count (only `/context` reads true context pressure, and only the model can run it). `/g-execute` adds the same `/context` check at every wave boundary — the heaviest token-burn point — catching fast-burning sessions the exchange count misses. At red it's enforced: no new scope, `/g-retro` auto-triggers, the user is told to open a fresh session. If a compaction still slips through, it's recorded as a backstop and tightens the threshold so it doesn't recur.
+Amber is **active monitoring**, not a one-time warning: Claude runs `/context` every turn and resets once ~25% of the window is used — capacity-driven, not waiting for the red exchange count (only `/context` reads true context pressure, and only the model can run it). `/g-execute` adds the same `/context` check at every wave boundary — the heaviest token-burn point — catching fast-burning sessions the exchange count misses. At red it's enforced: no new scope, `/g-retro` auto-triggers, the user is told to open a fresh session. If a compaction still slips through, it's recorded as a backstop and tightens the threshold so it doesn't recur.
 
-**`check-commit.sh`** (`PreToolUse`) — classifies the staged file set (code / doc / mixed) and blocks `git commit` unless the matching sentinel exists: `.claude/g-forge-approved` for code, `.claude/g-forge-docs-approved` for docs, both for mixed. Prints a non-blocking advisory when committing directly to `main` with approval.
+**`check-commit.sh`** (`PreToolUse`) — classifies the staged file set into one of five buckets: code (code paths only), doc (doc paths only), mixed (both), reference (reference paths only — exempt with an advisory note, no sentinel), or none (empty/unknown — fall through to code gate). Blocks `git commit` unless the matching sentinel exists: `.claude/g-forge-approved` for code, `.claude/g-forge-docs-approved` for docs, both for mixed. Prints a non-blocking advisory when committing directly to `main` with approval.
 
 **`post-commit-cleanup.sh`** (`PostToolUse`) — clears both sentinels after a successful commit.
 
@@ -317,7 +309,9 @@ Amber is **active monitoring**, not a one-time warning: Claude runs `/context` e
 
 **`pre-compact.sh`** (`PreCompact`) — fires before context compression. Writes `.claude/compact-state.md` with the current branch, last 5 commits, and the `## Active Session` handoff block from `g-docs/ROADMAP.md`. Also records the compaction: it bumps a per-session count (the red backstop) and grows the persistent calibration offset so the context gate fires earlier next time.
 
-The sentinel is written by `/g-review` only on a MERGE READY verdict, and removed automatically after each commit. Every commit goes through the full review pipeline — no exceptions. Subagents are prohibited from committing; HQ commits once after MERGE READY.
+The code sentinel is written by `/g-review` only on a MERGE READY verdict, and removed automatically after each commit. Code, mixed, and unclassifiable commits require the code sentinel (the code-lead gate); doc-only commits require the doc sentinel (`/g-doc-review`); mixed commits require both sign-offs (each written by its own gate); reference-only commits are exempt with a printed advisory. Subagents are prohibited from committing; HQ commits once after the gate clears.
+
+**Using the reference class:** a file is REFERENCE only when all three hold — it lives under `reference/<bundle>/`; the bundle root carries a `SNAPSHOT.md` or `NOTE.md` marker; and its extension is on the inert allowlist owned by `hooks/lib/classify-changeset.sh` (case-sensitive, rendered/data formats only). Everything else — extensionless files, unknown or uppercase extensions, unmarked bundles, any path with a `..`, `.` or empty segment — gates as CODE, fail-toward-deny. `GF_CLASSIFY_ROOT` is a test-suite override — leave it unset in real use: pointing it elsewhere changes which commits the gate exempts (`g-docs/env-vars.md`).
 
 To bypass in an emergency (not recommended) — the gate is two layers, both must go:
 
@@ -358,7 +352,7 @@ Projects that track `CLAUDE.md` as committed project record (consumer projects, 
 | `/g-forge specialize [stack]` | Detect stack from brief + deps → install architect + implementer agents + rules |
 | `/g-forge plan` | QA scope prerequisite (compile g-docs/qa-scope/<milestone>.md) → project-manager challenge gate → task-decomposer → wave-planner → approval gate → saves plan to g-docs/plans/ |
 | `/g-forge execute [wave]` | Dispatch parallel agents per wave; hold boundary until each wave completes; resume from a specific wave |
-| `/g-forge review` | test suite → code-lead → full review pipeline → Tier 3 smoke test (listen mode) → MERGE READY or HOLD → auto-closes milestone tasks |
+| `/g-forge review` | test suite → code-lead → Tier 3 smoke test (listen mode) → MERGE READY or HOLD → auto-closes milestone tasks |
 | `/g-forge doc-review` | Standalone documentation-review gate — own verdict (DOCS READY / DOCS HOLD), distinct from code review. Read-only `doc-reviewer` lens: accuracy-vs-code, currency (docs that contradict the code), completeness (public exports, README sections, env vars, ADR/CHANGELOG coverage), clarity, volatile in-flight state. Gates doc-only and mixed commits; may recommend `/g-docs`, never writes |
 | `/g-forge update` | **Staleness preflight** — verifies plugin cache is current (if not, stops with zero writes and directs to `/plugins`); then realigns all G-Forge-managed files (CLAUDE.md rules, G-RULES.md, agents, architecture rules, hooks) to the current version. Self-host mode skips preflight. For read-only version diagnosis, see `/g-doctor` Check 23. |
 | `/g-forge afk` | Autonomous milestone executor — runs all pending waves + review unattended. Requires approved plan. Safety net blocks remote push, recursive delete, and publish commands. Structured cycle-break report on any stop. |
@@ -374,7 +368,7 @@ Projects that track `CLAUDE.md` as committed project record (consumer projects, 
 | `/g-forge retro` | Synthesize a session retrospective to `g-docs/retros/YYYY-MM-DD-topic.md` from the silent-observer journal — no interview. Reads `.claude/journal/`, git history, and g-docs/todo.md; infers what was done, decisions, patterns, and cold-start context. The developer verifies, they don't recall. |
 | `/g-forge patterns` | Two-phase pattern lifecycle. **Mine** reads `g-docs/retros/` and `g-docs/todo-done.md` for recurring patterns (≥2 frequency), saves an abstracted, principle-level report to `g-docs/patterns/latest.md` (stable path for external automation; renamed to resolution date YYYY-MM-DD.md when resolved), records patterns PENDING — **applies no edits**. **Resolve** runs in a fresh session (entered via `## Active Session` handoff), checks `g-docs/inbox/adversarial/` for external counter-reports (advisory only, human-weighed), then apply/defer/dismiss/withdraw per developer. When an applied fix lands in shipped source, Resolve also appends a `CHANGELOG.md` entry under an existing `## [Unreleased]` heading (never creating the file or the heading, never touching a machine-generated changelog — it reports the gap instead). |
 | `/g-forge roundtable` | Bind the session to **the Roundtable** — a shared live Doc that is the human-facing communication layer (you + non-programmers + the session). `start` binds a Doc (create-from-template or attach-by-URL); `sync` reads it at boundaries and writes only salient deltas (the salience gate); `close` distills the live Doc into the durable record (handoff + ADRs + todo) on a human nod. Works solo or shared; surface-agnostic (ADR-001). **Off by default** — no Roundtable configured means every path is a no-op and behaviour is byte-identical to today. (M33 Phase A) |
-| `/g-forge forecast [plan-slug]` | Premortem and scope-realism pass on a plan. Outputs complexity score (0–10), quantified miss-risk percentage, and ranked top-5 failure scenarios seeded by `/g-patterns` history. Miss-risk is calibrated against the project's own forecast-vs-outcome corpus (`g-docs/forecasts/*.md` `## Outcome` cells, reconciled by `/g-retro`): a bounded adjustment (±10 points, folded into the final 0–95% score) that can raise or lower the raw estimate depending on whether past forecasts over- or under-predicted, and only applies once at least 5 confirmed outcomes are on record — below that floor it reports the raw score with a neutral (zero) adjustment. Auto-invoked by `/g-plan` Step 3b. Advisory — never blocks approval. Persists `g-docs/forecasts/<slug>.md`. |
+| `/g-forge forecast [plan-slug]` | Premortem and scope-realism pass on a plan. Outputs complexity score (0–10), quantified likelihood that ≥1 premortem scenario fires, and ranked top-5 failure scenarios seeded by `/g-patterns` history. That likelihood is calibrated against the project's own forecast-vs-outcome corpus (`g-docs/forecasts/*.md` `## Outcome` cells, reconciled by `/g-retro`): a bounded adjustment (±10 points, folded into the final 0–95% score) that can raise or lower the raw estimate depending on whether past forecasts over- or under-predicted, and only applies once at least 5 confirmed outcomes are on record — below that floor it reports the raw score with a neutral (zero) adjustment. Auto-invoked by `/g-plan` Step 3b. Advisory — never blocks approval. Persists `g-docs/forecasts/<slug>.md`. |
 | `/g-forge telemetry` | Compute 8 reliability metrics (hallucination, review catch, regression, rework, spec deviation, escalation, token efficiency, retry dependency); classify health profile (stable / cautious / defensive / recovery); write `.claude/telemetry-profile` for adaptive orchestration. `/g-execute` and `/g-review` Step 0 read the profile and scale wave size, model tier, and reviewer count accordingly. |
 | `/g-forge blast-radius [file\|plan\|feature]` | Map forward + reverse dependencies for a planned change; compute per-file volatility from git history; output aggregate rating (Narrow / Moderate / Wide). Persists `g-docs/blast-radius/<slug>.md` for `/g-forecast` Step 2b integration. |
 | `/g-forge identity` | Narrative synthesis of the project's operational personality from accumulated retros, forecasts, telemetry, ADRs, blast-radius reports, CHANGELOG, ROADMAP, and git history. Produces `g-docs/identity.md` covering what the project is, how it ships, what it does well, where it struggles, and what it's becoming. Qualitative complement to `/g-telemetry`. |
@@ -401,7 +395,7 @@ Projects that track `CLAUDE.md` as committed project record (consumer projects, 
 | `debugger` | Sonnet | Root cause analysis, fix strategy |
 | `error-detective` | Sonnet | Log and stack trace pattern analysis |
 | `project-manager` | Sonnet | Primary user interface for every session — challenge gate, roadmap ownership, lifecycle coordination. Shifts to mentor register in training mode. Checks for plugin updates weekly. |
-| `review-orchestrator` | Sonnet | Parallel review pipeline aggregation. Must run in the main session or from a skill (depth-0) — spawning it as a nested subagent silently blocks reviewer dispatch. |
+| `review-orchestrator` | Sonnet | (Shipped but not currently dispatched) |
 | `code-lead` | Opus | Technical sign-off, merge gate verdict |
 | `test-writer` | Haiku | Unit, integration, and e2e tests from specs; fixed data only |
 | `doc-writer` | Haiku | Inline docs explaining WHY not WHAT |
@@ -413,15 +407,16 @@ Projects that track `CLAUDE.md` as committed project record (consumer projects, 
 
 ### Agent output architecture
 
-All 17 specialist agents that use the compact-return format — every agent except the two user-facing ones (`project-manager`, `pr-writer`) — write their full findings to disk (`g-docs/agent-output/wave-N/<task-slug>.md` for wave agents; `g-docs/agent-output/review/<agent>-YYYY-MM-DD.md` for review agents) and return a compact summary to the calling session:
+Specialist agents that hold a Write grant write their full findings to disk (`g-docs/agent-output/wave-N/<task-slug>.md` for wave agents; `g-docs/agent-output/review/<agent>-YYYY-MM-DD-<slug>-r<N>.md` for review agents). Most agents return a compact summary to the calling session; `pr-writer` is excluded — its inline PR description is the deliverable — and `project-manager` skips the block only in its interactive session role (a dispatched PM returns a compact RESULT/VERDICT/QUESTIONS/SUMMARY block):
 
 ```
-RESULT: DONE|FAILED|BLOCKED  (or PASS|HOLD for review agents)
-ISSUES: N critical · M major · K minor
+RESULT: DONE|FAILED|BLOCKED (implementers), MERGE READY|HOLD|ESCALATE (code-lead), DOCS READY|DOCS HOLD (doc-reviewer), or PASS|HOLD (review agents)
+ISSUES: N critical · M major · K minor (or "none")
 SUMMARY: [one sentence]
 FILES: [files changed]
+DONE_CONDITION: met|not met — [how verified]
 LEARNINGS: [FAILED only — approach tried, why it broke, what's ruled out, recommended different approach]
-DETAIL: [output file path]
+DETAIL: [record path on disk, or `inline` when no output_file was passed]
 ```
 
 The calling session reads the detail file only when the result is HOLD, FAILED, or BLOCKED. This keeps main-session context growth at ~70 tokens per agent return rather than 1,500–3,000 tokens of inline output — larger waves stay within budget, and the full audit trail is preserved on disk.
@@ -448,7 +443,7 @@ Every agent targets the minimum model tier that can do its job reliably:
 | Sonnet | Planning, decomposition, wave coordination, debugging, analysis — tasks requiring reasoning but not judgment |
 | Opus | Review, merge gate, architecture enforcement — tasks where correctness and missed findings have real cost |
 
-Most implementation work lands on Sonnet. Opus is reserved for the review pipeline where a missed critical issue is expensive.
+Most implementation work lands on Sonnet. Opus is reserved for code-lead review where a missed critical issue is expensive.
 
 ### G-RULES.md selective loading
 
@@ -456,7 +451,7 @@ The full `G-RULES.md` is ~9,000 tokens and loads on every session that reference
 
 ### Agent compact returns
 
-Agents write full findings to `g-docs/agent-output/` and return a five-line summary. The main session reads the detail file only on HOLD or BLOCKED. This reduces per-agent context growth from ~1,500–3,000 tokens (inline output) to ~70 tokens (compact block). A six-agent review wave that previously added ~12,000 tokens to main-session context now adds ~420 tokens.
+Agents return a compact summary. The main session reads the detail file only on HOLD or BLOCKED. This reduces per-agent context growth from ~1,500–3,000 tokens (inline output) to ~70 tokens (compact block). A six-agent review wave that previously added ~12,000 tokens to main-session context now adds ~420 tokens.
 
 ### Context depth management
 
@@ -467,7 +462,7 @@ A prompt counter in `.claude/session-prompt-count.<session-id>` (bare `session-p
 | Implementation | 30 exchanges | 45 exchanges |
 | Conversation | 45 exchanges | 65 exchanges |
 
-The goal is to reset **before** the window compacts, never after. Amber is active monitoring: Claude runs `/context` every turn and resets the moment remaining capacity drops below ~25% — capacity-driven rather than waiting for the red exchange count, since only `/context` reads true context pressure. `/g-execute` runs the same check at every wave boundary (the heaviest token-burn event), catching fast-burning sessions the exchange count misses. At red it's enforced: no new scope, `/g-retro` auto-triggers, and a handoff block is written before the session ends. This prevents the worst-case scenario — a mid-wave context exhaustion that leaves implementation in an inconsistent state.
+The goal is to reset **before** the window compacts, never after. Amber is active monitoring: Claude runs `/context` every turn and resets once ~25% of the window is used — capacity-driven rather than waiting for the red exchange count, since only `/context` reads true context pressure. `/g-execute` runs the same check at every wave boundary (the heaviest token-burn event), catching fast-burning sessions the exchange count misses. At red it's enforced: no new scope, `/g-retro` auto-triggers, and a handoff block is written before the session ends. This prevents the worst-case scenario — a mid-wave context exhaustion that leaves implementation in an inconsistent state.
 
 ### Pre-plan context budget check
 
@@ -638,7 +633,7 @@ You can still invoke them manually if needed:
                      Step 3d: wave dependency validation — checks same-wave file
                        conflicts (blocking), missing source files for mutation tasks
                        (blocking), cross-wave ordering violations (warning)
-                     Runs /g-forecast premortem (complexity score + miss-risk)
+                     Runs /g-forecast premortem (complexity score + likelihood ≥1 premortem scenario fires)
                      Presents wave schedule + budget + forecast for approval
                      Saves approved plan to g-docs/plans/<feature-slug>.md
                      On approval: hands off to /g-execute
@@ -650,7 +645,7 @@ You can still invoke them manually if needed:
 
 /g-forge review Step 1: runs the test suite — failures block with HOLD immediately
                        No test suite? Must dispatch test-writer or explicitly override
-                     Dispatches code-lead → review-orchestrator → parallel reviewers
+                     Dispatches code-lead for technical sign-off
                      On MERGE READY: enters Tier 3 listen mode — prompts smoke test
                        against QA panel; collects bug reports; triages after "done this round"
                        Repeats until a clean round, then writes sentinel
@@ -772,7 +767,9 @@ git push
 | M28 — g-docs as the canonical home for all G-Forge documents | ✅ Done — **v2.2.0** |
 | M-audit — Forge Integrity (technical debt audit · native pre-commit gate) | ✅ Done — **v2.3.0** |
 | M46 — Update Integrity (detect / diagnose / fix split) | ✅ Done — **v2.4.0** |
-| **v2.5.0 — the final G-Forge release** ([ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md)): M47 Planning-Pipeline Honesty · M48 Review-Pipeline Hardening · M51 Release Reliability (M45-lite, absorbing M45) · M50 Eval-Chain Integrity · M38 G-Report · M40 Reference Convention · M43 Operator Controls · M49 Devil's-Advocate Agent · M41 Release Machinery (cuts the release) | 🔄 In progress |
+| M47 — Planning-Pipeline Honesty | ✅ Done — **v2.4.1** |
+| M48 — Review-Pipeline Hardening | ✅ Done — **v2.4.1** |
+| **v2.5.0 — the final G-Forge release** ([ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md)): M52 Minimal Freeze (hand-cut release) | ✅ Done — **v2.5.0** |
 | After v2.5.0: this repo freezes (maintenance-only) and the successor — **G-Proof** — follows. Versioning restarts at G-Proof 1.0; there is no G-Forge 3.0. | — |
 
 ---

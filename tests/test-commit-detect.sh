@@ -21,7 +21,14 @@
 # extract_pathspecs leak, a second pins that is_git_commit still detects the
 # shape despite the leak (r1 Minor finding — the comment claimed this but no
 # assertion pinned it).
-# Total assertions: 72. Runner-attested (M48e: 70/70; HEREDOC-p added 2026-08-27, 2 assertions).
+# F1-3/F1-2 additions (M52 F1 Task 25 + HQ hardening + code-lead r1):
+# WRAPPERS group (command-wrapper shapes plus message-body regression
+# guards), NOVERIFY group (gf_commit_skips_hooks predicate, incl. glued-value
+# clusters and git long-option abbreviations), HOOKSPATH group
+# (gf_commit_overrides_hookspath predicate, incl. env-assignment forms).
+# Total assertions: runner-observed — this file's own `Results:` line is the
+# only count; it is never restated here (ADR-013 rule 2 — a typed count in
+# this header went stale within the same session it was minted).
 
 LIB="$(cd "$(dirname "$0")" && pwd)/../hooks/lib/commit-detect.sh"
 source "$LIB" || { echo "FAIL: could not source $LIB"; exit 1; }
@@ -166,6 +173,92 @@ test_pathspecs "PS: git commit -m msg file1.txt (positional pathspec without --)
 test_pathspecs "PS-QUOTED: git commit -- \"file with spaces.txt\"" 'git commit -- "file with spaces.txt"' "file with spaces.txt"
 test_pathspecs "PS-QUOTED: git commit with quoted pathspec containing shell chars" "git commit -- \"path/with\$vars.txt\"" "path/with\$vars.txt"
 
+# ── Group PS-QUOTED-PAD — quoted-pathspec fidelity vs boundary padding (M52 Session D todo row 19; F1-r1 Minor: blind pad mutated quoted values) ─
+# The boundary pad in _commit_detect_scan_segments must never mutate bytes
+# INSIDE a quoted region — only an unquoted, unescaped boundary character
+# becomes its own token.
+
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"docs/report (final).md\" (parens stay inside quotes)" 'git commit -- "docs/report (final).md"' "docs/report (final).md"
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"a&b.md\" (ampersand stays inside quotes)" 'git commit -- "a&b.md"' "a&b.md"
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"brace {x}.md\" (braces stay inside quotes)" 'git commit -- "brace {x}.md"' "brace {x}.md"
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"semi;colon.md\" (semicolon stays inside quotes)" 'git commit -- "semi;colon.md"' "semi;colon.md"
+test_detected "PS-QUOTED-PAD: git commit -- \"docs/report (final).md\" still DETECTED" 'git commit -- "docs/report (final).md"'
+test_pathspecs "PS-QUOTED-PAD: git commit -- docs/file\\(1\\).md (unquoted backslash-escaped paren stays literal)" 'git commit -- docs/file\(1\).md' "docs/file(1).md"
+
+# Fidelity-gap close (Session D code gate r1): quoted `|` and quoted
+# backtick were the enumerated boundary characters still without a fidelity
+# pin (both already behaved correctly, just unpinned). With these two,
+# every character of the boundary set has a quoted-fidelity pin in this
+# group.
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"pipe|name.md\" (pipe stays inside quotes)" 'git commit -- "pipe|name.md"' "pipe|name.md"
+test_pathspecs "PS-QUOTED-PAD: git commit -- \"back\`tick.md\" (backtick stays inside quotes)" 'git commit -- "back`tick.md"' 'back`tick.md'
+
+# Boundary-set behavioral coverage (Session D code gate r2 finding — the
+# boundary set is spelled in both the awk pad and _commit_detect_scan_segments'
+# case): one assertion per character of the hand-maintained list below —
+# each unquoted glued boundary must still split a following `git commit`
+# into a detected segment. The list is a third spelling of the set and
+# makes no agreement-oracle claim in either direction: additions are
+# appended by hand, and a removal can stay green through another detection
+# arm (e.g. the glued-`;` suffix arm). Fixed inputs only (§D).
+for _cd_bchar in '&' '|' ';' '(' ')' '{' '}' '`'; do
+    test_detected "PS-QUOTED-PAD-BOUNDARY: x${_cd_bchar}git commit -m t (glued '${_cd_bchar}' still a boundary)" "x${_cd_bchar}git commit -m t"
+done
+
+# Sentinel-mutation residual (Session D code gate r1 Major 2 fix): hooks/lib/commit-detect.sh's
+# row-16 newline-sentinel substitution (in _commit_detect_scan_segments,
+# directly above the pad call) is BLIND, not quote-aware
+# (unlike the boundary pad above) — a sentinel landing INSIDE a quoted value
+# is not folded back out, it gets tokenized as part of that token's VALUE.
+# Pinning CURRENT behavior for a quoted pathspec containing a literal
+# newline: a positive equality assertion of known, accepted, pre-existing
+# behavior (fails toward deny, not toward a silent miss) — not a claim that
+# it is desirable. No falsifiability marker: this pins what the code does
+# today, not a guard/negative case.
+test_pathspecs "PS-QUOTED-PAD: git commit -- quoted pathspec containing a literal newline (sentinel mutates the value, pinned known residual, Session D gate r1 Major 2)" \
+    $'git commit -- "weird\nname.md"' "weird __GF_CD_NL_SENTINEL__ name.md"
+
+# Pad-boundary timing guard (Session D code gate r1 Major 1 fix): _commit_detect_pad_boundaries
+# was reimplemented as a single-pass awk program (was a bash character loop,
+# quadratic on long input — measured live 6ms@132ch -> 460ms@8012ch,
+# end-to-end is_git_commit 1174ms@12013ch vs the retired sed's flat
+# ~41-46ms). GF_PAD_TIMING_MS: loaded-worst observed for the awk version at
+# ~12KB (nproc-core busy-loop saturating the machine during the run) was
+# 1022ms; bound set generously above 2x that floor (2044ms) for CI/dev-machine
+# headroom, per the repo's timing-assertion convention
+# (profiles/claude-plugin/rules/architecture.md) — 2026-08-31.
+# Instrument scope, stated precisely (§H instrument-claim rule): this guard
+# is a CEILING on gross pathological cost at ~12KB, not a discriminator of
+# the retired quadratic implementation at this size — that one measured
+# 1174ms quiet end-to-end here and would also pass this bound. The
+# PS-QUOTED-PAD fidelity pins carry the correctness contract; this guard
+# fails only on runaway growth well past the measured loaded-worst.
+GF_PAD_TIMING_MS=6000
+
+# Deterministic ~12KB single quoted pathspec (fixed repeated pattern, no
+# Date.now()/random per G-RULES H) — isolates the pad function's per-byte
+# cost inside a long quoted region, the same shape the gate measured.
+_cd_timing_unit='ab(c)d{e}f&g|h;i`j'
+_cd_timing_body=""
+while [ "${#_cd_timing_body}" -lt 12000 ]; do
+    _cd_timing_body+="$_cd_timing_unit"
+done
+_cd_timing_cmd="git commit -m x -- \"${_cd_timing_body}.md\""
+
+_cd_timing_start=$(date +%s%3N)
+is_git_commit "$_cd_timing_cmd" > /dev/null
+_cd_timing_end=$(date +%s%3N)
+_cd_timing_elapsed=$((_cd_timing_end - _cd_timing_start))
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+if [ "$_cd_timing_elapsed" -lt "$GF_PAD_TIMING_MS" ]; then
+    echo "PASS: PS-QUOTED-PAD-TIMING: is_git_commit on a ~12KB quoted pathspec stays under ${GF_PAD_TIMING_MS}ms (${_cd_timing_elapsed}ms)"
+    PASS=$((PASS+1))
+else
+    echo "FAIL: PS-QUOTED-PAD-TIMING: is_git_commit took ${_cd_timing_elapsed}ms, expected <${GF_PAD_TIMING_MS}ms"
+    FAIL=$((FAIL+1))
+fi
+
 # ── Group HEREDOC — heredoc-content false positive, M-audit finding #21 residual ─
 # Characterized in g-docs/agent-output/wave-w2-1/heredoc-characterization.md;
 # fixed in hooks/lib/commit-detect.sh via _commit_detect_strip_heredocs.
@@ -274,13 +367,148 @@ test_pathspecs "HEREDOC-o: git commit -F - docs/README.md <<'MSG' (real pathspec
 # that direction if the strip logic changed later. Empirically confirmed
 # 2026-08-27: pins CURRENT behaviour only, does not change
 # hooks/lib/commit-detect.sh.
-test_pathspecs "HEREDOC-p: git commit -m x <<A <<B (two heredoc operators, one opener line) leaks second operator/body/terminator as unstripped pathspecs (fail-toward-deny)" \
-    $'git commit -m x <<A <<B\nbody A line\nA\nbody B line\nB' $'<<B\nbody\nB\nline\nB'
+# Expected value NARROWED 2026-08-31 by the row-16 fix (extract_pathspecs
+# now stops at the first NL sentinel — see _GF_CD_NL_SENTINEL): the leftover
+# `<<A <<B\nbody B line\nB` text still contains a real unquoted newline right
+# after the leaked `<<B` token, so the walk now stops there instead of
+# continuing into `body`/`B`/`line`/`B`. This is a strictly SMALLER leak of
+# the same still-open, still-not-blocking gap (fewer tokens reach
+# extract_pathspecs' output, not more) — gate strength is unaffected either
+# way, since check-commit.sh's unmatched-path default already classified
+# every leaked token as CODE (fail-toward-deny) before and after. Confirmed
+# empirically: this exact narrowed value is what the fixed lib now returns
+# (g-docs/agent-output/wave-f3/task-44-hooks.md).
+test_pathspecs "HEREDOC-p: git commit -m x <<A <<B (two heredoc operators, one opener line) leaks second operator as an unstripped pathspec, narrowed by the row-16 NL-sentinel stop (fail-toward-deny)" \
+    $'git commit -m x <<A <<B\nbody A line\nA\nbody B line\nB' '<<B'
 
 # Same command string: is_git_commit must still return DETECTED despite the
 # pathspec leak above — classification stays fail-toward-deny either way.
 test_detected "HEREDOC-p: git commit -m x <<A <<B (two heredoc operators) is_git_commit still DETECTED" \
     $'git commit -m x <<A <<B\nbody A line\nA\nbody B line\nB'
+
+# test_skips_hooks_true <name> <cmd> — assert gf_commit_skips_hooks returns 0
+test_skips_hooks_true() {
+    local name="$1" cmd="$2"
+    if gf_commit_skips_hooks "$cmd"; then
+        echo "PASS: $name"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected gf_commit_skips_hooks true, but was false)"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# test_skips_hooks_false <name> <cmd> — assert gf_commit_skips_hooks returns nonzero
+test_skips_hooks_false() {
+    local name="$1" cmd="$2"
+    if ! gf_commit_skips_hooks "$cmd"; then
+        echo "PASS: $name"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected gf_commit_skips_hooks false, but was true)"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# test_overrides_hookspath_true <name> <cmd> — assert gf_commit_overrides_hookspath returns 0
+test_overrides_hookspath_true() {
+    local name="$1" cmd="$2"
+    if gf_commit_overrides_hookspath "$cmd"; then
+        echo "PASS: $name"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected gf_commit_overrides_hookspath true, but was false)"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# test_overrides_hookspath_false <name> <cmd> — assert gf_commit_overrides_hookspath returns nonzero
+test_overrides_hookspath_false() {
+    local name="$1" cmd="$2"
+    if ! gf_commit_overrides_hookspath "$cmd"; then
+        echo "PASS: $name"
+        PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected gf_commit_overrides_hookspath false, but was true)"
+        FAIL=$((FAIL+1))
+    fi
+}
+
+# ── Group WRAPPERS — command-wrapper shapes (F1-3): (), $(), ``, {}, and
+# if/command/exec/time-wrapped `git commit` invocations, previously invisible
+# to the argv walk (no boundary padding for paren/brace/backtick, no
+# transparent-prefix strip for these keywords). All eight must DETECT.
+
+test_detected "WRAPPERS: (git commit -m x) (parenthesized subshell)" "(git commit -m x)"
+test_detected "WRAPPERS: \$(git commit -m x) (command substitution)" '$(git commit -m x)'
+test_detected "WRAPPERS: \`git commit -m x\` (backtick command substitution)" '`git commit -m x`'
+test_detected "WRAPPERS: { git commit -m x; } (brace group)" '{ git commit -m x; }'
+test_detected "WRAPPERS: if git commit -m x; then :; fi (if-wrapped)" 'if git commit -m x; then :; fi'
+test_detected "WRAPPERS: command git commit -m x (command-wrapped)" "command git commit -m x"
+test_detected "WRAPPERS: exec git commit -m x (exec-wrapped)" "exec git commit -m x"
+test_detected "WRAPPERS: time git commit -m x (time-wrapped)" "time git commit -m x"
+
+# Regression guards: the new paren/brace/backtick boundary padding and the
+# if/command/exec/time/$( prefix strip must not split a real commit message
+# that happens to contain those characters or words as plain text — the
+# message stays ONE token and pathspec extraction is unaffected.
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_pathspecs "WRAPPERS: git commit -m \"if x then y\" (message body not split by if/keyword strip)" 'git commit -m "if x then y"' ""
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_pathspecs "WRAPPERS: git commit -m \"a (b) {c}\" (message body not split by paren/brace pad)" 'git commit -m "a (b) {c}"' ""
+
+# ── Group NOVERIFY — gf_commit_skips_hooks predicate (F1-2) ──────────────────
+
+test_skips_hooks_true "NOVERIFY: --no-verify detected" 'git commit --no-verify -m x'
+test_skips_hooks_true "NOVERIFY: -n detected" 'git commit -n -m x'
+test_skips_hooks_true "NOVERIFY: -anm x (fused short-flag cluster containing n) detected" 'git commit -anm x'
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: plain git commit -m x not flagged" 'git commit -m x'
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: -m \"use -n here\" (message body, not a real flag) not flagged" 'git commit -m "use -n here"'
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: -m \"(not a commit)\" (message body) not flagged" 'git commit -m "(not a commit)"'
+# Glued value on a value-taking short flag: the cluster walk stops at `m`, so
+# the `n` inside the message is never read as a flag. Claim pinned: a glued
+# -m value containing n is not a hook-skip (HQ F1 self-review 2026-08-30).
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: -mnote (glued -m value containing n) not flagged" 'git commit -mnote'
+test_skips_hooks_true "NOVERIFY: -na (n before a boolean flag in a cluster) detected" 'git commit -na -m x'
+# git parse-options accepts unambiguous long-option prefixes; --no-veri is the
+# shortest that does not collide with --no-verbose (code-lead F1 r1).
+test_skips_hooks_true "NOVERIFY: --no-veri (shortest unambiguous git abbreviation) detected" 'git commit --no-veri -m x'
+test_skips_hooks_true "NOVERIFY: --no-verif (abbreviation) detected" 'git commit --no-verif -m x'
+test_skips_hooks_true "NOVERIFY: --no-v (shortest prefix, fail-toward-deny even if git would reject it) detected" 'git commit --no-v -m x'
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_skips_hooks_false "NOVERIFY: --no-verbose (a different --no-ver* option) not flagged" 'git commit --no-verbose -m x'
+
+# ── Group HOOKSPATH — gf_commit_overrides_hookspath predicate (F1-2) ─────────
+
+test_overrides_hookspath_true "HOOKSPATH: -c core.hooksPath=/dev/null detected" 'git -c core.hooksPath=/dev/null commit -m x'
+test_overrides_hookspath_true "HOOKSPATH: -c CORE.HOOKSPATH=x (case-insensitive key) detected" 'git -c CORE.HOOKSPATH=x commit -m x'
+test_overrides_hookspath_true "HOOKSPATH: GIT_CONFIG_PARAMETERS env prefix detected" "GIT_CONFIG_PARAMETERS='core.hooksPath=/x' git commit -m x"
+test_overrides_hookspath_true "HOOKSPATH: GIT_CONFIG_KEY_0=core.hooksPath env triple detected" 'GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_VALUE_0=/x git commit -m x'
+
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+test_overrides_hookspath_false "HOOKSPATH: -c user.name=x (unrelated config key) not flagged" 'git -c user.name=x commit -m x'
+
+# ── Group ROW16 — trailing-command false deny (todo row 16, 2026-08-30) ──────
+# A gated `git commit` followed on the NEXT LINE by a trailing command (e.g.
+# `echo "rc=$?"`) had that trailing command's tokens walked by
+# extract_pathspecs as false pathspecs — the deliberate whole-string newline
+# flatten (needed so `git\ncommit -m x` still detects, see the P/
+# NEWLINE-BOUNDARY groups above) makes a real unquoted line break invisible
+# to every walk, so the trailing command's tokens looked like positional
+# pathspecs. is_git_commit must stay DETECTED (this really is a git commit);
+# extract_pathspecs must emit nothing past the real line break, since real
+# shell argv never continues past an unquoted newline.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-31
+test_detected "ROW16: git commit followed by echo on the next line — is_git_commit still DETECTED" \
+    $'git commit -m "x"\necho "rc=$?"'
+test_pathspecs "ROW16: git commit followed by echo on the next line emits no pathspecs (no trailing-command leak)" \
+    $'git commit -m "x"\necho "rc=$?"' ""
 
 # ── Summary ───────────────────────────────────────────────────────────────────────
 

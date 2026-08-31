@@ -183,15 +183,35 @@ if is_git_commit "$CMD"; then
         exit 0
     fi
 
+    # F1-2: --no-verify/-n and -c core.hooksPath=... both skip the native
+    # ADR-004 pre-commit hook (hooks/pre-commit) entirely — that hook is
+    # where sentinel CONTENT binding (tree hash, HEAD, worktree) actually
+    # lives; this hook's own sentinel check just below is existence-only. So
+    # a stale-but-present sentinel would otherwise sail through PreToolUse
+    # while the native hook that would have caught the staleness never runs.
+    # Denying here, before the sentinel/classifier path and on every tier the
+    # gate is active for, is the only place either bypass is ever caught.
+    # Guarded by `command -v`: if commit-detect.sh is missing, these
+    # predicates are undefined too, and this layer falls through to its
+    # documented fail-open path (see the KNOWN FAIL-OPEN comment above)
+    # rather than erroring on an unbound function.
+    if command -v gf_commit_skips_hooks >/dev/null 2>&1 && gf_commit_skips_hooks "$CMD"; then
+        deny "--no-verify or -n skips the native commit gate (ADR-004) — remove the flag; the gate cannot be bypassed"
+    fi
+    if command -v gf_commit_overrides_hookspath >/dev/null 2>&1 && gf_commit_overrides_hookspath "$CMD"; then
+        deny "core.hooksPath override skips the native commit gate (ADR-004) — remove the -c override; the gate cannot be bypassed"
+    fi
+
     # File-set classifier — the gate triggers on WHAT is being committed, not
     # merely that a commit is happening. Two review surfaces, two sentinels:
     #   CODE (executable/instruction surface) → /g-review writes .claude/g-forge-approved
     #   DOC  (narrative documentation surface) → /g-doc-review writes .claude/g-forge-docs-approved
-    # A commit is classified by its staged file set into one of four buckets:
-    #   code  — only CODE paths            → require the code sentinel (unchanged behavior)
-    #   doc   — only DOC paths             → require the doc sentinel
-    #   mixed — both present               → require BOTH sentinels
-    #   none  — empty staged set / unknown → fall through to the code gate (fail safe)
+    # A commit is classified by its staged file set into one of five buckets:
+    #   code      — only CODE paths                 → require the code sentinel (unchanged behavior)
+    #   doc       — only DOC paths                  → require the doc sentinel
+    #   mixed     — both present                    → require BOTH sentinels
+    #   reference — only REFERENCE paths (M40 Task 17) → exempt with an advisory note, no sentinel
+    #   none      — empty staged set / unknown      → fall through to the code gate (fail safe)
     # Unmatched paths default to CODE (the stricter gate) so a misclassification
     # never weakens enforcement.
     STAGED=$(git diff --cached --name-only 2>/dev/null)
@@ -204,8 +224,18 @@ if is_git_commit "$CMD"; then
     # option) and, when present, widen the classifier's input to the UNION of
     # staged paths and modified-but-unstaged tracked paths (git diff
     # --name-only) — the exact set -a would fold into the index. Absent
-    # -a/--all, behavior is unchanged (staged set only).
-    if printf '%s' "$CMD" | grep -qE '(^|[[:space:]])(-[a-zA-Z]*a[a-zA-Z]*|--all)([[:space:]]|$)'; then
+    # -a/--all, behavior is unchanged (staged set only). The cluster's
+    # trailing anchor accepts whitespace/end-of-string OR an immediately
+    # glued quote character (`"`/`'`) — a cluster with an attached value
+    # (`-am"msg"`, `-am'msg'`) has no whitespace after it, so requiring
+    # whitespace/end alone missed it (C-3, 2026-08-30). Widens detection
+    # only — never narrows it, so a missed -a can never weaken the gate.
+    # New false-positive shape from the quote-glue widening: a commit
+    # MESSAGE ending in `-a"` (e.g. `git commit -m "revert -a"`) now also
+    # matches, widening the classifier's input to the staged+unstaged union
+    # on a commit that never used `-a` as a flag. Fail-toward-deny — the
+    # outcome is a possible false "mixed" deny, never a weakened gate.
+    if printf '%s' "$CMD" | grep -qE '(^|[[:space:]])(-[a-zA-Z]*a[a-zA-Z]*|--all)([[:space:]"'\'']|$)'; then
         UNSTAGED=$(git diff --name-only 2>/dev/null)
         STAGED=$(printf '%s\n%s\n' "$STAGED" "$UNSTAGED" | sort -u)
     fi
@@ -225,12 +255,18 @@ if is_git_commit "$CMD"; then
     fi
     # Classification bucket rules live in the shared lib (hooks/lib/classify-changeset.sh)
     # so this hook and the ADR-004 native pre-commit hook agree byte-for-byte —
-    # see that file's header for the bucket table. Sets HAS_CODE/HAS_DOC.
+    # see that file's header for the bucket table. Sets HAS_CODE/HAS_DOC/HAS_REFERENCE.
     gf_classify_changeset <<EOF
 $STAGED
 EOF
 
-    if [ "$HAS_CODE" -eq 1 ] && [ "$HAS_DOC" -eq 1 ]; then
+    # REFERENCE (M40 Task 17) is exempt-with-advisory: checked first, but
+    # ONLY wins when it is the sole bucket present — a REFERENCE path mixed
+    # with CODE or DOC never weakens either of those gates (they're checked
+    # next, unchanged).
+    if [ "$HAS_REFERENCE" -eq 1 ] && [ "$HAS_CODE" -eq 0 ] && [ "$HAS_DOC" -eq 0 ]; then
+        CLASS="reference"
+    elif [ "$HAS_CODE" -eq 1 ] && [ "$HAS_DOC" -eq 1 ]; then
         CLASS="mixed"
     elif [ "$HAS_DOC" -eq 1 ]; then
         CLASS="doc"
@@ -242,7 +278,11 @@ EOF
         CLASS="code"
     fi
 
-    if [ "$CLASS" = "doc" ]; then
+    if [ "$CLASS" = "reference" ]; then
+        # Exempt-with-advisory — no sentinel required, just a visible note
+        # naming the class so this never looks like a silent bypass.
+        echo "G-Forge: ℹ reference-only commit — REFERENCE class, exempt from the review gate"
+    elif [ "$CLASS" = "doc" ]; then
         if [ ! -f "$GF_CLAUDE_DIR/g-forge-docs-approved" ]; then
             deny "No doc-review sign-off. Run /g-doc-review and wait for its verdict before committing documentation."
         fi
@@ -259,9 +299,12 @@ EOF
     elif [ ! -f "$GF_CLAUDE_DIR/g-forge-approved" ]; then
         deny "No code-lead sign-off. Run /g-review and wait for MERGE READY before committing."
     fi
-    # Advisory: warn when committing directly to main with approval
+    # Advisory: warn when committing directly to main with approval.
+    # stdout, not stderr (C-1, 2026-08-30): Claude Code discards exit-0
+    # stderr from a PreToolUse hook, so a stderr advisory on this allow path
+    # is invisible — same reasoning as the REFERENCE advisory above.
     BRANCH=$(git branch --show-current 2>/dev/null)
     if [ "$BRANCH" = "main" ] || [ "$BRANCH" = "master" ]; then
-        echo "G-Forge: Note — committing directly to main. Non-trivial work should be on a feature branch (feat/<slug>, fix/<slug>)." >&2
+        echo "G-Forge: Note — committing directly to main. Non-trivial work should be on a feature branch (feat/<slug>, fix/<slug>)."
     fi
 fi

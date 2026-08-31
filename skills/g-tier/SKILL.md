@@ -62,7 +62,7 @@ Print a structured status block. Format depends on whether this was a read (Step
 ```
 G-Forge tier status
   Active tier:  [full / balanced / light]
-  Hooks:        [list which hooks will fire under the active tier]
+  Hooks:        [which hooks fire under the active tier — derived from g-docs/integration-tiers.md, never recalled]
   Auto-trigger: [yes / partial / no]
   Commit gate:  [on / off]
   Tier file:    .claude/integration-tier ([present / absent — using default])

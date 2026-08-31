@@ -224,4 +224,3 @@ Apply this step only when the ADR is **Accepted** and consequential (a real stac
 - The Step 8 reversibility check + premortem is mandatory and runs for every ADR; the premortem's depth scales with reversibility (inline for a two-way door, an off-context subagent for a one-way door). It is decision-support, not a gate — never block on it.
 - ADR numbers are permanent. Never renumber existing ADRs.
 - Step 9 is a recommendation, never a gate. The developer owns whether to open a fresh session.
-- ADRs written before M9 (v0.10.0) are pre-lineage — no backfill required.

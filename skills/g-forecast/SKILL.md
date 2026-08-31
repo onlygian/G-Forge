@@ -1,6 +1,6 @@
 ---
 name: g-forecast
-description: Run scope-realism analysis and premortem on an approved-or-pending plan. Outputs a complexity score, a quantified miss-risk percentage, and a ranked list of likely failure scenarios seeded by /g-patterns history. Plan-time gate, never blocks — surfaces risk for human judgment.
+description: Run scope-realism analysis and premortem on an approved-or-pending plan. Outputs a complexity score, a quantified likelihood that ≥1 premortem scenario fires, and a ranked list of likely failure scenarios seeded by /g-patterns history. Plan-time gate, never blocks — surfaces risk for human judgment.
 context: [task, sprint, architectural, institutional]
 ---
 
@@ -110,11 +110,11 @@ Sort descending. Keep the top 5 scenarios.
 
 ## Step 5b — Read forecast-outcome corpus
 
-Before scoring miss-risk (Step 6), read the observed track record of past forecasts so the formula can calibrate against what actually happened, not just complexity + scenario signals.
+Before scoring the likelihood ≥1 premortem scenario fires (Step 6), read the observed track record of past forecasts so the formula can calibrate against what actually happened, not just complexity + scenario signals.
 
 - Glob `g-docs/forecasts/*.md` and read the `## Outcome` table in each.
-- Most `## Outcome` tables are still empty — `/g-retro` reconciles the active plan's forecast at retro time, keyed to the branch slug (`skills/g-retro/SKILL.md:47-56`), not only when a milestone closes. An unfilled row has a blank `Actually happened?` cell and is not a signal: skip it, the same way Step 3 discards `None recorded.` / `None.` / `(none)` sentinels — absence of evidence is not evidence.
-- For rows that ARE filled in, read the verdict and evidence tag `/g-retro` writes into the `Actually happened?` cell (`skills/g-retro/SKILL.md:56`): a verdict phrase (`happened`, `happened — variant`, `yes`, `did not happen`, `no`, `partial`) usually followed by a one-word evidence tag in parentheses (`journal` / `git` / `unverified`, or a session-pass label like `Pass 1`). Tolerate markdown emphasis wrapping the cell (e.g. `**happened (git)**` reads identically to `happened (git)`).
+- Most `## Outcome` tables are still empty — `/g-retro` reconciles the active plan's forecast at retro time, keyed to the branch slug (`skills/g-retro/SKILL.md:49-59`), not only when a milestone closes. An unfilled row has a blank `Actually happened?` cell and is not a signal: skip it, the same way Step 3 discards `None recorded.` / `None.` / `(none)` sentinels — absence of evidence is not evidence.
+- For rows that ARE filled in, read the verdict and evidence tag `/g-retro` writes into the `Actually happened?` cell (`skills/g-retro/SKILL.md:58`): a verdict phrase (`happened`, `happened — variant`, `yes`, `did not happen`, `no`, `partial`) usually followed by a one-word evidence tag in parentheses (`journal` / `git` / `unverified`, or a session-pass label like `Pass 1`). Tolerate markdown emphasis wrapping the cell (e.g. `**happened (git)**` reads identically to `happened (git)`).
 - **Confirm/discard rule — one rule, stated once, no exceptions:**
   - A cell that is bare `unverified`, or whose evidence tag is `(unverified)`, carries no evidence — **discard** it.
   - A cell carrying a `journal`, `git`, or explicit pass-reference tag (e.g. `(journal)`, `(git)`, `Pass 1`) — **confirmed**.
@@ -138,13 +138,13 @@ If `N ≥ 5`, sum the credits and divide by `N` to get `hit_rate` (0.0–1.0), t
 deviation              = hit_rate - 0.5
 calibration_adjustment = clamp(-10, 10, round(deviation × 20))   // defensive no-op: hit_rate ∈ [0,1] already bounds deviation × 20 to [-10,10]; kept explicit rather than relied-upon
 ```
-0.5 is the neutral midpoint — premortem scenarios are candidate failures, not certainties, so a 50% observed hit rate means the corpus is, on average, neither over- nor under-predicting. A `hit_rate` above 0.5 (predicted scenarios happen more often than not — the corpus has been under-predicting risk) raises future miss-risk (`calibration_adjustment` positive, up to `+10`). A `hit_rate` below 0.5 (predicted scenarios mostly did NOT happen — the corpus has been over-predicting risk) lowers it (negative, down to `-10`). This recomputes from the live corpus every run, so it moves as `/g-retro` reconciles more forecasts — it is never a fixed constant.
+0.5 is the neutral midpoint — premortem scenarios are candidate failures, not certainties, so a 50% observed hit rate means the corpus is, on average, neither over- nor under-predicting. A `hit_rate` above 0.5 (predicted scenarios happen more often than not — the corpus has been under-predicting risk) raises the future likelihood ≥1 premortem scenario fires (`calibration_adjustment` positive, up to `+10`). A `hit_rate` below 0.5 (predicted scenarios mostly did NOT happen — the corpus has been over-predicting risk) lowers it (negative, down to `-10`). This recomputes from the live corpus every run, so it moves as `/g-retro` reconciles more forecasts — it is never a fixed constant.
 
 Carry `hit_rate`, `N`, `M`, and `calibration_adjustment` into Step 6.
 
-## Step 6 — Compute miss-risk percentage
+## Step 6 — Compute the likelihood ≥1 premortem scenario fires
 
-A rough quantified estimate of "% likelihood this plan misses its target on the first execution pass":
+A rough quantified estimate of "likelihood ≥1 premortem scenario fires during this plan's first execution pass":
 
 ```
 scenario_contribution = sum over top-3 scenarios of min(scenario_score, 15) × 1.5
@@ -176,6 +176,8 @@ Tag the result:
 
 ## Step 7 — Emit the forecast report
 
+`Scenario-fire:` in the template below is the likelihood ≥1 premortem scenario fires during this pass — not a prediction that the plan overall fails.
+
 Print exactly:
 
 ```
@@ -184,7 +186,7 @@ G-FORECAST — [plan name]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Complexity:    [X/10]   (files [F] · waves [W] · boundaries [B] · new surface [S] · rule edits [R][ + blast-radius adjustment if applied])
-Miss-risk:     [P]%     ([Low / Moderate / Elevated / High])
+Scenario-fire: [P]%    ([Low / Moderate / Elevated / High])
 Calibration:   raw [RAW]% → adjusted [P]%   (adjustment [±A], N=[N] confirmed outcomes[, M=[M] mitigation-held][ — floor not met, neutral if N<5])
 Est. tokens:   [low]–[high]   ([Small / Medium / Large / Very Large])
 
@@ -221,7 +223,7 @@ Write the forecast to `g-docs/forecasts/<plan-slug>.md` (create directory if mis
 - Score: [X/10]
 - Breakdown: files [F], waves [W], boundaries [B], new surface [S], rule edits [R]
 
-## Miss-risk: [P]% — [tag]
+## Likelihood ≥1 premortem scenario fires: [P]% — [tag]
 - Raw score (pre-calibration): [RAW]% ([n/a on cold-start])
 - Calibration: adjustment [±A], N=[N] confirmed outcomes, M=[M] mitigation-held ([sample floor met / insufficient data — neutral] / [n/a on cold-start])
 
@@ -258,4 +260,4 @@ If invoked from `/g-plan` (Step 3b of g-plan): return to `/g-plan` with the fore
 - Apply the same `None recorded.` sentinel filter as `/g-patterns` when reading retros — never seed scenarios from empty signals.
 - If `g-docs/retros/` is empty and `g-docs/patterns-deferred.md` is missing, premortem operates on plan surface only: emit a single scenario `cold-start — no history yet` with likelihood derived from complexity alone, and note in Recommendations that confidence is low until history accumulates.
 - Never modify the plan file itself. The forecast is advisory — re-scoping is a developer decision communicated back to `/g-plan`.
-- Miss-risk percentage is a heuristic, not a prediction — present it as such ("forecast assumes the historical pattern set is representative").
+- The likelihood ≥1 premortem scenario fires is a heuristic, not a prediction — present it as such ("forecast assumes the historical pattern set is representative").

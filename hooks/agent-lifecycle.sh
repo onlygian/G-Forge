@@ -85,6 +85,12 @@ fi
 extract_agent_type() {
     local payload="$1" val rc
 
+    # jq exits 0 with zero output on a genuinely empty payload (zero JSON
+    # docs to iterate) -- indistinguishable from a real parse by rc alone.
+    if [ -z "${payload//[[:space:]]/}" ]; then
+        printf 'unknown'; return 0
+    fi
+
     if command -v jq >/dev/null 2>&1; then
         val=$(printf '%s' "$payload" | jq -r '.agent_type // "unknown"' 2>/dev/null)
         rc=$?
@@ -117,6 +123,12 @@ let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const d=JSON.parse(s
 
 extract_agent_id() {
     local payload="$1" val rc
+
+    # Same empty-payload rc lie as extract_agent_type -- short-circuit to the
+    # documented empty default before jq's zero-invocation exit 0 can fool it.
+    if [ -z "${payload//[[:space:]]/}" ]; then
+        printf ''; return 0
+    fi
 
     if command -v jq >/dev/null 2>&1; then
         val=$(printf '%s' "$payload" | jq -r '.agent_id // empty' 2>/dev/null)
@@ -152,6 +164,10 @@ let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const d=JSON.parse(s
 # "RESULT:" all omit gracefully (empty stdout, rc 1) — never fails the hook.
 extract_result() {
     local payload="$1" msg="" first
+
+    # Empty/whitespace-only payload has no message to extract -- return early
+    # rather than risk jq's empty-stdin rc=0 masking it inside the cascade.
+    [ -z "${payload//[[:space:]]/}" ] && return 1
 
     if command -v jq >/dev/null 2>&1; then
         msg=$(printf '%s' "$payload" | jq -r '.last_assistant_message // empty' 2>/dev/null)

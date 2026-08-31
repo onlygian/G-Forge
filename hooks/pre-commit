@@ -30,10 +30,12 @@
 # need check-commit.sh's `-a`/pathspec-widening heuristics — `git diff
 # --cached --name-only` here already IS the final staged set (ADR-004).
 #
-# Later sub-milestone note: this source file is installed into
-# `.git/hooks/pre-commit` by a later increment. This file is NOT installed
-# or registered anywhere by this change — the source file living here under
-# `hooks/` is the whole deliverable of this increment.
+# Install: `/g-init` Step 6a and `/g-update` Step 7a copy this file to
+# `$(git rev-parse --git-path hooks)/pre-commit` together with every
+# `hooks/lib/*.sh` into `<git-hooks-dir>/lib/` (the libs sourced below
+# resolve relative to this file's own location). No `.claude/settings.json`
+# registration — git invokes it natively. (Stale "not installed anywhere"
+# note replaced 2026-08-30, M52 F1.)
 
 # deny <reason> — block the commit: print "G-Forge: <reason>" to stderr and
 # exit 1 (see exit contract above — any non-zero exit blocks a git hook).
@@ -43,8 +45,8 @@ deny() {
 }
 
 # Resolve shared lib helpers relative to this script's own location, so the
-# eventually-installed copy (.git/hooks/pre-commit, libs alongside it) finds
-# them the same way this repo-source copy (hooks/pre-commit, hooks/lib/)
+# installed copy (<git-hooks-dir>/pre-commit, libs alongside it in lib/)
+# finds them the same way this repo-source copy (hooks/pre-commit, hooks/lib/)
 # does — same convention hooks/check-commit.sh uses (M-audit finding #21 /
 # BUG-2: one sourced classifier/resolver, never a second hand-copied one).
 _GF_HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -156,12 +158,17 @@ STAGED=$(git diff --cached --name-only 2>/dev/null)
 # Classify via the shared lib (hooks/lib/classify-changeset.sh) — never a
 # second hand-copied bucket case-statement (M-audit finding #21 / BUG-2).
 # Call convention per the lib's header: heredoc/redirection, not a pipe, so
-# HAS_CODE/HAS_DOC land in THIS shell rather than a subshell.
+# HAS_CODE/HAS_DOC/HAS_REFERENCE land in THIS shell rather than a subshell.
 gf_classify_changeset <<EOF
 $STAGED
 EOF
 
-if [ "$HAS_CODE" -eq 1 ] && [ "$HAS_DOC" -eq 1 ]; then
+# REFERENCE (M40 Task 17) is exempt-with-advisory: it only wins when it is
+# the sole bucket present — mixed with CODE or DOC never weakens either of
+# those gates (checked next, unchanged).
+if [ "$HAS_REFERENCE" -eq 1 ] && [ "$HAS_CODE" -eq 0 ] && [ "$HAS_DOC" -eq 0 ]; then
+    CLASS="reference"
+elif [ "$HAS_CODE" -eq 1 ] && [ "$HAS_DOC" -eq 1 ]; then
     CLASS="mixed"
 elif [ "$HAS_DOC" -eq 1 ]; then
     CLASS="doc"
@@ -209,6 +216,12 @@ DOC_SENTINEL="$GOVERNING_CLAUDE_DIR/g-forge-docs-approved"
 
 # --- Increment 9: deny/consume decision logic ---
 case "$CLASS" in
+    reference)
+        # Exempt-with-advisory (M40 Task 17) — no sentinel to validate or
+        # consume, just a visible note so this never looks like a silent
+        # bypass.
+        echo "G-Forge: ℹ reference-only commit — REFERENCE class, exempt from the review gate"
+        ;;
     code)
         gf_validate_sentinel "$CODE_SENTINEL" "code-lead" || deny "$REASON. Run /g-review and wait for MERGE READY before committing."
         rm -f -- "$CODE_SENTINEL"

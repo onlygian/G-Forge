@@ -88,7 +88,7 @@ PM tells the learner why kickoff exists (voice-adapted):
 - `mid`: "We run a kickoff before every project to define scope before you're committed to any code. The output is `g-docs/project_brief.md` — a locked reference that planning and execution work against."
 - `dev`: "Kickoff. Scope definition, stack validation, brief lock. Same process as any project."
 
-PM then runs the full `/g-kickoff` process (all 7 steps) as normal, with one addition: after each question group in Step 1, PM gives a brief teaching note.
+PM then runs the full `/g-kickoff` process as normal, with one addition: after each question group in Step 1, PM gives a brief teaching note.
 
 After Group 1 answers:
 > *(teaching note)* "Defining the project in one sentence is harder than it sounds — it forces you to validate that you actually know what you're building. If it took more than one sentence, the scope probably needs tightening."
@@ -256,6 +256,8 @@ Append the final section to `.claude/training-progress.md`:
 ### Suggested next step
 [Based on level and what was built — e.g. "Add user authentication to your project to practise the auth flow" or "Try /g-audit on the codebase you just built — it's a different perspective on the same code"]
 ```
+
+Delete `.claude/training-mode` now — the project is complete and the file must not outlive it (while present it blocks `/g-afk` and keeps the project in training mode).
 
 PM tells the learner (voice-adapted):
 - `eli5`: "You built a real piece of software using the same structured process that professional teams use. That's the whole loop — plan, build in waves, review, ship. Your progress log is in `.claude/training-progress.md`. Next step: [suggested next project or skill]."

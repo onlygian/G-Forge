@@ -50,16 +50,14 @@ Omit these if they do not apply to the task — do not add them as boilerplate.
 
 ## Return format
 
-Write the full spec to the `output_file` path passed in your dispatch prompt. Create parent directories if they do not exist.
-
-Return to the calling session using **only** this compact block — no additional prose:
+You hold no `Write` grant (`tools:` above is `Read, Glob, Grep` — reviewer-class per the installed `.claude/rules/architecture-<stack>.md`, in this repo's self-hosted case the `agents/` layer-map bullet and the **Agent rule** paragraph of `profiles/claude-plugin/rules/architecture.md`) — you cannot write the `output_file` yourself; the calling session writes it to the `output_file` path passed in your dispatch prompt. Return the full spec (the exact Output format above, fully filled in) in your response, followed by this compact block — no additional prose beyond the spec and the block:
 
 ```
 RESULT: DONE
-SPEC_FILE: [output_file path]
+SPEC_FILE: [output_file path passed in your dispatch prompt]
 STEPS: N implementation steps
 SUMMARY: [one sentence — what this spec implements]
-DETAIL: [output_file path]
+DETAIL: [output_file path passed in your dispatch prompt]
 ```
 
 ## Rules

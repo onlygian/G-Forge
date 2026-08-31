@@ -1,8 +1,8 @@
 # G-Proof Roadmap (fork-bound milestones)
 
-> **Local-only file — gitignored by explicit developer choice ([ADR-012](decisions/012-g-forge-2.5-final-release-scope.md), 2026-08-10).**
+> **Committed file** — tracked in git since 2026-08-21 (`45e21ad`, gaps A9 developer directive: a 42KB single-copy planning doc is a known-fatal loss pattern). ~~Local-only, gitignored by explicit developer choice ([ADR-012](decisions/012-g-forge-2.5-final-release-scope.md), 2026-08-10)~~ — that choice was reversed; see `.gitignore:67`.
 > These milestones left `g-docs/ROADMAP.md` when the 2.5 final-release scope was settled: they ship from the **G-Proof** fork (ADR-010), never from this repo. Statuses and milestone numbers preserved as-moved; every version stamp below is STALE — versioning restarts at G-Proof 1.0.
-> **Fork checklist item: carry this file to the new repo BY HAND.** It is not in git; a clone or git-mediated fork will not bring it. This repo already lost one gitignored planning file this way (CLAUDE.md, regenerated 2026-07-10).
+> ~~**Fork checklist item: carry this file to the new repo BY HAND.** It is not in git; a clone or git-mediated fork will not bring it.~~ **Retired 2026-08-21** — the file is committed, so a clone or git-mediated fork brings it automatically and no hand-carry step is needed. The reason it was un-ignored stands as the warning: this repo already lost one gitignored planning file (CLAUDE.md, regenerated 2026-07-10).
 
 ---
 
@@ -267,7 +267,7 @@
 - *Version-lineage confusion* (med — HIGHER than the old v3.0.0 plan's "culture shock" risk, since the lineage — v2.5 → 1.0 post-ADR-010, 2.13 → 1.0 as originally written — reads as a downgrade to the unbriefed) → the announcement + CHANGELOG lineage note lead with it; `/g-update` compares (name, version) pairs, not bare numbers — verify this explicitly in Wave 1.
 - *Gate GIF can't be captured* (low) → fallback to animated SVG / mermaid / text sequence.
 
-**Depends on:** ⚠ **superseded by ADR-010 — the pre-ADR-010 text was:** *"everything — that's the point. Hard prerequisites: M41 (release machinery cuts this release), M38/M39 (the self-governance story the name claims)."* **Now:** the hard prerequisite is **the rebuild** (R0 first, then whatever R-bands R0 authorizes). M38/M39 are **not** prerequisites — they sit behind a 2.x sequence that ends at v2.5, so keeping them would block M44 permanently. Whether **M41** remains a prerequisite is one of the three open detail calls at the gate.
+**Depends on:** ⚠ **superseded by ADR-010 — the pre-ADR-010 text was:** *"everything — that's the point. Hard prerequisites: M41 (release machinery cuts this release), M38/M39 (the self-governance story the name claims)."* **Now:** the hard prerequisite is **the rebuild** (R0 first, then whatever R-bands R0 authorizes). **R0's first act (developer, 2026-08-30):** a whole-system Fable audit of the shipped 2.5 — the DIES / TRANSFORMS components the M52 F-cycles deliberately skipped — read directly by HQ on the session model, findings filed as G-Proof planning input, not as 2.5 fixes. M38/M39 are **not** prerequisites — they sit behind a 2.x sequence that ends at v2.5, so keeping them would block M44 permanently. Whether **M41** remains a prerequisite is one of the three open detail calls at the gate.
 
 ---
 

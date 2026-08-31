@@ -1,6 +1,6 @@
 # Environment variables
 
-G-RULES §G reference. G-Forge's shipped surfaces read two environment variables;
+G-RULES §G reference. G-Forge's shipped surfaces read the environment variables listed below;
 three more names that look like env vars are actually test-suite constants,
 not environment variables at all — listed below to prevent that confusion.
 
@@ -24,6 +24,26 @@ not environment variables at all — listed below to prevent that confusion.
 | **Default when unset** | `tests` — behavior unchanged. |
 | **Set in production?** | No — consumed only by the runner's own test suite. Also documented at `tests/README.md`. |
 | **Example value** | `GF_RUNALL_SUITE_DIR=/tmp/fixture-suites` |
+
+## `GF_README_PATH`
+
+| | |
+|---|---|
+| **Purpose** | Overrides the README path `tests/test-readme-counts.sh` pins its hand-typed counts against (`tests/test-readme-counts.sh:32`). Test-only — exists so the G-RULES §H falsifiability probe can point the suite at a scratch copy with one count neutered and confirm RED without touching the production `README.md`. |
+| **Required/optional** | Optional. |
+| **Default when unset** | `README.md` at the repo root — behavior unchanged. |
+| **Set in production?** | No — consumed only by the count-pinning suite and its probe. |
+| **Example value** | `GF_README_PATH=/tmp/README-probe.md` |
+
+## `GF_CLASSIFY_ROOT`
+
+| | |
+|---|---|
+| **Purpose** | Root directory for the `reference/<bundle>/` marker lookup (`SNAPSHOT.md` or `NOTE.md`) inside `gf_classify_changeset` in `hooks/lib/classify-changeset.sh`, which both gate consumers (`hooks/check-commit.sh`, `hooks/pre-commit`) run on every gated commit. Tests set it to point the lookup at a `mktemp -d` fixture instead of the repository. |
+| **Required/optional** | Optional. |
+| **Default when unset** | `.` (the current working directory, typically the repository root) — behavior unchanged. |
+| **Set in production?** | Read in production on every gated commit, but leave it unset: the default `.` is the hook's working directory, the tree being committed. Exporting it in a real shell relocates the marker lookup and changes which commits are gate-exempt. Set it only in tests. |
+| **Example value** | `GF_CLASSIFY_ROOT=/tmp/fixture` |
 
 ## Test-suite constants (not environment variables)
 

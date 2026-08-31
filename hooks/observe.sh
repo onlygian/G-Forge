@@ -189,7 +189,7 @@ let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{const d=JSON.parse(s
     # which needs the bare command text, not the surrounding JSON envelope,
     # to recognize `git commit`.
     if [ -z "$cmd" ]; then
-        cmd=$(printf '%s' "$payload" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+        cmd=$(printf '%s' "$payload" | sed -n 's/.*"command"[[:space:]]*:[[:space:]]*"\(\([^"\\]\|\\.\)*\)".*/\1/p')
     fi
     printf '%s' "$cmd"
 }

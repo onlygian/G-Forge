@@ -26,7 +26,17 @@
 # Each of the three derivations is now preceded by a single-match assertion
 # on its grep (grep -cF … -eq 1) so a SKILL.md shape change (second matching
 # line) fails loud with `exit 1` instead of eval-ing an unexpected snippet.
-# Total: 19 assertions (up from 3)
+# Extended for A7 drift-set resync (task 10): Check 16 now also drift-checks
+# the installed `.claude/skills/architecture-<stack>/SKILL.md` copy against
+# its `profiles/<stack>/rules/architecture.md` source (frontmatter stripped).
+#   Tests 15-16: grep-pins — skills/g-doctor/SKILL.md Check 16 and
+#   skills/g-update/SKILL.md Step 6 both name the artifact, so a future edit
+#   that silently drops it goes red here.
+#   Tests 17-18: frontmatter-strip + hash-compare actually discriminates —
+#   identical stripped body vs. profile source → MATCH; differing → MISMATCH.
+# See the Results line at the end of a run for the current total — not
+# restated here as a fixed number (an unpinned count is a review finding,
+# G-RULES §G/ADR-013).
 
 PASS=0
 FAIL=0
@@ -675,6 +685,119 @@ NEW_RESULT_CLEAN=$(new_stray_check)
 check "NEW inverted check: clean tree produces no strays" "" "$NEW_RESULT_CLEAN"
 
 cd / && rm -rf "$FIXTURE14"
+
+# ────────────────────────────────────────────────────────────────────────────
+# Architecture-Skill Drift Tests (Tests 15-18)
+# Task 10 (A7 drift-set resync): /g-doctor Check 16 now also drift-checks the
+# installed `.claude/skills/architecture-<stack>/SKILL.md` copy `/g-specialize`
+# writes (frontmatter + the full `profiles/<stack>/rules/architecture.md` body)
+# against its profile source. Tests 15-16 grep-pin that the shipped skill text
+# actually names the artifact (guard tests: they pass because a future edit
+# has NOT silently dropped the naming — falsifiability probed, see markers).
+# Tests 17-18 prove the frontmatter-strip + hash-compare mechanism the SKILL
+# prescribes actually discriminates match vs. mismatch.
+
+# strip_frontmatter <file> — mimics the Check 16 prescription: "strip the
+# installed file's frontmatter (everything through the closing `---` line)".
+# Prints everything after the second `---` line.
+strip_frontmatter() {
+    awk 'BEGIN{n=0} /^---$/{n++; next} n<2{next} {print}' "$1"
+}
+
+# Test 15: SKILL TEXT NAMES THE ARTIFACT — skills/g-doctor/SKILL.md Check 16
+# grep-pins the literal `.claude/skills/architecture-*/SKILL.md` string, so a
+# future edit that silently drops the artifact from Check 16 goes red here.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-29
+echo "Test 15: g-doctor SKILL.md Check 16 names .claude/skills/architecture-*/SKILL.md"
+GDOCTOR_MATCH=$(grep -cF '.claude/skills/architecture-*/SKILL.md' "$SKILL_MD")
+GDOCTOR_NAMED="no"
+[ "$GDOCTOR_MATCH" -ge 1 ] && GDOCTOR_NAMED="yes"
+check "g-doctor Check 16 names .claude/skills/architecture-*/SKILL.md" "yes" "$GDOCTOR_NAMED"
+
+# Test 16: g-update SKILL.md Step 6 names the same artifact the same way.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-29
+echo "Test 16: g-update SKILL.md Step 6 names .claude/skills/architecture-[stack]/SKILL.md"
+GUPDATE_SKILL_MD="$REPO_ROOT/skills/g-update/SKILL.md"
+GUPDATE_MATCH=$(grep -cF '.claude/skills/architecture-[stack]/SKILL.md' "$GUPDATE_SKILL_MD")
+GUPDATE_NAMED="no"
+[ "$GUPDATE_MATCH" -ge 1 ] && GUPDATE_NAMED="yes"
+check "g-update Step 6 names .claude/skills/architecture-[stack]/SKILL.md" "yes" "$GUPDATE_NAMED"
+
+# Test 17: FRONTMATTER-STRIP MATCH — installed skill body equals profile
+# source body → hashes equal after frontmatter strip (no drift).
+#
+# Trace:
+#   - Create profiles/test-stack/rules/architecture.md (canonical body)
+#   - Create .claude/skills/architecture-test-stack/SKILL.md: frontmatter +
+#     the SAME body content
+#   - strip_frontmatter the installed file → stripped-body.md
+#   - compare_hashes(profile source, stripped-body.md) → MATCH ✓
+
+echo "Test 17: Architecture-skill installed copy matches profile source (frontmatter stripped)"
+FIXTURE17=$(mktemp -d)
+cd "$FIXTURE17" || { echo "FAIL: could not create fixture"; exit 1; }
+
+mkdir -p profiles/test-stack/rules .claude/skills/architecture-test-stack
+
+ARCH_BODY="## Test Stack Architecture Rules
+
+Layer map: components/, lib/, services/.
+"
+printf '%s' "$ARCH_BODY" > profiles/test-stack/rules/architecture.md
+
+INSTALLED_SKILL="---
+name: architecture-test-stack
+description: Test Stack architecture rules and patterns. Preloaded into the test-stack architect agent at startup.
+---
+$ARCH_BODY"
+printf '%s' "$INSTALLED_SKILL" > .claude/skills/architecture-test-stack/SKILL.md
+
+strip_frontmatter ".claude/skills/architecture-test-stack/SKILL.md" > stripped-body.md
+
+RESULT=$(compare_hashes "profiles/test-stack/rules/architecture.md" "stripped-body.md")
+check "architecture-skill match: hashes equal after frontmatter strip (no drift)" "MATCH" "$RESULT"
+
+cd / && rm -rf "$FIXTURE17"
+
+# Test 18: FRONTMATTER-STRIP MISMATCH — installed skill body differs from
+# profile source body → hashes differ after frontmatter strip (drift).
+#
+# Trace:
+#   - Create profiles/other-stack/rules/architecture.md (canonical, current)
+#   - Create .claude/skills/architecture-other-stack/SKILL.md: frontmatter +
+#     a DIFFERENT (staled) body content
+#   - strip_frontmatter the installed file → stripped-body.md
+#   - compare_hashes(profile source, stripped-body.md) → MISMATCH ✓
+
+echo "Test 18: Architecture-skill installed copy differs from profile source (drift detected)"
+FIXTURE18=$(mktemp -d)
+cd "$FIXTURE18" || { echo "FAIL: could not create fixture"; exit 1; }
+
+mkdir -p profiles/other-stack/rules .claude/skills/architecture-other-stack
+
+CURRENT_ARCH="## Other Stack Architecture Rules (current)
+
+Layer map: components/, lib/, services/, stores/.
+"
+printf '%s' "$CURRENT_ARCH" > profiles/other-stack/rules/architecture.md
+
+STALED_BODY="## Other Stack Architecture Rules (staled)
+
+Layer map: components/, lib/.
+"
+STALED_INSTALLED="---
+name: architecture-other-stack
+description: Other Stack architecture rules and patterns. Preloaded into the other-stack architect agent at startup.
+---
+$STALED_BODY"
+printf '%s' "$STALED_INSTALLED" > .claude/skills/architecture-other-stack/SKILL.md
+
+strip_frontmatter ".claude/skills/architecture-other-stack/SKILL.md" > stripped-body.md
+
+RESULT=$(compare_hashes "profiles/other-stack/rules/architecture.md" "stripped-body.md")
+check "architecture-skill mismatch: hashes differ after frontmatter strip (drift detected)" "MISMATCH" "$RESULT"
+
+cd / && rm -rf "$FIXTURE18"
 
 # ────────────────────────────────────────────────────────────────────────────
 # Summary

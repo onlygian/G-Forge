@@ -18,8 +18,8 @@
 # never a `local -n` nameref (the other historical break: bash's nameref
 # cannot bind an array literal the way that attempt tried).
 #
-# Total assertions: 15 (>= the dispatched 15-case floor). Count is the
-# RUNNER-OBSERVED total and must equal the `Results:` line — the finding-#20
+# Total assertions: 18 = 16 original + 2 installed-layout lib cases
+# (runner-observed count). Must equal the `Results:` line — the finding-#20
 # cross-check that catches a suite silently dropping cases.
 
 # Resolve to ABSOLUTE paths once, before any fixture cd (tests/README.md).
@@ -220,10 +220,44 @@ printf 'full\n' > .claude/integration-tier
 rm -f "$CODE_SENTINEL" "$DOC_SENTINEL" .claude/integration-tier
 stage "hooks/code10.sh"
 run "no G-Forge project marker resolves inert" 0
+printf 'full\n' > .claude/integration-tier
+
+# 14: REFERENCE class (M40 Task 17) — a marked reference/<bundle>/... commit
+# (bundle dir contains SNAPSHOT.md) passes with NO sentinel — exempt with
+# advisory, no sign-off required. The marker file physically exists on disk
+# (stage() creates + stages it), which is what the lib's `[ -f ]` marker
+# lookup needs — GF_CLASSIFY_ROOT defaults to "." (this fixture's cwd).
+# Placed HERE deliberately, before case 15 below commits "conflict.txt" (a
+# file with unique, non-"x\n" content) to HEAD: every stage() call in this
+# fixture writes literal "x\n" to every path, so up to this point ALL
+# committed history is content-identical to whatever stage() creates next,
+# and git's rename detection folds the old committed path into an R100
+# rename with the new one instead of surfacing it as a stray deletion in
+# `git diff --cached --name-only` — verified empirically (scratch repro,
+# see this task's report) before picking this position. After case 15 seeds
+# a differently-content tracked file, that invisibility no longer holds and
+# a reference-only stage() there picks up an unrelated CODE-bucket deletion,
+# silently turning the changeset mixed. Do not move this case past case 15.
+rm -f "$CODE_SENTINEL" "$DOC_SENTINEL"
+stage "reference/mybundle/SNAPSHOT.md" "reference/mybundle/data.txt"
+# Also asserts the advisory line reaches STDOUT (Session C fix round, lane A)
+# — the exemption must stay visible, never a silent bypass. run()'s helper
+# captures stderr only (`2>&1 1>/dev/null`), so this case captures stdout
+# separately instead of reusing run().
+STDOUT_OUT=$(bash "$SCRIPT" </dev/null 2>/dev/null)
+STDOUT_CODE=$?
+if [ "$STDOUT_CODE" -eq 0 ] && printf '%s' "$STDOUT_OUT" | grep -qF 'reference-only commit — REFERENCE class, exempt from the review gate'; then
+    echo "PASS: marked reference-only commit allowed with no sentinel (REFERENCE, exempt) + advisory line on stdout"; PASS=$((PASS+1))
+else
+    echo "FAIL: marked reference-only commit (expected exit 0 + advisory line on stdout; got exit $STDOUT_CODE, stdout: $STDOUT_OUT)"; FAIL=$((FAIL+1))
+fi
+# Restore the local-tier-absent state case 13 left behind — case 15 below
+# depends on it (see that case's own comment).
+rm -f .claude/integration-tier
 
 # ── Group 4: deny edges ────────────────────────────────────────────────────
 
-# 14: ambiguous worktree/common-dir resolution. GIT_COMMON_DIR is a real git
+# 15: ambiguous worktree/common-dir resolution. GIT_COMMON_DIR is a real git
 # env var (not a G-Forge invention) that git rev-parse --git-common-dir
 # honors; pointing it at a non-existent path makes the underlying `git
 # rev-parse --git-common-dir` call fail outright, so
@@ -243,7 +277,7 @@ else
 fi
 printf 'full\n' > .claude/integration-tier
 
-# 15: git write-tree failure on a genuinely unmerged/conflicted index
+# 16: git write-tree failure on a genuinely unmerged/conflicted index
 # (hooks/pre-commit:146-153). Built with a real add/add merge conflict on
 # two branches off the seeded commit — confirmed via direct probe (this
 # task's authoring notes) that `git write-tree` exits 128 with no stdout on
@@ -284,6 +318,56 @@ run_deny "git write-tree failure on unmerged/conflicted index is denied" 1 "git 
 git merge --abort >/dev/null 2>&1
 
 cd / && rm -rf "$WORKDIR"
+
+# ── Group 5: installed layout — lib/ presence requirement ─────────────────
+
+# 17: Installed layout, lib ABSENT — pre-commit copied alone, denies with
+# "internal error" because it sources lib/worktree-resolve.sh from its own
+# directory at runtime (hooks/pre-commit:50-56).
+INSTALLED_FIXTURE="$(mktemp -d)"
+cd "$INSTALLED_FIXTURE" || { echo "FAIL: could not enter installed fixture"; exit 1; }
+git init -q
+git config user.email "test@g-forge.local"
+git config user.name "g-forge-test"
+mkdir -p .claude
+printf 'full\n' > .claude/integration-tier
+INSTALLED_GIT_HOOKS="$(git rev-parse --git-path hooks)"
+mkdir -p "$INSTALLED_GIT_HOOKS"
+# Copy only the pre-commit hook, NOT the lib/ directory
+cp "$SCRIPT" "$INSTALLED_GIT_HOOKS/pre-commit"
+chmod +x "$INSTALLED_GIT_HOOKS/pre-commit"
+# Stage a file so the hook has something to classify
+printf 'x\n' > test-code.sh
+git add test-code.sh >/dev/null 2>&1
+# Run the installed pre-commit hook directly
+INSTALLED_OUT=$("$INSTALLED_GIT_HOOKS/pre-commit" </dev/null 2>&1 1>/dev/null)
+INSTALLED_CODE=$?
+if [ "$INSTALLED_CODE" -eq 1 ] && printf '%s' "$INSTALLED_OUT" | grep -qF "could not load hooks/lib/worktree-resolve.sh"; then
+    echo "PASS: installed pre-commit without lib/ denies with internal-error reason"; PASS=$((PASS+1))
+else
+    echo "FAIL: installed pre-commit without lib/ (expected exit 1 + stderr containing \"could not load hooks/lib/worktree-resolve.sh\"; got exit $INSTALLED_CODE, stderr: $INSTALLED_OUT)"; FAIL=$((FAIL+1))
+fi
+
+# 18: Installed layout, lib PRESENT — pre-commit copied with all lib files,
+# denies with the normal "no valid code-lead sign-off" deny (proves the
+# installed copy resolves its libs from its own directory and reaches the
+# sentinel check).
+INSTALLED_LIB="$INSTALLED_GIT_HOOKS/lib"
+mkdir -p "$INSTALLED_LIB"
+# Copy all lib files from the plugin source
+for libfile in "$TESTS_DIR/../hooks/lib"/*.sh; do
+    cp "$libfile" "$INSTALLED_LIB/$(basename "$libfile")" >/dev/null 2>&1
+done
+# Re-run the installed pre-commit hook with lib/ now present
+INSTALLED_WITH_LIB_OUT=$("$INSTALLED_GIT_HOOKS/pre-commit" </dev/null 2>&1 1>/dev/null)
+INSTALLED_WITH_LIB_CODE=$?
+if [ "$INSTALLED_WITH_LIB_CODE" -eq 1 ] && printf '%s' "$INSTALLED_WITH_LIB_OUT" | grep -qF "no valid code-lead sign-off"; then
+    echo "PASS: installed pre-commit with lib/ reaches sentinel check"; PASS=$((PASS+1))
+else
+    echo "FAIL: installed pre-commit with lib/ (expected exit 1 + stderr containing \"no valid code-lead sign-off\"; got exit $INSTALLED_WITH_LIB_CODE, stderr: $INSTALLED_WITH_LIB_OUT)"; FAIL=$((FAIL+1))
+fi
+
+cd / && rm -rf "$INSTALLED_FIXTURE"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

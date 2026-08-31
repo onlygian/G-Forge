@@ -24,8 +24,8 @@ MERGE READY
 
 **Example — `/g-forecast` summary (dev):**
 ```
-Complexity:  6/10 (files 7 · waves 3 · boundaries 1 · new surface 1)
-Miss-risk:   45% — Moderate
+Complexity:    6/10 (files 7 · waves 3 · boundaries 1 · new surface 1)
+Scenario-fire: 45% (Moderate)
 Top scenarios:
   1. wave-split-across-messages — likelihood 4 · impact 3
   2. layer-boundary-skip — likelihood 3 · impact 4
@@ -52,8 +52,8 @@ MERGE READY — the merge gate is open and you can commit now.
 
 **Example — `/g-forecast` summary (mid):**
 ```
-Complexity:  6/10 — moderately complex (mostly because this touches 3 waves)
-Miss-risk:   45% — Moderate. About a 1-in-2 chance this needs a rework pass.
+Complexity:    6/10 — moderately complex (mostly because this touches 3 waves)
+Scenario-fire: 45% (Moderate). About a 1-in-2 chance at least one scenario below actually happens during this pass.
 
 Top scenarios (what's most likely to go wrong):
   1. wave-split-across-messages (likelihood 4/5, impact 3/5)

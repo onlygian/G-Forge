@@ -155,7 +155,7 @@ wave-planner returns:
 
 ```
 /g-review
-  └─ [gather diff: git diff main...HEAD]
+  └─ [gather diff: git diff <mainline>...HEAD — resolved remote HEAD, else main/master]
   └─ [gather done conditions: from g-docs/plans/*.md or g-docs/milestones/ file]
 
   └─ code-lead (Opus)

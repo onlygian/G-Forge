@@ -1,0 +1,66 @@
+name: tests
+
+# This workflow runs the project's bash test suites on every push (see the
+# `on:` block below for why there is no pull_request trigger).
+# It is a TEST RUNNER, NOT the commit gate. The commit gate is enforced
+# locally by the native `pre-commit` git hook + the `.claude/g-forge-approved`
+# sentinel (bound to the reviewed tree per ADR-004:
+# g-docs/decisions/004-bind-sentinel-to-reviewed-tree.md) — CI has no
+# authority to approve or block a commit, and no future change here should
+# be read as replacing that gate.
+#
+# windows-latest is deliberately deferred, not omitted by oversight: the
+# suites are POSIX bash (`#!/bin/bash`) exercising native git hooks, stdin
+# read-timeouts, and MSYS/Git-Bash-specific timing behavior
+# (.claude/rules/architecture-claude-plugin.md, "timing assertions" note).
+# That note already documents that this repo's own timing bounds were
+# tuned against Git-Bash-on-Windows behavior under load, not against a
+# GitHub-hosted windows-latest runner — validating that combination is a
+# separate piece of work, not a same-PR add. ubuntu-latest ships bash
+# natively and is the safe first target.
+#
+# This workflow has never been run — there is no `act` (or equivalent)
+# installation available in this environment, and it has never been pushed
+# to a remote that would trigger GitHub Actions. It has been validated by
+# eye and by local YAML parsing only (see task record for the exact
+# command and output). Treat the first real push as the first execution
+# of this file, full stop.
+#
+# Timing-bounded suites (tests/lib/timing-bounds.sh) assume "empirical
+# headroom measured under load" per the architecture note above. A
+# shared/contended CI runner is exactly the load condition that note
+# anticipates — a red timing assertion on this workflow is evidence the
+# bound needs more headroom, not evidence the code under test regressed.
+# Do not chase a timing-only red here as a code bug without first checking
+# whether it reproduces locally.
+
+# push only, every branch: this repo merges feature branches locally with
+# `git merge --no-ff` (G-RULES §D), never through PRs, so a `pull_request`
+# trigger only ever produced a second identical run — and filtering push to
+# main would have moved the backstop from pre-merge to post-merge
+# (code-lead F1 r1, 2026-08-30).
+on:
+  push:
+
+# Least privilege — the runner only reads the checkout; nothing here writes
+# to the repo, so nothing needs more (todo 15 F6, closed M52 F1 2026-08-30).
+permissions:
+  contents: read
+
+# One run per ref at a time. On a feature branch a newer push cancels the
+# older in-flight run; on main every SHA keeps its own recorded result, so
+# cancellation is off there.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run full test suite
+        shell: bash
+        run: bash tests/run-all.sh

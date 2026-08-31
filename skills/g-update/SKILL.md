@@ -245,6 +245,17 @@ Report: `✓ .claude/rules/g-rules-*.md — [N] rule section files updated`
 
 Report: `✓ .claude/rules/[filename] — updated` for each updated file.
 
+**6c — Installed architecture-skill copies.** `/g-specialize` also writes `.claude/skills/architecture-[stack]/SKILL.md` per specialized stack — a frontmatter block (`name: architecture-[stack]`, `description: ...`) followed by the full unmodified content of `profiles/[stack]/rules/architecture.md` as the body (`skills/g-specialize/SKILL.md` "Also after writing each agent file" step). Enumerate installed instances from disk (`ls -d .claude/skills/architecture-*/`), never from a hardcoded stack list. For each instance found:
+
+1. Derive `<stack>` from the directory name (`architecture-<stack>`).
+2. Read the installed file's existing frontmatter (everything through the closing `---` line) and keep it unchanged.
+3. Replace the body with the current `[plugin-root]/profiles/<stack>/rules/architecture.md` content, verbatim.
+4. If `[plugin-root]/profiles/<stack>/rules/architecture.md` no longer exists (profile renamed or removed), skip it and report: "Could not find a current profile for `architecture-<stack>` — skipping. It may have been renamed or removed." Do not delete the file.
+
+If no `.claude/skills/architecture-*/` directories exist, skip 6c with a one-line report (`ℹ no installed architecture skills — nothing to realign`). If an installed file has no closing `---` frontmatter fence, skip it and report it malformed — do not guess at a frontmatter/body boundary; `/g-specialize` regenerates it cleanly.
+
+Report: `✓ .claude/skills/architecture-[stack]/SKILL.md — realigned` for each updated file.
+
 ---
 
 ## Step 7 — Update hook scripts
@@ -274,7 +285,7 @@ The shell-tool matcher must be `Bash|PowerShell`, never `Bash` alone — Claude 
 | `lib/stdin-read.sh` | — (sourced, not registered) | sourced by all seven top-level hooks — never invoked directly |
 | `lib/semver-compare.sh` | — (sourced, not registered) | sourced by workflow-checkpoint.sh — never invoked directly |
 
-The `lib/` rows realign to `.claude/hooks/lib/<filename>` (create `.claude/hooks/lib/` first if it does not exist) — same file-exists/file-does-not-exist branching as above, minus the settings.json step.
+The `lib/` rows realign to `.claude/hooks/lib/<filename>` (create `.claude/hooks/lib/` first if it does not exist) — same file-exists/file-does-not-exist branching as above, minus the settings.json step. This is the Claude-Code-invoked-hook side only: the libs also sourced by the native `pre-commit` hook (`worktree-resolve.sh`, `classify-changeset.sh`, `sentinel-read.sh`) additionally need a copy at `<hooks-dir>/lib/<filename>` — the directory `pre-commit` actually sources from at runtime, distinct from `.claude/hooks/lib/`. That copy is realigned in Step 7a below, not here.
 
 Use the exact registration JSON in `[plugin-root]/skills/g-init/SKILL.md` Step 7 as the template for any entry you add.
 
@@ -304,7 +315,13 @@ The commit gate's authoritative enforcement site (ADR-004) is a **native git hoo
    - **Present and G-Forge-managed:** read the first few lines of the existing file. If they contain the literal string `G-Forge commit gate`, it is a G-Forge-installed hook — safe to realign. Overwrite it with `[plugin-root]/hooks/pre-commit` and re-verify it is executable. Report: `✓ <hooks-dir>/pre-commit — realigned`.
    - **Present and NOT G-Forge-managed:** the first lines do not contain `G-Forge commit gate` — this is a hook the developer (or another tool) wrote. **Never overwrite it.** Leave it untouched and report: `⚠ <hooks-dir>/pre-commit — left untouched (not G-Forge-managed); G-Forge's commit gate is not enforced here. Back it up and remove it, then re-run /g-update, if you want the gate installed natively.`
 
-3. `pre-commit` needs **no** `.claude/settings.json` registration — git invokes it natively on every `git commit`, the same way it invokes any other native git hook. Do not add an entry for it anywhere in `.claude/settings.json`; doing so would be a no-op at best and a confusing duplicate at worst.
+3. **Realign `<hooks-dir>/lib/`** — the native `pre-commit` hook sources its shared libs from its own directory at runtime (the set is whatever `hooks/pre-commit`'s `. "$_GF_HOOK_DIR/lib/…"` lines name — read them, never restate them here), denying every commit with an internal error if any is missing. This runs on the **Absent** and **Present and G-Forge-managed** branches above only — never when the existing `pre-commit` is foreign:
+   - Create `<hooks-dir>/lib/` if it does not already exist.
+   - Enumerate the canonical set **from disk** — `ls [plugin-root]/hooks/lib/*.sh` — never a typed list of lib names (ADR-011 derive-don't-type; a hardcoded list is exactly how `/g-init` once shipped a 4-of-6 lib install undetected).
+   - Overwrite each `<hooks-dir>/lib/<file>` from `[plugin-root]/hooks/lib/<file>` for every file the enumeration finds.
+   - Report: `✓ <hooks-dir>/lib/*.sh — realigned`.
+
+4. `pre-commit` needs **no** `.claude/settings.json` registration — git invokes it natively on every `git commit`, the same way it invokes any other native git hook. Do not add an entry for it anywhere in `.claude/settings.json`; doing so would be a no-op at best and a confusing duplicate at worst.
 
 ---
 
@@ -317,10 +334,12 @@ g-forge update complete ✓
   ✓ G-RULES.md — realigned
   ✓ CLAUDE.md — vue-pinia architecture rules realigned
   ✓ .claude/agents/vue-architect.md — realigned
+  ✓ .claude/skills/architecture-vue-pinia/SKILL.md — realigned
   ✓ .claude/hooks/check-commit.sh — realigned
   ✓ .claude/hooks/workflow-checkpoint.sh — realigned
   ✓ .claude/hooks/lib/*.sh — realigned
-  ✓ <git-hooks-dir>/pre-commit — realigned | skipped (user hook preserved)
+  ✓ <hooks-dir>/pre-commit — realigned | skipped (user hook preserved)
+  ✓ <hooks-dir>/lib/*.sh — realigned | skipped (user hook preserved)
   [skipped] .claude/rules/my-custom-rules.md — not G-Forge managed
 
 All G-Forge-managed content is now at plugin version [read version from plugin-root/.claude-plugin/plugin.json].

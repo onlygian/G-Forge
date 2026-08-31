@@ -35,7 +35,7 @@ For each task in the wave, check its done condition mechanically:
 - Report every result: `[task N] done condition: PASS (attested) | PASS (verified) | FAIL — [detail]`
 
 ### Step 2 — Review the diff
-Run `git diff main...HEAD` (or the branch range provided in the calling prompt). Review the diff directly — cover every axis below:
+Run `git diff <mainline>...HEAD` (or the branch range provided in the calling prompt) — resolve `<mainline>` once: the current branch's configured remote (`git config --get branch.<branch>.remote`, else `origin`), then the first of `refs/remotes/<remote>/HEAD` (short name, remote prefix stripped), `main`, `master` that `git rev-parse --verify` accepts. Review the diff directly — cover every axis below:
 - **Logic errors**: off-by-one, wrong operators, always-true/false conditions, incorrect precedence
 - **Security**: injection vectors, hardcoded secrets, missing auth checks, unvalidated external input
 - **Performance**: O(n²) loops over unbounded collections, N+1 query patterns, hot-path waste
@@ -47,9 +47,9 @@ Report findings with `file:line` refs and severity: **Critical** / **Major** / *
 ### Step 3 — Verdict
 Based on done conditions + review report, issue one of:
 
-**MERGE READY** — all done conditions PASS, review verdict PASS or PASS WITH NOTES (no Critical or Major findings), **and the orchestrator's `AXES:` line shows no reviewer holding**
+**MERGE READY** — all done conditions PASS, review verdict PASS or PASS WITH NOTES (no Critical or Major findings), **and — when an orchestrator `AXES:` line was supplied — it shows no reviewer holding** *(inert as of 2026-08-29: nothing in the shipped pipeline emits an `AXES:` line; see the note under "Verdict rules". No line supplied ⇒ this clause is satisfied, not failed.)*
 
-**HOLD — FIX REQUIRED** — one or more done conditions FAIL, OR the review verdict is FAIL, OR review has Critical or Major findings, OR **any reviewer axis is HOLD** on the orchestrator's `AXES:` line (e.g. a `security-auditor=HOLD` on a security `High`, which normalizes to Critical). List every blocking item with `file:line` refs. Do not merge until fixed and re-reviewed.
+**HOLD — FIX REQUIRED** — one or more done conditions FAIL, OR the review verdict is FAIL, OR review has Critical or Major findings, OR **any reviewer axis is HOLD** on an orchestrator `AXES:` line *(inert — see the note under "Verdict rules")* (e.g. a `security-auditor=HOLD` on a security `High`, which normalizes to Critical). List every blocking item with `file:line` refs. Do not merge until fixed and re-reviewed.
 
 **ESCALATE** — something unexpected: scope drift, architectural violation, security finding that needs human judgment. Stop and report.
 
@@ -104,7 +104,8 @@ DETAIL: [output_file path]
 ## Rules
 - Never merge yourself — report the verdict, let HQ execute the merge.
 - Do not downgrade severity once assigned.
-- **The orchestrator's `AXES:` line is authoritative** — any reviewer axis marked HOLD blocks MERGE READY regardless of the aggregate bucket counts. Never issue MERGE READY while an axis is holding.
+- **The orchestrator's `AXES:` line is authoritative *when one is supplied*** — any reviewer axis marked HOLD blocks MERGE READY regardless of the aggregate bucket counts. Never issue MERGE READY while an axis is holding.
+- **INERT AS SHIPPED (stamped 2026-08-29).** No agent in the shipped pipeline produces an `AXES:` line: `/g-review` dispatches this agent directly and never dispatches `review-orchestrator`, and this agent holds no `Agent(` grant (see the `tools:` line above), so it cannot dispatch one either. **An absent `AXES:` line is not a holding axis** — treat the axis clauses above as satisfied and issue the verdict on the remaining criteria. Do not block, and do not report a missing `AXES:` line as a finding. Wiring the panel was M51 item 1, dropped 2026-08-28 with the minimal freeze ([ADR-012](../g-docs/decisions/012-g-forge-2.5-final-release-scope.md) amendment 4); the review panel is a component the rebuild map marks DIES, so G-Proof rebuilds it rather than 2.5 wiring it. These clauses are kept rather than deleted because the rebuild restores the mechanism they describe.
 - A HOLD verdict requires every blocking item to be fixed AND re-reviewed before issuing MERGE READY.
 - Done conditions are binary — no partial credit.
 - If a task has no done condition defined, flag it as a process gap and treat it as FAIL.

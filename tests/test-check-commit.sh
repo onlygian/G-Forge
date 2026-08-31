@@ -4,7 +4,15 @@
 # repo's own .claude/ (an earlier version deleted .claude/integration-tier in
 # the repo root, silently disabling the hooks for the project).
 #
-# Total assertions: 28
+# M52 F1 Task 25 addition: +3 cases (30-32) — F1-2 hook-skip bypass gate:
+# --no-verify and -c core.hooksPath=... denied even with the code sentinel
+# PRESENT (gf_commit_skips_hooks / gf_commit_overrides_hookspath deny before
+# the sentinel check), plus a light-tier regression guard (gate off, so
+# --no-verify passes too — the predicates are never reached on that path).
+#
+# Total assertions: runner-observed — see this file's own `Results:` line
+# (previously 29; +3 added by Task 25, attested by a separate run, not this
+# dispatch — re-derive after any further suite change, never hand-typed).
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
 # finding-#20 cross-check that catches a suite silently dropping cases.
 
@@ -462,6 +470,117 @@ run "garbage tier value: gated commit denied (fail-safe gate on)" \
     '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"feat: garbage tier\""}}' \
     2
 printf 'full\n' > .claude/integration-tier
+
+# 29: REFERENCE class (M40 Task 17) — a marked reference/<bundle>/... commit
+# (bundle dir contains SNAPSHOT.md) passes with NO sentinel at all — it is
+# exempt-with-advisory, not a fourth thing requiring its own sign-off. The
+# marker file (SNAPSHOT.md) physically exists on disk in the fixture (stage()
+# both creates and stages it), which is what the lib's `[ -f ]` marker lookup
+# needs — GF_CLASSIFY_ROOT defaults to "." (this fixture's cwd). Also asserts
+# the advisory line reaches STDOUT (Session C fix round, lane A) — the
+# exemption must stay visible, never a silent bypass; run()'s own stdout
+# redirect (`>/dev/null 2>&1`) can't see it, so this uses the same sibling
+# OUT=$(...) capture shape as cases 15/16 above instead.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+stage "reference/mybundle/SNAPSHOT.md" "reference/mybundle/data.txt"
+OUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git commit -m \"chore: snapshot refresh\""}}' | bash "$SCRIPT" 2>/dev/null)
+CODE=$?
+if [ "$CODE" -eq 0 ] && printf '%s' "$OUT" | grep -qF 'reference-only commit — REFERENCE class, exempt from the review gate'; then
+    echo "PASS: marked reference-only commit allowed with no sentinel (REFERENCE, exempt) + advisory line on stdout"; PASS=$((PASS+1))
+else
+    echo "FAIL: marked reference-only commit (expected exit 0 + advisory line on stdout; got exit $CODE, stdout: $OUT)"; FAIL=$((FAIL+1))
+fi
+
+# ── F1-2 hook-skip bypass gate (gf_commit_skips_hooks / gf_commit_overrides_hookspath) ─
+# --no-verify/-n and -c core.hooksPath=... both skip the native ADR-004
+# pre-commit hook entirely — sentinel CONTENT binding (tree hash, HEAD,
+# worktree) lives solely there; this hook's own sentinel check is
+# existence-only. So a present-but-stale sentinel would otherwise sail
+# through this layer. These predicates (hooks/lib/commit-detect.sh) deny
+# BEFORE the sentinel/classifier path, regardless of sentinel state.
+
+# 30: --no-verify denied even with the code sentinel PRESENT — a present
+# sentinel does not save a hook-skipping commit.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+echo "approved" > "$SENTINEL"
+stage "hooks/thing.sh"
+OUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git commit --no-verify -m \"x\""}}' | bash "$SCRIPT" 2>/dev/null)
+CODE=$?
+if [ "$CODE" -eq 2 ] && printf '%s' "$OUT" | grep -q '"permissionDecision":"deny"'; then
+    echo "PASS: --no-verify denied even with code sentinel present (exit 2 + deny JSON)"; PASS=$((PASS+1))
+else
+    echo "FAIL: --no-verify not denied with sentinel present (exit $CODE, stdout: $OUT)"; FAIL=$((FAIL+1))
+fi
+rm -f "$SENTINEL"
+
+# 31: -c core.hooksPath=... denied even with the code sentinel PRESENT.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+echo "approved" > "$SENTINEL"
+stage "hooks/thing.sh"
+OUT=$(echo '{"tool_name":"Bash","tool_input":{"command":"git -c core.hooksPath=/tmp/x commit -m \"x\""}}' | bash "$SCRIPT" 2>/dev/null)
+CODE=$?
+if [ "$CODE" -eq 2 ] && printf '%s' "$OUT" | grep -q '"permissionDecision":"deny"'; then
+    echo "PASS: -c core.hooksPath override denied even with code sentinel present (exit 2 + deny JSON)"; PASS=$((PASS+1))
+else
+    echo "FAIL: -c core.hooksPath override not denied with sentinel present (exit $CODE, stdout: $OUT)"; FAIL=$((FAIL+1))
+fi
+rm -f "$SENTINEL"
+
+# 32: light tier — gate off entirely, so --no-verify passes too (tier-off
+# stays off; the F1-2 predicates are never reached on this path since the
+# light-tier exit returns before this code runs). Guard/negative assertion —
+# probe: light-tier `exit 0` removed in a scratch copy of check-commit.sh.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-08-30
+printf 'light\n' > .claude/integration-tier
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+stage "hooks/thing.sh"
+run "light tier: --no-verify commit allowed (gate off, predicate never evaluated)" \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit --no-verify -m \"x\""}}' \
+    0
+printf 'full\n' > .claude/integration-tier
+
+# 33: Regression — C-3 fix: `-a` inside an attached-value cluster
+# (`-am"msg"`, no space before the glued message) is still detected as the
+# -a form and widens the classifier to the modified-but-unstaged tracked
+# file — same fixture shape as case 21. Before the C-3 fix, the cluster's
+# trailing anchor required whitespace or end-of-string immediately after it,
+# which a glued value never provides, so this would wrongly pass as doc-only.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+echo "approved" > "$DOCS_SENTINEL"
+mkdir -p hooks
+printf 'x\n' > hooks/thing.sh
+git add hooks/thing.sh >/dev/null 2>&1
+git commit -q -m "case 33: track code file" 2>/dev/null
+printf 'y\n' > hooks/thing.sh
+git reset -q 2>/dev/null
+mkdir -p g-docs
+printf 'x\n' > g-docs/notes.md
+git add g-docs/notes.md >/dev/null 2>&1
+run 'git commit -am"fix: code + docs" (attached-value -a cluster) blocked when only doc sentinel present' \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit -am\"fix: code + docs\""}}' \
+    2
+rm -f "$DOCS_SENTINEL"
+
+# 34: Regression — C-3 fix, space-separated variant: `-am msg` (the `m`
+# value is a separate token, no glued value) already matched before the fix
+# since the cluster is followed by whitespace — kept as an explicit
+# regression pin alongside case 33's glued-value variant, same fixture shape,
+# so both forms the C-3 fix note names stay pinned side by side.
+rm -f "$SENTINEL" "$DOCS_SENTINEL"
+echo "approved" > "$DOCS_SENTINEL"
+mkdir -p hooks
+printf 'x\n' > hooks/thing.sh
+git add hooks/thing.sh >/dev/null 2>&1
+git commit -q -m "case 34: track code file" 2>/dev/null
+printf 'y\n' > hooks/thing.sh
+git reset -q 2>/dev/null
+mkdir -p g-docs
+printf 'x\n' > g-docs/notes.md
+git add g-docs/notes.md >/dev/null 2>&1
+run "git commit -am msg (space-separated -a cluster) blocked when only doc sentinel present" \
+    '{"tool_name":"Bash","tool_input":{"command":"git commit -am msg"}}' \
+    2
+rm -f "$DOCS_SENTINEL"
 
 # Reset the index so any later cases see a clean (empty) staged set.
 stage

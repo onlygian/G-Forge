@@ -1,6 +1,6 @@
 # M35 — Memory Forge (deep memory layer + optional Obsidian surface)
 
-> ⚠ **FORK-BOUND per [ADR-012](../decisions/012-g-forge-2.5-final-release-scope.md) (2026-08-10):** this milestone left the G-Forge 2.x roadmap — it ships, if ever, from the G-Proof fork. Its roadmap entry lives in the local-only, gitignored `g-docs/g-proof-roadmap.md`. Nothing here is in the v2.5 final-release scope, and every 2.x Version field below is STALE — versioning restarts at G-Proof 1.0.
+> ⚠ **FORK-BOUND per [ADR-012](../decisions/012-g-forge-2.5-final-release-scope.md) (2026-08-10):** this milestone left the G-Forge 2.x roadmap — it ships, if ever, from the G-Proof fork. Its roadmap entry lives in `g-docs/g-proof-roadmap.md` (committed and tracked since 2026-08-21 — it forks with the repo; the original local-only arrangement is retired). Nothing here is in the v2.5 final-release scope, and every 2.x Version field below is STALE — versioning restarts at G-Proof 1.0.
 
 **Status:** ⬜ Not started (scoped at roadmap level; `/g-plan` decomposes at start)
 **Version:** v2.9.0 (minor — new user-facing capability; synced 2026-07-23 to ROADMAP after M45+M46 insertions)

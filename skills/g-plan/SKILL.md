@@ -8,6 +8,8 @@ context: [task, sprint, architectural]
 
 You are driving the planning phase. Execute these steps in order.
 
+For a trivial edit — one file, known location, no design decision — `/g-plan` is the wrong tool: switch to the `light` tier (`/g-tier light`) or edit inline, and return to `full` afterwards; the full pipeline on a trivial task costs an order of magnitude more than the edit itself.
+
 ## Step 0a — Identify the task
 
 Determine what is being planned before asking anything else:
@@ -73,13 +75,18 @@ If no tasks mention new packages, skip silently.
 
 ## Step 2b — Cross-cutting propagation scan (G-RULES §B)
 
-Scan the task list for any task that touches a *cross-cutting primitive* — a shared concept other skills must respect (lanes/claims, the shared Table, a new gate or sentinel). If the work introduces or extends one, it is not done as an isolated wave: run `/g-blast-radius` to enumerate the skills, hooks, and rules that must become aware of it, and add the missing touchpoints to the task list (so wave-planner schedules them) before Step 3. Note any deferred touchpoint as carry-over in the plan header. If the task touches no cross-cutting primitive, skip silently.
+Scan the task list for any task that touches a *cross-cutting primitive* — a shared concept other skills must respect (lanes/claims, the shared Roundtable, a new gate or sentinel). If the work introduces or extends one, it is not done as an isolated wave: run `/g-blast-radius` to enumerate the skills, hooks, and rules that must become aware of it, and add the missing touchpoints to the task list (so wave-planner schedules them) before Step 3. Note any deferred touchpoint as carry-over in the plan header. If the task touches no cross-cutting primitive, skip silently.
 
 ## Step 3 — Dispatch wave-planner
 
-Dispatch the `wave-planner` agent with the complete task list from task-decomposer.
+Dispatch the `wave-planner` agent with the complete task list from task-decomposer. Provide:
+- An `output_file` path, following the same `g-docs/agent-output/g-plan/` convention as Step 2, reusing the same `[request-slug]` minted there: `g-docs/agent-output/g-plan/wave-planner-[YYYY-MM-DD]-[request-slug].md`. The `g-docs/agent-output/g-plan/` directory already exists from Step 2's dispatch.
+
+wave-planner is read-only (`tools: Read, Glob` — it holds no `Write` grant), so unlike task-decomposer it cannot write this file itself: its Return format returns the full wave schedule inline in its result block, and HQ writes that returned content to the `output_file` path using HQ's own `Write` tool once the schedule is confirmed well-formed.
 
 Wait for the wave schedule before proceeding.
+
+**Fallback if the return is empty or malformed:** there is no on-disk copy to recover from — wave-planner never held the tool to write one. If the final message comes back empty, truncated, or fails to parse as the expected `RESULT/WAVES/TASKS/SUMMARY` + `## Wave Schedule` block, this is a genuine failure, not a recovery case: report it and re-dispatch wave-planner with the same task-list input rather than proceeding on partial content.
 
 ## Step 3c — Context budget check
 
@@ -235,11 +242,11 @@ Delete `g-docs/plans/.pending-forecast.md` at the end of Step 4 — whether the 
 
 Use Glob to find `skills/g-forecast/SKILL.md` inside `~/.claude/plugins/cache/g-forge/g-forge/` and read it, then follow its instructions. `/g-forecast` will pick up `g-docs/plans/.pending-forecast.md` per its Step 1 case 1.
 
-The forecast returns: a complexity score (0–10), a miss-risk percentage with risk tag, and a ranked top-5 premortem of likely failure scenarios with mitigations. It is **advisory** — it never blocks the approval gate. Its job is to surface risk so the developer can decide whether to proceed, mitigate, or re-scope.
+The forecast returns: a complexity score (0–10), a risk band (Low / Moderate / Elevated / High) for the likelihood that ≥1 premortem scenario fires, and a ranked top-5 premortem of likely failure scenarios with mitigations. It is **advisory** — it never blocks the approval gate. Its job is to surface risk so the developer can decide whether to proceed, mitigate, or re-scope.
 
 Carry the forecast summary forward into Step 4 so the developer sees it alongside the plan.
 
-If `/g-forecast` returns High risk (≥75%), surface this prominently in Step 4 and add a one-line recommendation that the developer consider re-scoping — but do not block. The developer's approval is still authoritative.
+If `/g-forecast` returns High risk, surface this prominently in Step 4 and add a one-line recommendation that the developer consider re-scoping — but do not block. The developer's approval is still authoritative.
 
 ## Step 4 — Present plan and wait for approval
 
@@ -258,14 +265,14 @@ Context cost: ~[N] exchanges   Remaining: ~[M]   [✓ fits / ⚠ tight / from pl
 
 ### Forecast (advisory)
 
-Complexity: [X/10]   Miss-risk: [P]% — [Low / Moderate / Elevated / High]
+Complexity: [X/10]   Risk: [Low / Moderate / Elevated / High] — likelihood ≥1 premortem scenario fires
 
 Top premortem scenarios:
   1. [scenario] — mitigation: [one line]
   2. [scenario] — mitigation: [one line]
   3. [scenario] — mitigation: [one line]
 
-[if High risk] ⚠ This plan exceeds the 75% miss-risk threshold. Consider re-scoping before approval. (Advisory only — your approval is still authoritative.)
+[if High risk] ⚠ This plan carries a High risk that ≥1 premortem scenario fires. Consider re-scoping before approval. (Advisory only — your approval is still authoritative.)
 
 ### Dependency risks
 
