@@ -6,9 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.6.1] — 2026-09-02
+
+### Added
+
+- **Post-update nudge** (`hooks/workflow-checkpoint.sh`): a governed project now tells the user what to do the first prompt after the plugin cache version changes — one line, once per version change per project (stamp `.claude/last-seen-plugin-version`; first sight baselines silently): run `/g-update` to resync installed hooks/rules/agents, and `/g-doctor` drift flags until then are the update being detected, not breakage. Closes the loop the v2.6.0 release notes could only cover in prose — the installed-copy seam means this hook reaches a project only after its first resync, so the nudge pays off from the next update onward. Pinned by suite §29 (guard RED-probed on a neutered scratch copy).
+
+### Changed
+
+- **Update-available nudge wording**: `⚡ g-forge update available: X → Y` now names the full path — `update via /plugins, then /g-update to sync this project` (the old tail sent users straight to `/g-update`, whose preflight then bounced them to `/plugins`; pinned fragment unchanged).
+- **CHANGELOG [2.6.0] correction**: the suite figure at the cut is 1,362/0 across 38 (the pre-fix-wave 1,244/37 had been left in).
+- **Consumers:** picked up like any update — `/plugins`, then `/g-update`.
+
 ## [2.6.0] — 2026-09-02
 
-Development reopens after the v2.5 freeze ([ADR-014](g-docs/decisions/014-v26-token-diet-reopens-after-freeze.md) supersedes ADR-012's finality label): the harness's ~27× token multiplier priced its quality out of use. v2.6 is a quality-preserving token diet — same checks, same verdicts, cheaper execution: no gate removed, no round capped, no verdict literal changed, no knowledge deleted (essays move to lazily-loaded references; deterministic prose becomes scripts). Executed under the ADR-014 §3 process exception (session-model workflow orchestration — inventory → 12 disjoint-ownership implementers → adversarial verification — because this milestone rewrites the /g-* pipeline's own skills); suites and the durable record still applied. Measured: SKILL.md cores 84,205 → 47,925 words (−43%; g-doctor −84%, g-specialize −73%), per-session rules chain 8,884 → 7,088, agents −20%, architect profiles −17%; suites 772/0 across 24 → 1,244/0 across 37. Milestone record: `g-docs/milestones/M53-v2.6-token-diet.md`.
+Development reopens after the v2.5 freeze ([ADR-014](g-docs/decisions/014-v26-token-diet-reopens-after-freeze.md) supersedes ADR-012's finality label): the harness's ~27× token multiplier priced its quality out of use. v2.6 is a quality-preserving token diet — same checks, same verdicts, cheaper execution: no gate removed, no round capped, no verdict literal changed, no knowledge deleted (essays move to lazily-loaded references; deterministic prose becomes scripts). Executed under the ADR-014 §3 process exception (session-model workflow orchestration — inventory → 12 disjoint-ownership implementers → adversarial verification — because this milestone rewrites the /g-* pipeline's own skills); suites and the durable record still applied. Measured: SKILL.md cores 84,205 → 47,925 words (−43%; g-doctor −84%, g-specialize −73%), per-session rules chain 8,884 → 7,088, agents −20%, architect profiles −17%; suites 772/0 across 24 → 1,362/0 across 38 at the cut. Milestone record: `g-docs/milestones/M53-v2.6-token-diet.md`.
 
 ### Added
 

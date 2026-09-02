@@ -2,7 +2,7 @@
 
 > **Educated, enforced project management for AI development.** Make any model ship like a senior team — planned, reviewed, and context-clean.
 
-**Version 2.6.0** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
+**Version 2.6.1** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
 
 G-Forge installs a structured engineering *process* into any Claude Code project: a project-manager layer that challenges scope and sequences risk, parallel implementation waves, and a commit gate that **can't be skipped** — only opened by code-lead review. The point isn't a smarter model; it's discipline that lets the model you already have punch above its weight.
 
