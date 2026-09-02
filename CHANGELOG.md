@@ -26,6 +26,8 @@ Development reopens after the v2.5 freeze ([ADR-014](g-docs/decisions/014-v26-to
 - **Rules surface:** `G-RULES.md` cut to title + the 10 @-imports (preset guidance relocated); `rules/g-rules/` A–J split into normative cores + `rules/references/`; §A1 replaced with the model-economy governing rule; the B/H/I "Tier line on every prompt" contract sentences rewritten for banner-on-delta (absence of a banner means unchanged state).
 - **Consumers:** update the plugin (`/plugins`), then run `/g-update` to resync installed hooks/rules/agents. Until resync, `/g-doctor` Check-16-family drift flags fire on installed copies — including re-specialized architects — by design.
 
+## [2.5.0] — 2026-08-31
+
 The final G-Forge release, hand-cut per G-RULES §D as v2.4.1 was on 2026-08-24 — no `/g-release` machinery. Filter: the rebuild map (`g-docs/audits/2026-07-rebuild-map.md`) verdict column — 2.5 ships only what SURVIVES the G-Proof rebuild or is an adopter-facing bug. Carried M47, M48 (both shipped in v2.4.1), and M52 — the minimal-freeze release milestone absorbing slimmed items from M51 (test CI, two `output_file` dispatch sites, A7 resync, S-fixes, forecast relabel, light-tier routing) and M40 Wave 1 (REFERENCE classifier arm + tests). Dropped to archive: M38/M41/M43/M49/M50 and M51 items 1/7/10 and M40 Waves 2–3 — all marked G-Proof candidates by the rebuild map (see [ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md) amendment 4). The README says only what is true; consumers running `/g-update` will resync.
 
 ### Added
