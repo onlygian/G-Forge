@@ -1194,6 +1194,52 @@ fi
 rm -f .claude/session-prompt-count .claude/session-prompt-count.* .claude/banner-hash.*
 
 # ============================================================================
+# § 29. Post-update nudge — installed-copy resync guidance (v2.6.1)
+# ============================================================================
+# The plugin cache updating changes nothing in a governed project until
+# /g-update resyncs, and the visible symptom of that gap is /g-doctor drift
+# flags. §29 pins the once-per-version-change nudge that closes the loop:
+# first sight baselines silently, a version change prints the ⬆ line exactly
+# once, and the stamp is project-scoped (.claude/last-seen-plugin-version).
+
+echo "§ 29. Post-update nudge — installed-copy resync guidance"
+
+NUDGE_HOME="$(mktemp -d)"
+mkdir -p "$NUDGE_HOME/.claude/plugins/cache/g-forge/g-forge/1.0.0/.claude-plugin"
+printf '{"name":"g-forge","version":"1.0.0"}' > "$NUDGE_HOME/.claude/plugins/cache/g-forge/g-forge/1.0.0/.claude-plugin/plugin.json"
+rm -f .claude/last-seen-plugin-version
+
+# 29.1 First sight of a cache version: silent baseline — stamp written, no line.
+OUTPUT=$( printf '{}' | HOME="$NUDGE_HOME" bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_no_match "29.1: first sight prints no post-update nudge" "g-forge updated:" "$OUTPUT"
+check "29.1: first sight baselines the stamp" "1.0.0" "$(cat .claude/last-seen-plugin-version 2>/dev/null)"
+
+# 29.2 Cache version changes: the nudge prints once, naming both versions and
+# the resync instruction, and the stamp advances.
+mkdir -p "$NUDGE_HOME/.claude/plugins/cache/g-forge/g-forge/2.0.0/.claude-plugin"
+printf '{"name":"g-forge","version":"2.0.0"}' > "$NUDGE_HOME/.claude/plugins/cache/g-forge/g-forge/2.0.0/.claude-plugin/plugin.json"
+OUTPUT=$( printf '{}' | HOME="$NUDGE_HOME" bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_match "29.2: version change prints the post-update nudge" "g-forge updated: 1\\.0\\.0 → 2\\.0\\.0" "$OUTPUT"
+check_match "29.2: nudge names /g-update as the action" "run /g-update to resync" "$OUTPUT"
+check_match "29.2: nudge pre-empts the drift-flag misread" "drift flags are expected" "$OUTPUT"
+check "29.2: stamp advances to the new version" "2.0.0" "$(cat .claude/last-seen-plugin-version 2>/dev/null)"
+# falsifiability: the `elif [ "$_GF_SEEN_VER" != "$INSTALLED_VER" ]` guard
+# forced to `elif false` in a scratch copy of workflow-checkpoint.sh, run
+# against this same fixture — the neutered copy prints no ⬆ line and leaves
+# the stamp at 1.0.0, confirming the guard (not coincidence) produces both.
+
+# 29.3 Same version on the next prompt: the nudge does not repeat.
+OUTPUT=$( printf '{}' | HOME="$NUDGE_HOME" bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_no_match "29.3: nudge prints once — silent on the next prompt" "g-forge updated:" "$OUTPUT"
+
+# 29.4 Exit code stays 0 on every §29 path (non-gating contract).
+printf '{}' | HOME="$NUDGE_HOME" bash "$CHECKPOINT_SCRIPT" >/dev/null 2>&1
+check "29.4: exit 0 with the post-update nudge machinery active" "0" "$?"
+
+rm -f .claude/last-seen-plugin-version
+rm -rf "$NUDGE_HOME"
+
+# ============================================================================
 # § Cleanup and results
 # ============================================================================
 

@@ -575,6 +575,27 @@ CHECK_STAMP="$CLAUDE_DIR/g-forge-check-stamp"
 if [ -f "$INSTALLED_MANIFEST" ]; then
     INSTALLED_VER=$(grep '"version"' "$INSTALLED_MANIFEST" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?[a-zA-Z0-9]*' | head -1)
 
+    # Post-update nudge (v2.6.1): the installed-copy seam. The plugin cache
+    # updating (via /plugins) changes nothing in a governed project until
+    # /g-update resyncs the installed hooks/rules/agents — and the visible
+    # symptom of that gap is /g-doctor drift flags, which read as breakage to
+    # anyone who wasn't told to expect them. So: stamp the last cache version
+    # this project has seen; on any change, say what to do — once. First
+    # sight baselines silently (the stamp's own arrival is via a resync the
+    # user just ran). Project-scoped ($GF_CLAUDE_DIR), unkeyed by session —
+    # one nudge per version change per project, whichever session sees it
+    # first. Non-gating like everything in this hook.
+    if [ -n "$INSTALLED_VER" ] && [ -n "$GF_CLAUDE_DIR" ] && [ -d "$GF_CLAUDE_DIR" ]; then
+        _GF_SEEN_FILE="$GF_CLAUDE_DIR/last-seen-plugin-version"
+        _GF_SEEN_VER=$(cat "$_GF_SEEN_FILE" 2>/dev/null)
+        if [ -z "$_GF_SEEN_VER" ]; then
+            printf '%s\n' "$INSTALLED_VER" > "$_GF_SEEN_FILE" 2>/dev/null
+        elif [ "$_GF_SEEN_VER" != "$INSTALLED_VER" ]; then
+            gf_emit "  ⬆ g-forge updated: $_GF_SEEN_VER → $INSTALLED_VER — run /g-update to resync this project's installed hooks/rules/agents (until then /g-doctor drift flags are expected, not breakage; what changed: CHANGELOG)"
+            printf '%s\n' "$INSTALLED_VER" > "$_GF_SEEN_FILE" 2>/dev/null
+        fi
+    fi
+
     NEEDS_CHECK=true
     if [ -f "$CHECK_STAMP" ] && find "$CHECK_STAMP" -mmin -1440 2>/dev/null | grep -q .; then
         NEEDS_CHECK=false
@@ -601,7 +622,7 @@ if [ -f "$INSTALLED_MANIFEST" ]; then
             _GF_VER_CMP_RC=$?
             if [ "$_GF_VER_CMP_RC" -eq 0 ]; then
                 if [ "$_GF_VER_CMP" -eq 1 ]; then
-                    gf_emit "  ⚡ g-forge update available: $INSTALLED_VER → $LATEST_VER — run /g-update to pull and sync"
+                    gf_emit "  ⚡ g-forge update available: $INSTALLED_VER → $LATEST_VER — update via /plugins, then /g-update to sync this project"
                 elif [ "$_GF_VER_CMP" -eq -1 ]; then
                     gf_emit "  ℹ g-forge cache ($INSTALLED_VER) is ahead of GitHub ($LATEST_VER) — dev repo: cache lags repo after release push"
                 fi
