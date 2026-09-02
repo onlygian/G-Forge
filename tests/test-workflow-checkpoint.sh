@@ -5,10 +5,12 @@
 # context depth thresholds (amber/red) and offset calibration, session-mode
 # detection (conversation vs implementation), compaction escalation, milestone-
 # health assembly, worktree-bound sentinel read (ADR-004/005), and non-gating
-# exit-0 contract. Nudges tested: coverage, trim, align, handoff (block-scoped
-# ADR-variant vs generic, A-5), roundtable, listen mode. Direction-aware
+# exit-0 contract. Nudges tested: handoff (block-scoped ADR-variant vs
+# generic, A-5), roundtable, listen mode — the coverage/trim/align nudge
+# sentences are deliberately unasserted (free text). Direction-aware
 # update-nudge cases (M46 W1 task 5): LATEST newer/equal/older, pinning
-# post-fix semver-comparison behavior.
+# post-fix semver-comparison behavior. Banner-on-delta (v2.6): session-keyed
+# stable-slice suppression, escalation cadence, no-session_id degrade path.
 #
 # Assertion groups: numbered `# § N` section headings throughout the file body —
 # derive the section set from the file itself, never from this header.
@@ -1104,6 +1106,92 @@ else
 fi
 
 rm -rf "$FAKE_HOME_DIR_NEW"
+
+# ============================================================================
+# § 28. Banner-on-delta — session-keyed stable-slice suppression (v2.6)
+# ============================================================================
+#
+# The stable slice (header, Branch, Active, Review, Roundtable, Listen,
+# Health, Tier) is hashed per prompt into .claude/banner-hash.<session_id>
+# and suppressed when unchanged. The gate keys on session_id: every fixture
+# above pipes a payload WITHOUT one, so those cases pin the always-print
+# degrade path; the cases here supply a session_id and pin the delta path.
+# Escalations (amber/red/compaction) keep their every-prompt cadence — the
+# §A7 gate is a frequency contract, not a wording one.
+
+echo "§ 28. Banner-on-delta suppression"
+
+printf 'full\n' > .claude/integration-tier
+rm -f .claude/session-prompt-count .claude/session-prompt-count.* \
+      .claude/banner-hash.* .claude/g-forge-approved \
+      .claude/session-compaction-count .claude/context-threshold-offset
+
+# 28.1 With a session_id, two identical consecutive prompts: prompt 1 prints
+# the full stable slice; prompt 2 (state unchanged) suppresses it entirely.
+OUT1=$( printf '{"session_id":"sess-delta"}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_match "28.1: prompt 1 with session_id prints full stable slice" "Branch:" "$OUT1"
+OUT2=$( printf '{"session_id":"sess-delta"}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+# falsifiability: PRINT_STABLE forced true in a scratch copy, cases confirmed red — 2026-09-02
+check_no_match "28.1: prompt 2 unchanged state suppresses Branch line" "Branch:" "$OUT2"
+check_no_match "28.1: prompt 2 unchanged state suppresses Review line" "Review:" "$OUT2"
+check_no_match "28.1: prompt 2 unchanged state suppresses Tier line" "Tier:" "$OUT2"
+check_exit "28.1: suppressed prompt still exits 0" 0 \
+    bash -c "printf '{\"session_id\":\"sess-delta\"}' | bash '$CHECKPOINT_SCRIPT' >/dev/null 2>&1"
+
+# 28.2 Banner-hash cache file uses the session-keyed name (and only that).
+if [ -f ".claude/banner-hash.sess-delta" ]; then
+    echo "PASS: 28.2: banner-hash file uses the session-keyed name"; PASS=$((PASS+1))
+else
+    echo "FAIL: 28.2: .claude/banner-hash.sess-delta not created"; FAIL=$((FAIL+1))
+fi
+
+# 28.3 Escalations still print on EVERY prompt while the stable slice is
+# suppressed — and the header is re-printed so their output is not orphaned.
+# The fixture is in implementation mode (recent §12/§13 commits): amber=30,
+# red=45, so counts 41/42 sit in the amber band on both prompts.
+rm -f .claude/session-prompt-count.sess-esc .claude/banner-hash.sess-esc
+printf '40\n' > .claude/session-prompt-count.sess-esc
+OUT1=$( printf '{"session_id":"sess-esc"}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_match "28.3: amber escalation on the full-print prompt" \
+    "⚠ Context depth.*ACTIVE MONITORING" "$OUT1"
+OUT2=$( printf '{"session_id":"sess-esc"}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_match "28.3: amber escalation repeats on the suppressed prompt" \
+    "⚠ Context depth.*ACTIVE MONITORING" "$OUT2"
+check_match "28.3: header re-printed when only escalations print (no orphan)" \
+    "\\[G-Forge Workflow Checkpoint\\]" "$OUT2"
+check_no_match "28.3: stable slice stays suppressed around the escalation" "Branch:" "$OUT2"
+
+# 28.4 State change between prompts forces a full reprint: writing the review
+# sentinel changes the Review line, so the hash differs and the slice returns.
+rm -f .claude/session-prompt-count.sess-chg .claude/banner-hash.sess-chg
+OUT1=$( printf '{"session_id":"sess-chg"}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+OUT2=$( printf '{"session_id":"sess-chg"}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_no_match "28.4: pre-change repeat prompt is suppressed" "Review:" "$OUT2"
+printf 'approved_by_reviewer\n' > .claude/g-forge-approved
+OUT3=$( printf '{"session_id":"sess-chg"}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_match "28.4: sentinel written between prompts — full reprint" "Branch:" "$OUT3"
+check_match "28.4: reprint carries the new Review state" "approved (commit gate open)" "$OUT3"
+rm -f .claude/g-forge-approved
+
+# 28.5 No session_id — both consecutive prompts print in full (the degrade
+# path every pre-v2.6 case runs), and no banner-hash cache file is written.
+rm -f .claude/session-prompt-count .claude/banner-hash \
+      .claude/session-prompt-count.sess-delta .claude/session-prompt-count.sess-esc \
+      .claude/session-prompt-count.sess-chg
+OUT1=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+OUT2=$( printf '{}' | bash "$CHECKPOINT_SCRIPT" 2>&1 )
+check_match "28.5: no session_id — prompt 1 prints full slice" "Branch:" "$OUT1"
+check_match "28.5: no session_id — repeat prompt still prints Branch" "Branch:" "$OUT2"
+check_match "28.5: no session_id — repeat prompt still prints Review" "Review:" "$OUT2"
+check_match "28.5: no session_id — repeat prompt still prints Tier" "Tier:" "$OUT2"
+if [ -f ".claude/banner-hash" ]; then
+    echo "FAIL: 28.5: bare banner-hash file must not be written without a session_id"; FAIL=$((FAIL+1))
+else
+    echo "PASS: 28.5: no bare banner-hash file without a session_id"; PASS=$((PASS+1))
+fi
+
+# §28 cleanup — leave no session-keyed state behind for future sections.
+rm -f .claude/session-prompt-count .claude/session-prompt-count.* .claude/banner-hash.*
 
 # ============================================================================
 # § Cleanup and results

@@ -7,26 +7,14 @@ tools: Read, Glob, Grep
 
 You are the Vue 3 + Pinia architecture enforcer for this project. Your job is to find violations and report them — never fix them yourself.
 
-## Layer Map
+Your preloaded architecture-vue-pinia skill defines the layer map and import directions. Also enforce these, which that card does not carry:
 
 | Layer | Directory | Owns |
 |-------|-----------|------|
-| Views | `src/views/` | Route-level components. One per route. Thin — orchestrate, don't compute. |
-| Components | `src/components/` | Reusable UI units. Receive props, emit events. No direct store access. |
-| Composables | `src/composables/` | Shared logic and reactive state. May access stores and services. |
-| Stores | `src/stores/` | Global state via Pinia setup stores. No direct API calls. |
-| Services | `src/services/` | API calls and data transformation. Pure functions where possible. |
 | Router | `src/router/` | Route definitions and navigation guards only. |
-| Types | `src/types/` | Shared TypeScript interfaces and types. No runtime logic. |
-
-## Import Rules
 
 ```
 views/       →  components/, composables/, stores/, router/
-components/  →  composables/, types/   (NEVER stores/ or services/)
-composables/ →  stores/, services/, types/
-stores/      →  services/, types/      (NEVER components/ or views/)
-services/    →  types/                 (NEVER stores/, components/, views/)
 router/      →  stores/                (guards only)
 ```
 

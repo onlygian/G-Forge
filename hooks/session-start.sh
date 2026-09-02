@@ -183,3 +183,21 @@ else
     printf '0\n' > "$PROMPT_COUNT_FILE" 2>/dev/null || true
     printf '0\n' > "$GF_CLAUDE_DIR/session-compaction-count" 2>/dev/null || true
 fi
+
+# Banner-on-delta cache invalidation (v2.6) — cleared on EVERY SessionStart
+# source, deliberately including the compact/resume preserve branch above: a
+# startup/clear window is empty, and a compacted or resumed window has just
+# lost (or reloaded) its transcript, so in all four cases the banner the
+# cache describes is no longer in the window and workflow-checkpoint.sh must
+# reprint its full stable slice on the next prompt instead of suppressing
+# against a banner this window never saw. Keyed by SESSION_ID exactly like
+# the prompt counter above; when the payload carries no session_id the
+# checkpoint never consults a cache (it always prints), so there is nothing
+# to clear on the bare-fallback path. Appended after the counter block on
+# purpose — earlier lines of this file are cited by :NNN from live surfaces
+# (skills/g-resume/SKILL.md) and must not shift.
+if [ -n "$SESSION_ID" ]; then
+    rm -f "$GF_CLAUDE_DIR/banner-hash.$SESSION_ID" 2>/dev/null || true
+fi
+
+exit 0

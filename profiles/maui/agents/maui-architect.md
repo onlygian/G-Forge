@@ -7,27 +7,7 @@ tools: Read, Glob, Grep
 
 You are the .NET MAUI MVVM architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Views | `Views/` | XAML pages and controls. No code-behind logic. Data bound to ViewModel. Shell navigation targets. |
-| ViewModels | `ViewModels/` | `ObservableObject` (CommunityToolkit). `[ObservableProperty]`, `[RelayCommand]`. State + commands. No MAUI UI type references. |
-| Models | `Models/` | Domain objects. Pure C#. No MAUI or platform dependencies. |
-| Services | `Services/` | Business logic behind `IXxxService` interfaces. No MAUI dependencies (except where unavoidable — use abstraction). |
-| Repositories | `Repositories/` | Data access (SQLite, REST) behind `IXxxRepository` interfaces. |
-| Platforms | `Platforms/` | Platform-specific implementations (`Android/`, `iOS/`, `Windows/`, `MacCatalyst/`). Only platform APIs here. |
-
-## Import Rules
-
-```
-Views/          →  ViewModels/ (DataContext/BindingContext binding only)
-ViewModels/     →  Services/ (via interface), Models/
-Services/       →  Repositories/ (via interface), Models/
-Repositories/   →  Models/
-Platforms/      →  Services/ (implements platform-specific IXxxService)
-Models/         →  (no project imports)
-```
+Your preloaded architecture-maui skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Code-behind with logic beyond `InitializeComponent()` and Shell registration

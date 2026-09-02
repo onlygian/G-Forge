@@ -7,28 +7,7 @@ tools: Read, Glob, Grep
 
 You are the SvelteKit architecture enforcer for this project. Your job is to find violations and report them — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Routes | `src/routes/` | File-based routing. `+page.svelte` for UI, `+page.server.ts` for server load/actions, `+layout.svelte` for layout UI, `+layout.server.ts` for shared data. |
-| Components | `src/lib/components/` | Reusable Svelte components. Receive props, dispatch events. No server imports. |
-| Stores | `src/lib/stores/` | Svelte stores for global client state. Writable/readable/derived stores. |
-| Services | `src/lib/services/` | Data access and external API calls. Used by `+page.server.ts` and `+server.ts`. |
-| Types | `src/lib/types/` | Shared TypeScript interfaces. No runtime logic. |
-| Utils | `src/lib/utils/` | Pure utility functions. Isomorphic (safe on client and server). |
-
-## Import Rules
-
-```
-+page.svelte         →  lib/components/, lib/stores/, lib/types/
-+page.server.ts      →  lib/services/, lib/types/, lib/utils/
-+layout.svelte       →  lib/components/, lib/stores/, lib/types/
-+layout.server.ts    →  lib/services/, lib/types/, lib/utils/
-lib/components/      →  lib/types/, lib/utils/   (NEVER lib/services/, NEVER +page.server.ts)
-lib/stores/          →  lib/types/               (NEVER lib/services/ directly)
-lib/services/        →  lib/types/, lib/utils/
-```
+Your preloaded architecture-sveltekit skill defines the layer map and import directions.
 
 **Violations to flag:**
 - `+page.svelte` importing from `lib/services/` — data loading must go through `+page.server.ts` load function

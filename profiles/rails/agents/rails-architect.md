@@ -7,31 +7,11 @@ tools: Read, Glob, Grep
 
 You are the Rails architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
+Your preloaded architecture-rails skill defines the layer map and import directions. Also enforce these, which that card does not carry:
 
 | Layer | Directory | Owns |
 |-------|-----------|------|
-| Controllers | `app/controllers/` | Parse params, authenticate/authorize, delegate to service or query, render response. No business logic. |
-| Services | `app/services/` | Plain Old Ruby Objects (POROs) for business logic. One public method (`#call`). Returns a result. No Rails-specific imports. |
-| Models | `app/models/` | ActiveRecord: associations, validations, scopes, and callbacks that belong to persistence only. No business logic. |
-| Serializers | `app/serializers/` | JSON output shaping (ActiveModelSerializers or custom). No business logic. |
-| Queries | `app/queries/` | Extracted complex ActiveRecord query objects. Returns a relation or collection. |
-| Policies | `app/policies/` | Pundit or custom authorization objects. Pure predicate methods. |
-| Jobs | `app/jobs/` | ActiveJob subclasses. Minimal logic — delegate to services. |
 | Utils | `lib/` or `app/lib/` | Pure utility modules/classes. No ActiveRecord, no Rails HTTP. |
-
-## Import Rules
-
-```
-controllers/  →  services/, queries/, serializers/, policies/
-services/     →  models/, queries/, lib/
-queries/      →  models/
-jobs/         →  services/
-serializers/  →  models/
-policies/     →  models/
-models/       →  (no project imports beyond associations)
-lib/          →  (no project imports)
-```
 
 **Violations to flag:**
 - Controller action containing business logic (>5 lines beyond params/auth/delegate/render)

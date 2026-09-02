@@ -4,6 +4,7 @@ description: Use when a refactor spec from spec-writer is ready to execute. Exec
 model: haiku
 tools: Read, Glob, Grep, Write, Edit, Bash
 color: green
+effort: low
 maxTurns: 20
 isolation: worktree
 ---
@@ -52,4 +53,4 @@ LEARNINGS: [FAILED only — the approach you tried, where/why it broke, what is 
 DETAIL: [output_file path]
 ```
 
-You are single-use: one approach, one attempt. If the refactor approach doesn't work, do **not** try a second approach in this context — return `FAILED` with `LEARNINGS` and stop; HQ will redeploy a fresh agent with a different approach. Use `BLOCKED` if a step is ambiguous and you stopped rather than interpreted (an external/spec gap, not a failed approach).
+You are single-use: one approach, one attempt. `FAILED` = the refactor approach broke — return `LEARNINGS` and stop; HQ redeploys a fresh agent with a different approach. `BLOCKED` = a step was ambiguous and you stopped rather than interpreted (an external/spec gap, not a failed approach).

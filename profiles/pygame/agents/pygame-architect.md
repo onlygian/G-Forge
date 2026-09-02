@@ -7,29 +7,11 @@ tools: Read, Glob, Grep
 
 You are the Pygame architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
+Your preloaded architecture-pygame skill defines the layer map and import directions. Also enforce these, which that card does not carry:
 
 | Layer | Directory | Owns |
 |-------|-----------|------|
 | Main | `main.py` or `game.py` | Top-level game loop. Sets up `pygame.init()`, the display, the clock, and the scene manager. No game logic. |
-| Scenes | `game/scenes/` | A scene owns its update / draw / handle_event methods and tracks its own entities. Push/pop/replace via scene manager. |
-| Entities | `game/entities/` | Sprite or sprite-group classes. One responsibility per class. `update(dt)` + `draw(surface)`. |
-| Systems | `game/systems/` | Cross-cutting subsystems: physics, collision, audio, input. Stateless or singleton; called from scenes. |
-| Assets | `game/assets/` | Asset loader. Caches loaded surfaces and sounds. Loads at scene transitions, not inside the game loop. |
-| Config | `game/config.py` | Constants: screen size, target FPS, colors, keybinds. Pure data — no `pygame.init()` side effects. |
-| Save | `game/save.py` | Save/load serialization. Never called from the per-frame update path. |
-
-## Import Rules
-
-```
-main           →  scenes/, systems/, config
-scenes/        →  entities/, systems/, assets, config
-entities/      →  config, assets (read-only)
-systems/       →  config, entities (interface only)
-assets         →  config
-config         →  (no project imports)
-save           →  scenes/, entities/ (for serialization)
-```
 
 **Violations to flag:**
 - Game logic in `main.py` beyond the loop scaffold

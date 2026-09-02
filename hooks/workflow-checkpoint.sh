@@ -164,41 +164,15 @@ fi
 
 CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "unknown")
 
-echo "[G-Forge Workflow Checkpoint]"
-echo "  Branch: $CURRENT_BRANCH"
-
-# Light tier — minimal output, then exit.
+# Light tier — minimal output, then exit. Printed directly, never through the
+# banner-on-delta gate below: light output is byte-frozen, and exiting here
+# keeps the light tier byte-identical — no counter increment and no
+# banner-hash read or write, exactly as before the v2.6 delta gate existed.
 if [ "$TIER" = "light" ]; then
+    echo "[G-Forge Workflow Checkpoint]"
+    echo "  Branch: $CURRENT_BRANCH"
     echo "  Tier:   light — manual mode; commit gate off"
     exit 0
-fi
-
-if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
-    echo "  ⚠  on main — non-trivial work should be on a feature branch (feat/<slug>, fix/<slug>)" >&2
-fi
-if [ -n "$ACTIVE_CONTEXT" ]; then
-    echo "  Active: $ACTIVE_CONTEXT"
-else
-    echo "  Active: none"
-fi
-if [ "$REVIEW_APPROVED" = true ]; then
-    echo "  Review: approved (commit gate open)"
-else
-    echo "  Review: not yet approved — run /g-review before merging"
-fi
-
-# Roundtable heartbeat (M33) — when a Roundtable is bound (.claude/roundtable present), nudge a
-# boundary read/write. The null adapter (no .claude/roundtable) keeps this silent, so
-# the no-Roundtable path is byte-identical to before. The light tier already exited
-# above, so the heartbeat is off there too.
-if [ -f ".claude/roundtable" ]; then
-    _table_title=$(sed -n 's/^title=//p' .claude/roundtable 2>/dev/null | head -1)
-    echo "  · Roundtable bound${_table_title:+: $_table_title} — /g-roundtable sync at this boundary (read deltas, write only salient state)"
-fi
-
-if [ -f ".claude/tier3-active" ]; then
-    ITEM_COUNT=$(cat ".claude/tier3-active" 2>/dev/null || echo 0)
-    echo "  Listen mode ACTIVE — ${ITEM_COUNT} item(s) logged — no action until user says done"
 fi
 
 # Context depth counter — increments each prompt; thresholds vary by session mode.
@@ -273,24 +247,15 @@ RED_THRESHOLD=$((BASE_RED - OFFSET))
 # what actually prevents compaction; the count only decides when to start polling.
 CAP_FLOOR_PCT=25
 
-if [ "$PROMPT_COUNT" -ge "$RED_THRESHOLD" ]; then
-    echo "  !! Context depth: ~${PROMPT_COUNT} exchanges [${SESSION_MODE}], threshold ${RED_THRESHOLD} — ENFORCED: finish task in flight, auto-trigger /g-retro, tell user to start fresh session NOW (do not let the window reach compaction)"
-elif [ "$PROMPT_COUNT" -ge "$AMBER_THRESHOLD" ]; then
-    echo "  ⚠ Context depth: ~${PROMPT_COUNT} exchanges [${SESSION_MODE}], threshold ${AMBER_THRESHOLD} — ACTIVE MONITORING: run /context THIS turn and every turn from now; the moment ~${CAP_FLOOR_PCT}% of the window has been used, reset immediately (finish in-flight work, /g-retro, fresh session) — do not wait for the red exchange count. Goal: reset before compaction, never after."
-fi
-
 # Compaction escalation — auto-compaction is the strongest "context overloaded"
 # signal there is, and the prompt counter alone misses it: the post-compaction
 # SessionStart used to reset that counter, so a session could compact repeatedly
-# without ever tripping the red gate above. pre-compact.sh now counts compactions
+# without ever tripping the red gate. pre-compact.sh now counts compactions
 # (carried across the compact SessionStart by session-start.sh); surface the §A7
 # reset directly off that count. Even one auto-compaction means the window is full.
 COMPACTION_COUNT=0
 if [ -f "$GF_CLAUDE_DIR/session-compaction-count" ]; then
     COMPACTION_COUNT=$(to_int "$(cat "$GF_CLAUDE_DIR/session-compaction-count" 2>/dev/null)")
-fi
-if [ "$COMPACTION_COUNT" -ge 1 ]; then
-    echo "  !! Context compacted ${COMPACTION_COUNT}× this session — the window is overloaded; finish in-flight work, auto-trigger /g-retro, then start a fresh session (run /g-resume to re-hydrate)"
 fi
 
 # Milestone health — rework commits, blockers, review holds since main.
@@ -313,14 +278,14 @@ if [ -f ".claude/review-holds" ]; then
 fi
 
 if [ "$REWORK_COUNT" -eq 0 ] && [ "$BLOCKED_COUNT" -eq 0 ] && [ "$HOLD_COUNT" -eq 0 ]; then
-    echo "  Health: ✓ clean"
+    HEALTH_LINE="  Health: ✓ clean"
 else
     HEALTH_PARTS=""
     [ "$REWORK_COUNT" -gt 0 ] && HEALTH_PARTS="${HEALTH_PARTS}${REWORK_COUNT} rework · "
     [ "$BLOCKED_COUNT" -gt 0 ] && HEALTH_PARTS="${HEALTH_PARTS}${BLOCKED_COUNT} blocked · "
     [ "$HOLD_COUNT" -gt 0 ] && HEALTH_PARTS="${HEALTH_PARTS}${HOLD_COUNT} holds · "
     HEALTH_PARTS=${HEALTH_PARTS%· }
-    echo "  Health: ⚠ ${HEALTH_PARTS}"
+    HEALTH_LINE="  Health: ⚠ ${HEALTH_PARTS}"
 fi
 
 # Tier line — surfaces the integration tier so the LLM knows whether
@@ -330,20 +295,138 @@ fi
 # identically to a clean, deliberate "full" (missing/empty file, or the
 # literal value "full", both keep the plain line below unchanged).
 if [ "$TIER" = "balanced" ]; then
-    echo "  Tier:   balanced — no auto-triggers; invoke skills manually"
+    TIER_LINE="  Tier:   balanced — no auto-triggers; invoke skills manually"
 elif [ -n "$_t" ] && [ "$_t" != "full" ] && [ "$_t" != "balanced" ] && [ "$_t" != "light" ]; then
-    echo "  Tier:   full (unrecognized value '$_t' — defaulting)"
+    TIER_LINE="  Tier:   full (unrecognized value '$_t' — defaulting)"
 else
-    echo "  Tier:   full"
+    TIER_LINE="  Tier:   full"
+fi
+
+# ---- Stable slice (banner-on-delta, v2.6) ----------------------------------
+# The stable lines (header, Branch, main-branch warning, Active, Review,
+# Roundtable, Listen, Health, Tier) are hashed, printed only on state change.
+# The gate keys on session_id: a payload WITHOUT one (older Claude Code,
+# manual invocation, synthetic fixtures) always prints the stable slice in
+# full, byte-identical to pre-v2.6 STABLE lines only — the escalation lines
+# below are intentionally v2.6-reworded on every path. No session identity
+# means no safe per-session cache to compare against (the keyed prompt counter
+# idiom above). Any state change — a sentinel appearing or vanishing, a branch
+# switch, a tier edit, a health delta — changes the hash and forces a full
+# reprint, so suppression can never hide a transition; commit enforcement
+# itself lives in hooks/pre-commit + check-commit.sh, never in this banner.
+_GF_NL='
+'
+SLICE_HEAD="[G-Forge Workflow Checkpoint]${_GF_NL}  Branch: $CURRENT_BRANCH"
+
+MAIN_WARNING=""
+if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
+    MAIN_WARNING="  ⚠  on main — non-trivial work should be on a feature branch (feat/<slug>, fix/<slug>)"
+fi
+
+if [ -n "$ACTIVE_CONTEXT" ]; then
+    SLICE_MID="  Active: $ACTIVE_CONTEXT"
+else
+    SLICE_MID="  Active: none"
+fi
+if [ "$REVIEW_APPROVED" = true ]; then
+    SLICE_MID="${SLICE_MID}${_GF_NL}  Review: approved (commit gate open)"
+else
+    SLICE_MID="${SLICE_MID}${_GF_NL}  Review: not yet approved — run /g-review before merging"
+fi
+
+# Roundtable heartbeat (M33) — when a Roundtable is bound (.claude/roundtable present), nudge a
+# boundary read/write. The null adapter (no .claude/roundtable) keeps this silent, so
+# the no-Roundtable path is byte-identical to before. The light tier already exited
+# above, so the heartbeat is off there too.
+if [ -f ".claude/roundtable" ]; then
+    _table_title=$(sed -n 's/^title=//p' .claude/roundtable 2>/dev/null | head -1)
+    SLICE_MID="${SLICE_MID}${_GF_NL}  · Roundtable bound${_table_title:+: $_table_title} — /g-roundtable sync at this boundary (read deltas, write only salient state)"
+fi
+
+if [ -f ".claude/tier3-active" ]; then
+    ITEM_COUNT=$(cat ".claude/tier3-active" 2>/dev/null || echo 0)
+    SLICE_MID="${SLICE_MID}${_GF_NL}  Listen mode ACTIVE — ${ITEM_COUNT} item(s) logged — no action until user says done"
+fi
+
+SLICE_TAIL="${HEALTH_LINE}${_GF_NL}${TIER_LINE}"
+
+# Delta gate — print the stable slice when ANY of: (a) the payload carries no
+# session_id (always print — every pre-v2.6 behavior contract runs this path),
+# (b) this is the session's first prompt, (c) the composed slice hashes
+# differently from the cached hash, (d) the cache file is absent.
+# session-start.sh clears the cache on EVERY SessionStart source
+# (startup/clear/resume/compact): a fresh, cleared, compacted, or resumed
+# window has lost whatever banner was printed before, so the next prompt
+# reprints in full — that invalidation is what makes suppression safe against
+# compaction amnesia.
+PRINT_STABLE=true
+if [ -n "$SESSION_ID" ]; then
+    BANNER_HASH_FILE="$GF_CLAUDE_DIR/banner-hash.$SESSION_ID"
+    _gf_slice_hash=$(printf '%s\n' "$SLICE_HEAD" "$MAIN_WARNING" "$SLICE_MID" "$SLICE_TAIL" | cksum 2>/dev/null)
+    if [ "$PROMPT_COUNT" -ne 1 ] && [ -f "$BANNER_HASH_FILE" ] && [ -n "$_gf_slice_hash" ]; then
+        _gf_prev_hash=$(cat "$BANNER_HASH_FILE" 2>/dev/null)
+        [ "$_gf_slice_hash" = "$_gf_prev_hash" ] && PRINT_STABLE=false
+    fi
+    printf '%s\n' "$_gf_slice_hash" > "$BANNER_HASH_FILE" 2>/dev/null || true
+fi
+
+# gf_emit — always-on lines (escalations, structural warnings, update nudge)
+# print through this so their output is never orphaned: when the stable slice
+# is suppressed this prompt, the first always-on line re-prints the banner
+# header before itself.
+_GF_HEADER_DONE=false
+gf_emit() {
+    if [ "$_GF_HEADER_DONE" = false ]; then
+        echo "[G-Forge Workflow Checkpoint]"
+        _GF_HEADER_DONE=true
+    fi
+    printf '%s\n' "$1"
+}
+
+if [ "$PRINT_STABLE" = true ]; then
+    printf '%s\n' "$SLICE_HEAD"
+    _GF_HEADER_DONE=true
+    [ -n "$MAIN_WARNING" ] && echo "$MAIN_WARNING" >&2
+    printf '%s\n' "$SLICE_MID"
+fi
+
+# Context-depth escalations — printed on EVERY prompt while active: the §A7
+# enforcement gate is a frequency contract (v2.6 compressed the wording, not
+# the cadence). At amber the model polls /context every turn and resets the
+# moment window usage reaches the capacity floor — that capacity check, not
+# the exchange count, is what actually prevents compaction (the count only
+# decides when polling starts); the goal is reset before compaction, never
+# after, so red says NOW rather than waiting for the window to fill.
+if [ "$PROMPT_COUNT" -ge "$RED_THRESHOLD" ]; then
+    gf_emit "  !! Context depth: ~${PROMPT_COUNT} exchanges [${SESSION_MODE}], threshold ${RED_THRESHOLD} — ENFORCED: finish task in flight, auto-trigger /g-retro, start fresh session NOW"
+elif [ "$PROMPT_COUNT" -ge "$AMBER_THRESHOLD" ]; then
+    gf_emit "  ⚠ Context depth: ~${PROMPT_COUNT} exchanges [${SESSION_MODE}], threshold ${AMBER_THRESHOLD} — ACTIVE MONITORING: run /context every turn; reset the moment ~${CAP_FLOOR_PCT}% of the window has been used (finish in-flight work, /g-retro, fresh session)"
+fi
+
+if [ "$COMPACTION_COUNT" -ge 1 ]; then
+    gf_emit "  !! Context compacted ${COMPACTION_COUNT}× this session — window overloaded: finish in-flight work, /g-retro, then fresh session (run /g-resume to re-hydrate)"
+fi
+
+if [ "$PRINT_STABLE" = true ]; then
+    printf '%s\n' "$SLICE_TAIL"
 fi
 
 # Agent coverage nudge — surface one never-used agent suggestion, once per day.
 # Populated by /g-telemetry Step 5b. Cycles through never-used agents one per day.
+#
+# v2.6: the coverage/trim/align nudges below additionally key on PRINT_STABLE —
+# a due nudge fires on the session's first prompt (or on a delta reprint)
+# instead of repeating on every prompt of its stamp window. This also caps the
+# stamp-only failure mode where a never-written stamp made a nudge fire on
+# every prompt indefinitely (the trim-nudge finding recorded in
+# g-docs/archive/roadmap-dropped-2026-08-28.md). Stamps, wording, and stamp
+# windows are unchanged; payloads without a session_id keep PRINT_STABLE=true,
+# so the pre-v2.6 cadence survives wherever there is no session identity.
 COVERAGE_FILE=".claude/telemetry-coverage"
 NUDGE_STAMP=".claude/coverage-nudge-stamp"
 NUDGE_INDEX=".claude/coverage-nudge-index"
 
-if [ -f "$COVERAGE_FILE" ]; then
+if [ "$PRINT_STABLE" = true ] && [ -f "$COVERAGE_FILE" ]; then
     NEEDS_NUDGE=true
     if [ -f "$NUDGE_STAMP" ] && find "$NUDGE_STAMP" -mmin -1440 2>/dev/null | grep -q .; then
         NEEDS_NUDGE=false
@@ -375,7 +458,7 @@ NEEDS_TRIM=true
 if [ -f "$TRIM_STAMP" ] && find "$TRIM_STAMP" -mmin -10080 2>/dev/null | grep -q .; then
     NEEDS_TRIM=false
 fi
-if [ "$NEEDS_TRIM" = true ]; then
+if [ "$PRINT_STABLE" = true ] && [ "$NEEDS_TRIM" = true ]; then
     echo "  · Weekly optimization due — run /g-trim to compact CLAUDE.md and agent memory"
 fi
 
@@ -429,7 +512,7 @@ fi
 if [ -f "g-docs/ROADMAP.md" ]; then
     _active_session_count=$(grep -c '^## Active Session' g-docs/ROADMAP.md 2>/dev/null)
     if [ "${_active_session_count:-0}" -gt 1 ] 2>/dev/null; then
-        echo "  ⚠ g-docs/ROADMAP.md has $_active_session_count '## Active Session' headings — replace-never-append violated (G-RULES §I)"
+        gf_emit "  ⚠ g-docs/ROADMAP.md has $_active_session_count '## Active Session' headings — replace-never-append violated (G-RULES §I)"
     fi
 fi
 
@@ -442,7 +525,7 @@ if [ -f "g-docs/project_brief.md" ] && [ -f "g-docs/ROADMAP.md" ]; then
     if [ -f "$ALIGN_STAMP" ] && find "$ALIGN_STAMP" -mmin -10080 2>/dev/null | grep -q .; then
         NEEDS_ALIGN=false
     fi
-    if [ "$NEEDS_ALIGN" = true ]; then
+    if [ "$PRINT_STABLE" = true ] && [ "$NEEDS_ALIGN" = true ]; then
         echo "  · Brief-alignment check due — run /g-align to confirm progress still serves g-docs/project_brief.md"
     fi
 fi
@@ -518,11 +601,15 @@ if [ -f "$INSTALLED_MANIFEST" ]; then
             _GF_VER_CMP_RC=$?
             if [ "$_GF_VER_CMP_RC" -eq 0 ]; then
                 if [ "$_GF_VER_CMP" -eq 1 ]; then
-                    echo "  ⚡ g-forge update available: $INSTALLED_VER → $LATEST_VER — run /g-update to pull and sync"
+                    gf_emit "  ⚡ g-forge update available: $INSTALLED_VER → $LATEST_VER — run /g-update to pull and sync"
                 elif [ "$_GF_VER_CMP" -eq -1 ]; then
-                    echo "  ℹ g-forge cache ($INSTALLED_VER) is ahead of GitHub ($LATEST_VER) — dev repo: cache lags repo after release push"
+                    gf_emit "  ℹ g-forge cache ($INSTALLED_VER) is ahead of GitHub ($LATEST_VER) — dev repo: cache lags repo after release push"
                 fi
             fi
         fi
     fi
 fi
+
+# Non-gating contract — this hook never blocks a prompt, whatever branch above
+# last ran.
+exit 0

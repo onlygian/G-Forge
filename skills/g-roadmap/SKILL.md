@@ -5,76 +5,48 @@ description: Project-manager-driven milestone planner. Gated phases — feature 
 
 **Announce:** "Using g-roadmap to plan your milestones."
 
-You are the project-manager for this planning session. Your job is to turn ideas into a realistic, sequenced roadmap — and to narrate your reasoning out loud at every step so the developer can catch wrong assumptions early.
-
-The developer brings the vision. You bring structure, risk awareness, and honest pushback. Every idea the developer mentions belongs in this roadmap — either in a milestone or in the backlog. Nothing gets quietly dropped.
+You are the project-manager for this planning session: turn ideas into a realistic, sequenced roadmap, narrating your reasoning out loud at every step so the developer can catch wrong assumptions early. The developer brings the vision; you bring structure, risk awareness, and honest pushback. Every idea belongs in this roadmap — a milestone or the backlog — nothing quietly dropped.
 
 ## Step 0 — Check context
 
-Read `g-docs/ROADMAP.md` if it exists. Scan for:
-- Any milestone marked 🔄 (active / in progress)
-- Any milestone marked ✅ (complete)
-- The backlog section
+Run `scripts/context-scan.sh` from the project root and interpret its KEY lines:
 
-Note the current state:
-- `roadmap_exists`: true / false
-- `active_milestone`: [milestone title] / none
-- `completed_milestones`: [list] / none
-- `backlog_items`: [list] / none
+| Line | Meaning / action |
+|------|------------------|
+| `ROADMAP:` / `ACTIVE:` / `COMPLETED:` / `BACKLOG_COUNT:` | Current roadmap state. On `ROADMAP: exists`, read `g-docs/ROADMAP.md` itself — the scan reports only titles and counts, not milestone scopes or backlog item texts — and carry them into Step 1 |
+| `BRIEF: exists` | Read `g-docs/project_brief.md` — extract goal, constraints, tech decisions |
+| `VERSION:` / `VERSION_SOURCE:` | `current_version`; `unversioned` → note the developer must establish a starting version |
+| `MANIFESTS:` ≠ `none` | Dispatch `dependency-auditor` now — in parallel with reading the brief, before the feature dump so findings shape prioritisation |
+| `NOTE:` | Relay as context |
 
-Read `g-docs/project_brief.md` if it exists — extract the goal, constraints, and tech decisions.
+When dependency-auditor returns findings, load `references/dependency-findings.md` before Step 1 and follow it (HIGH surfaced up front; LOW/MEDIUM deferred to Step 3; never block the dump).
 
-**Read the current version.** Check (in order): `.claude-plugin/plugin.json`, `package.json`, `pyproject.toml`, `Cargo.toml`. Record it as `current_version`. If none found, record `current_version: unversioned` and note that the developer will need to establish a starting version.
-
-**Baseline dependency scan.** If any manifest file is present (`package.json`, `requirements.txt`, `Cargo.toml`, `go.mod`, `Pipfile`, `pyproject.toml`, `pom.xml`, `build.gradle`), dispatch `dependency-auditor` now — in parallel with reading `g-docs/project_brief.md`. This scan runs before the feature dump so its findings can influence milestone prioritisation.
-
-If dependency-auditor returns any HIGH severity findings, surface them at the top of Step 1 before asking for feature ideas:
-> "⚠ Before we plan new features — your current dependencies have [N] HIGH severity issue(s): [brief list]. These should be a milestone in the roadmap, likely early. I'll flag this during sequencing."
-
-LOW/MEDIUM findings are noted but not surfaced until Step 3 (sequencing), where a dependency-hygiene milestone can be placed appropriately. Do not block the feature dump for any finding — surface as context that shapes prioritisation.
-
-If an active milestone exists, tell the developer:
+If `ACTIVE:` is not `none`, ask:
 > "There's an active milestone: **[title]**. Are you adding new ideas to the plan, or is this a full re-plan from scratch?"
 
-Wait for their answer before continuing. If adding to the current plan, carry existing milestones and backlog into Step 1 as context.
+Wait for the answer. If adding, carry existing milestones and backlog into Step 1 as context.
 
 ## Step 1 — Feature dump intake
 
-Say:
-> "Tell me everything you want to build — in any order, any level of detail. Don't filter. Every idea goes in, whether it's core today or nice-to-have someday. I'll sort it out."
+Say: "Tell me everything you want to build — in any order, any level of detail. Don't filter. Every idea goes in, whether it's core today or nice-to-have someday. I'll sort it out."
 
-Wait for the developer's full response. Do not interrupt or ask follow-up questions mid-dump.
-
-Once they've finished, acknowledge everything you heard:
-> "Here's what I captured — tell me if I missed or misrepresented anything:"
-
-List every idea, numbered, phrased back in plain terms. If carrying over items from an existing roadmap/backlog, include them in the list with a `(existing)` note.
-
-Ask: "Anything missing before we start grouping?"
-
-Wait for their answer. Update the list. Do not proceed to Step 2 until the developer says the list is complete.
+Wait for the full response without interrupting. Then acknowledge everything — "Here's what I captured — tell me if I missed or misrepresented anything:" — list every idea, numbered, phrased back in plain terms — carryover items marked `(existing)` — and ask "Anything missing before we start grouping?" Update the list. Do not proceed to Step 2 until the developer says the list is complete.
 
 ## Step 2 — Cluster with narrated reasoning
 
-Group the features into **3–7 natural clusters** based on:
-- The user-facing surface they affect
-- Shared technical dependency
-- Cohesion of release value — what makes sense to ship together as a unit
+Group the features into **3–7 natural clusters** based on: the user-facing surface they affect, shared technical dependency, and cohesion of release value — what ships together as a unit.
 
-For each cluster, narrate out loud:
+Narrate each cluster out loud:
 > **Cluster: [Name]**
 > Why I grouped these: [1–2 sentences — the common thread]
 > Items: [list]
 > Risk flag (if any): [specific concern about scope, complexity, or dependency]
 
-After presenting all clusters, surface your key assumptions:
-> "My grouping assumes [state 2–3 assumptions]. If any of these are wrong, the grouping changes."
-
-Wait for the developer to accept or push back. Revise clusters if needed. Do not proceed to Step 3 until the developer says the clusters look right.
+Then surface your key assumptions ("My grouping assumes [state 2–3 assumptions]. If any of these are wrong, the grouping changes."). Wait for the developer; revise if needed. Do not proceed to Step 3 until they say the clusters look right.
 
 ## Step 3 — Sequence with dependency and version justification
 
-Take the approved clusters and arrange them into a milestone sequence. Version planning is part of sequencing — every milestone gets a target version and a reason for that version increment.
+Arrange the approved clusters into a milestone sequence. Version planning is part of sequencing — every milestone gets a target version and a reason for the increment.
 
 **Semver rules for milestone versioning:**
 - New user-facing capability, new public API, new skill/command → **minor** bump (x.Y.0)
@@ -82,137 +54,31 @@ Take the approved clusters and arrange them into a milestone sequence. Version p
 - Breaking change to public API, incompatible behaviour change → **major** bump (X.0.0)
 - First release of a new project → start at v0.1.0 (or ask the developer for their preferred baseline)
 
-**Split-lineage naming (only when this run is breaking an existing, already-milestoned scope into sub-milestones — whether invoked from `/g-plan`'s Step 3c context-budget gate or run manually for the same reason):** the milestone/plan ID being split may already carry a trailing `-split<N>` marker (e.g. `M47-split1`) from an earlier split. Grep the parent ID/slug for `-split[0-9]+` before naming the sub-milestones. No existing marker → each sub-milestone ID gets `-split1` appended. An existing `-split<N>` marker → each sub-milestone ID has that marker replaced with `-split<N+1>` (parent depth + 1). This is the only writer of the `-split<N>` convention; `/g-plan`'s Step 3c budget check reads it back to decide whether a further automatic split is offered, so the suffix must land on the ID regardless of which surface triggered this run.
+**Split-lineage naming:** when this run is splitting an existing milestone into sub-milestones, run `scripts/split-suffix.sh <parent-id>` and apply its `SUFFIX` to every sub-milestone ID — appended when the parent carries no `-split<N>` marker; an existing `-split<N>` marker is replaced with the `SUFFIX`, never appended after it. Rationale in `references/split-lineage.md`. /g-roadmap is the only writer of the `-split<N>` convention; `/g-plan` Step 3c reads it back, on any invocation path.
 
-For each ordering decision, narrate both the dependency reason and the version logic:
-> **Why [Cluster A] before [Cluster B]:** [dependency / risk / value reason]
-> **Version logic:** [Cluster A] is a [minor/patch/major] bump because [what it adds or fixes]. [Cluster B] follows as a [minor/patch] because [reason].
+For each ordering decision, narrate both reasons — `> **Why [Cluster A] before [Cluster B]:** [dependency / risk / value reason]` and `> **Version logic:** [Cluster A] is a [minor/patch/major] bump because [what it adds or fixes]. [Cluster B] follows as a [minor/patch] because [reason].` Flag blocking dependencies explicitly ("⚠ [Milestone B] cannot start until [Milestone A] ships [specific thing]."). Identify the MVP cut — which milestones are MVP, which post-MVP, and why.
 
-Flag blocking dependencies explicitly:
-> "⚠ [Milestone B] cannot start until [Milestone A] ships [specific thing]."
-
-Identify the MVP cut: the minimum set of milestones that delivers usable value. State which milestones are MVP and which are post-MVP, and why.
-
-Present the full proposed sequence:
-
-```
-M1[-split<N>] — [Title]  [MVP / post-MVP]
-     Goal: ...
-     Scope: ...
-     Depends on: —
-     Version: v[x.y.z]  ([minor/patch/major] — [one-line reason])
-     Risk: ...
-
-M2[-split<N>] — [Title]  [MVP / post-MVP]
-     Goal: ...
-     Scope: ...
-     Depends on: M1
-     Version: v[x.y.z]  ([minor/patch/major] — [one-line reason])
-     Risk: ...
-
-...
-
-Backlog (no milestone assigned yet):
-     · [items that don't clearly belong to any milestone]
-```
-
-`[-split<N>]` — append per the split-lineage naming rule above only when this run is breaking an existing milestone into sub-milestones; omit it entirely for a normal milestone ID.
-
-Ask the developer to confirm or adjust the version targets before proceeding.
-
-State your sequencing assumptions:
-> "I sequenced this assuming [2–3 key assumptions]. Tell me where I got it wrong."
-
-Wait for the developer's response. Revise if needed. Do not proceed to Step 4 until the developer says the sequence is right.
+Load `references/templates.md` and present the full proposed sequence in its Step 3 block. Ask the developer to confirm or adjust the version targets, then state your sequencing assumptions — "I sequenced this assuming [2–3 key assumptions]. Tell me where I got it wrong." — and revise until they say the sequence is right before Step 4.
 
 ## Step 3b — Premortem & re-prioritization (mandatory whenever a milestone is added or modified)
 
-Any time this run **adds a new milestone or changes an existing one** — the Step 0 "adding to the plan" path, or an edit to a milestone's scope/version on an existing roadmap — run a premortem and re-prioritize *before* the buy-in gate. A new or changed milestone shifts risk and ordering across the whole roadmap; never just append it. (On a full from-scratch plan, the sequencing in Step 3 already covers this — run the premortem here once, then proceed.)
+Whenever this run adds a new milestone or changes an existing one, run this before the buy-in gate — never just append. (On a full from-scratch plan, Step 3's sequencing already covers it — run the premortem here once, then proceed.) Load `references/premortem.md` and:
 
-1. **Premortem each added/modified milestone.** Imagine it's later and this milestone went badly. For each, surface the top 3 failure scenarios — scope blow-up, hidden dependency, volatile/repeatedly-touched systems, unclear done condition — with a likelihood (low / med / high) and a one-line mitigation. Seed the scenarios from `/g-patterns` history (`g-docs/retros/`, `g-docs/todo-done.md`), any `dependency-auditor` findings from Step 0, and any existing `g-docs/forecasts/*.md` or `g-docs/blast-radius/*.md` for related work. Only premortem the changed milestones — leave stable ones alone.
-
-2. **Re-prioritize the full sequence.** Given the premortem, re-evaluate ordering across **all non-completed** milestones (completed ✅ are frozen — never reorder history):
-   - Does the new/changed milestone add a dependency that forces something earlier or later?
-   - Does a high-likelihood failure scenario argue for de-risking it earlier (spike first) or deferring it until a prerequisite is solid?
-   - Re-derive the MVP cut and the version targets if they shifted.
-   Narrate every change — `> Moved M[X] before M[Y]: [premortem/dependency reason].` If nothing moves, say so explicitly — `> Re-prioritization: order unchanged — M[N] slots in at position [k] without disturbing the sequence.`
-
-3. Present the re-prioritized sequence (same format as Step 3), each changed milestone carrying a short **Premortem** block (its top scenarios + mitigations). Then continue to the buy-in gate — the developer approves the *re-prioritized* roadmap, not just the addition.
-
-4. **Cross-cutting propagation check (G-RULES §B).** If an added/modified milestone introduces a *cross-cutting primitive* — a shared concept other skills must respect (lanes/claims, the shared Roundtable, a new gate) — it is not done as an isolated component. Run `/g-blast-radius` to enumerate every skill, hook, and rule that must become aware of it, fold each touchpoint into the milestone's scope, and note the done condition is incomplete until the architecture-review gate confirms none was missed. If the milestone adds no cross-cutting primitive, say so in one line and skip.
+1. **Premortem each added/modified milestone** — top 3 failure scenarios with likelihood and mitigation, seeded per the reference. Changed milestones only.
+2. **Re-prioritize the full sequence** across all non-completed milestones (completed ✅ are frozen — never reorder history), narrating every change in the reference's formats.
+3. **Present the re-prioritized sequence** (Step 3 format), changed milestones carrying a **Premortem** block — the developer approves the *re-prioritized* roadmap, not just the addition.
+4. **Cross-cutting propagation check (G-RULES §B)** — if a milestone introduces a cross-cutting primitive (lanes/claims, the shared Roundtable, a new gate), run `/g-blast-radius` and fold every touchpoint into scope per the reference; otherwise say so in one line and skip.
 
 ## Step 4 — Buy-in gate
 
-Present the complete roadmap in its final form:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-PROPOSED ROADMAP — [Project Name]
-Current version: v[x.y.z]
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-M1 — [Title]  [MVP]  → v[x.y.z]
-  Goal: [one line]
-  Scope:
-    · [item]
-    · [item]
-  Depends on: —
-
-M2 — [Title]  [post-MVP]  → v[x.y.z]
-  Goal: [one line]
-  Scope:
-    · [item]
-  Depends on: M1
-
-...
-
-Backlog:
-  · [item]
-
-Version plan:  v[current] → v[M1] → v[M2] → ...
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-Ask:
+Present the complete roadmap in the PROPOSED ROADMAP banner from `references/templates.md`, then ask:
 > "Ready to write g-docs/ROADMAP.md? Once written, this becomes the project's source of truth for milestone planning. Type **approve** to confirm, or tell me what to change."
 
-Do not write any files until the developer types "approve" or an explicit equivalent ("yes", "looks good, write it", etc.).
-
-If they request changes, make them and re-present. Loop until explicit approval.
+Do not write any files until the developer types "approve" or an explicit equivalent ("yes", "looks good, write it", etc.). If they request changes, make them and re-present. Loop until explicit approval.
 
 ## Step 5 — Write g-docs/ROADMAP.md
 
-Only after explicit approval:
-
-Write `g-docs/ROADMAP.md` with this structure:
-
-```markdown
-# Roadmap
-
-## Milestones
-
-### M1[-split<N>] — [Title]
-**Status:** ⬜ Not started
-**Version:** v[x.y.z]
-**Goal:** [one line]
-**Scope:**
-- [item]
-- [item]
-
-**Depends on:** —
-
----
-
-### M2[-split<N>] — [Title]
-**Status:** ⬜ Not started
-**Version:** v[x.y.z]
-...
-
-## Backlog
-- [item]
-```
-
-`[-split<N>]` — same conditional as the Step 3 template above: append only when this run is breaking an existing, already-milestoned scope into sub-milestones; omit for a normal milestone ID.
+Only after explicit approval: write `g-docs/ROADMAP.md` using the skeleton in `references/templates.md` — load it before writing; `/g-init` writes the same skeleton, so the structure must land exactly as templated.
 
 If `g-docs/ROADMAP.md` already exists and contains completed milestones (✅), preserve them above the newly written milestones — never remove history.
 

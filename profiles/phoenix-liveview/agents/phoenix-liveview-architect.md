@@ -7,26 +7,13 @@ tools: Read, Glob, Grep
 
 You are the Elixir + Phoenix LiveView architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
+Your preloaded architecture-phoenix-liveview skill defines the layer map and import directions. Also enforce these, which that card does not carry:
 
 | Layer | Directory | Owns |
 |-------|-----------|------|
-| Web — Controllers | `lib/<app>_web/controllers/` | HTTP controllers. Call context functions. Render or redirect. No business logic, no Repo calls. |
-| Web — LiveViews | `lib/<app>_web/live/` | LiveView modules. Handle events, call context functions, assign state. No Repo calls. |
-| Web — Components | `lib/<app>_web/components/` | Reusable function components and component modules. Pure rendering — no context calls. |
 | Web — Router | `lib/<app>_web/router.ex` | Route definitions and pipeline declarations. No logic. |
-| Contexts | `lib/<app>/` | Business logic modules (e.g., `Accounts`, `Catalog`, `Orders`). All Repo calls live here. |
-| Schemas | `lib/<app>/` (alongside contexts) | Ecto schema modules. Define changesets. No business rules — changesets validate shape, contexts apply rules. |
-| Repo | `lib/<app>/repo.ex` | `Ecto.Repo`. Only called from context modules. |
-
-## Import Rules
 
 ```
-controllers/    →  contexts (public functions only)
-live/           →  contexts (public functions only), components/
-components/     →  (no context or Repo imports)
-contexts/       →  Repo, schemas
-schemas/        →  (Ecto only — no context imports)
 router.ex       →  controllers/, live/
 ```
 

@@ -2,7 +2,7 @@
 
 > **Educated, enforced project management for AI development.** Make any model ship like a senior team — planned, reviewed, and context-clean.
 
-**Version 2.5.0** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
+**Version 2.6.0** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
 
 G-Forge installs a structured engineering *process* into any Claude Code project: a project-manager layer that challenges scope and sequences risk, parallel implementation waves, and a commit gate that **can't be skipped** — only opened by code-lead review. The point isn't a smarter model; it's discipline that lets the model you already have punch above its weight.
 
@@ -224,7 +224,15 @@ Removes the plugin globally. Per-project commit hooks (installed in `.claude/hoo
 
 `/g-init` installs `G-RULES.md` at the project root and references it from `CLAUDE.md` via `@G-RULES.md`. This gives Claude full session discipline without bloating `CLAUDE.md`.
 
-G-RULES.md has ten sections, each stored as a separate `@`-referenced file in `.claude/rules/`. This keeps the monolithic load optional — reference individual sections in `CLAUDE.md` to reduce per-session token cost.
+G-RULES.md has ten sections, each stored as a separate `@`-referenced file in `.claude/rules/`. This keeps the monolithic load optional — reference individual sections in `CLAUDE.md` to reduce per-session token cost. Common presets (full list and per-section import paths: `rules/references/install-presets.md`):
+
+| Project type | Recommended sections |
+|---|---|
+| Minimal (any project) | A, B, C, D |
+| + architecture / patterns / docs / testing / tracking | + E / F / G / H / I as needed |
+| Full (all rules) | A–J (`@G-RULES.md`) |
+
+Since v2.6, each section is a normative core: the rationale essays behind the rules live in `rules/references/` (installed to `.claude/rules/references/`, never `@`-imported) and load only when the rule they explain actually fires.
 
 | Section | What it governs |
 |---------|----------------|
@@ -407,7 +415,7 @@ Projects that track `CLAUDE.md` as committed project record (consumer projects, 
 
 ### Agent output architecture
 
-Specialist agents that hold a Write grant write their full findings to disk (`g-docs/agent-output/wave-N/<task-slug>.md` for wave agents; `g-docs/agent-output/review/<agent>-YYYY-MM-DD-<slug>-r<N>.md` for review agents). Most agents return a compact summary to the calling session; `pr-writer` is excluded — its inline PR description is the deliverable — and `project-manager` skips the block only in its interactive session role (a dispatched PM returns a compact RESULT/VERDICT/QUESTIONS/SUMMARY block):
+Specialist agents that hold a Write grant write their full findings to disk (`g-docs/agent-output/wave-N/<task-slug>.md` for wave agents; `g-docs/agent-output/review/<agent>-YYYY-MM-DD-<slug>-r<N>.md` for review agents; since v2.6 each review round also gets an immutable context pack at `g-docs/agent-output/review/pack-YYYY-MM-DD-<slug>-r<N>/` that reviewers read instead of re-deriving the diff). Most agents return a compact summary to the calling session; `pr-writer` is excluded — its inline PR description is the deliverable — and `project-manager` skips the block only in its interactive session role (a dispatched PM returns a compact RESULT/VERDICT/QUESTIONS/SUMMARY block):
 
 ```
 RESULT: DONE|FAILED|BLOCKED (implementers), MERGE READY|HOLD|ESCALATE (code-lead), DOCS READY|DOCS HOLD (doc-reviewer), or PASS|HOLD (review agents)
@@ -444,6 +452,17 @@ Every agent targets the minimum model tier that can do its job reliably:
 | Opus | Review, merge gate, architecture enforcement — tasks where correctness and missed findings have real cost |
 
 Most implementation work lands on Sonnet. Opus is reserved for code-lead review where a missed critical issue is expensive.
+
+Since v2.6 the tiers are pinned, not vibes: every agent carries `model:` + `effort:` frontmatter, the canonical dispatch matrix ships at `rules/dispatch-matrix.md` (installed as `.claude/rules/g-dispatch-matrix.md`, read lazily — never `@`-imported), and a dispatch may target the Haiku tier only when its spec passes the six-item **Haiku-executability standard** — exact paths, closed steps, command-verifiable done condition, zero unstated context, no judgment residue, bounded scope. A spec that fails the check escalates the *model*, never degrades the *spec*. Telemetry profiles bump lanes up one tier at most, and the mechanical lane never inflates to Opus.
+
+### The v2.6 diet — same checks, fewer tokens
+
+v2.6 cut the harness's own weight without touching what it verifies (no gate removed, no round capped, no verdict changed — [ADR-014](g-docs/decisions/014-v26-token-diet-reopens-after-freeze.md)):
+
+- **Prose→scripts.** Deterministic decision logic (g-doctor's checks, review-pack building, stack detection, sync classification, update preflight) moved from skill prose into `skills/*/scripts/*.sh` with machine-readable output the model interprets. Skill instruction payload dropped **84,205 → 47,925 words** (g-doctor −84%, g-specialize −73%).
+- **Lazy references.** Rationale essays moved to `skills/*/references/` and `rules/references/` — loaded only when their edge case fires, deleted never.
+- **Review pack + delta rounds.** One deterministic pack per review round (diff + full file slices + done conditions, bound to the sentinel's write-tree hash) replaces four independent derivations of the same diff; HOLD rounds ≥2 review prior findings + the fix delta only, with a closed-set escape back to full review whenever a fix strays outside the reviewed set.
+- **Banner-on-delta.** The per-prompt checkpoint banner prints in full on prompt 1, then only on state change; context-depth escalations still print every prompt.
 
 ### G-RULES.md selective loading
 
@@ -769,8 +788,9 @@ git push
 | M46 — Update Integrity (detect / diagnose / fix split) | ✅ Done — **v2.4.0** |
 | M47 — Planning-Pipeline Honesty | ✅ Done — **v2.4.1** |
 | M48 — Review-Pipeline Hardening | ✅ Done — **v2.4.1** |
-| **v2.5.0 — the final G-Forge release** ([ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md)): M52 Minimal Freeze (hand-cut release) | ✅ Done — **v2.5.0** |
-| After v2.5.0: this repo freezes (maintenance-only) and the successor — **G-Proof** — follows. Versioning restarts at G-Proof 1.0; there is no G-Forge 3.0. | — |
+| M52 — v2.5 Minimal Freeze (hand-cut release; shipped under the then-standing "final release" decision, [ADR-012](g-docs/decisions/012-g-forge-2.5-final-release-scope.md)) | ✅ Done — **v2.5.0** |
+| M53 — Token Diet ([ADR-014](g-docs/decisions/014-v26-token-diet-reopens-after-freeze.md) reopens development after the freeze): same governance, a fraction of the tokens — prose→scripts, lazy references, review pack + delta rounds, model economy | ✅ Done — **v2.6.0** |
+| The **G-Proof** rebuild remains the successor plan, unscheduled (versioning restarts at G-Proof 1.0; there is no G-Forge 3.0) | — |
 
 ---
 

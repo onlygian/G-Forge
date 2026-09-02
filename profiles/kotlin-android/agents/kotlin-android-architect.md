@@ -7,28 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Android + Kotlin + Jetpack Compose MVVM architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| UI — Screens | `ui/screens/` | `@Composable` screen functions. Collect StateFlow from ViewModel. Pass events up. No business logic. |
-| UI — Components | `ui/components/` | Reusable `@Composable` components. Pure UI — no ViewModel references. |
-| UI — ViewModels | `ui/viewmodels/` | `ViewModel` subclasses. Hold `StateFlow<UiState>`. Call UseCases. Handle UI events. |
-| Domain — UseCases | `domain/usecases/` | Single-responsibility use-case classes. Invoke one operation. Call repositories. Return `Flow<Result<T>>` or `suspend fun`. |
-| Data — Repositories | `data/repositories/` | `IXxxRepository` interface + `XxxRepositoryImpl`. Aggregate data sources. No business logic. |
-| Data — Sources | `data/sources/` | Room DAOs, Retrofit services, DataStore. Raw data access only. |
-| DI | `di/` | Hilt `@Module` classes. Binding only — no logic. |
-
-## Import Rules
-
-```
-ui/screens/      →  ui/viewmodels/ (collect state only), ui/components/
-ui/components/   →  (no ViewModel or domain imports)
-ui/viewmodels/   →  domain/usecases/
-domain/usecases/ →  data/repositories/ (interface only)
-data/repositories/ impl → data/sources/
-di/              →  data/repositories/, domain/usecases/
-```
+Your preloaded architecture-kotlin-android skill defines the layer map and import directions.
 
 **Violations to flag:**
 - `@Composable` screen function calling a repository or use-case directly (must go through ViewModel)

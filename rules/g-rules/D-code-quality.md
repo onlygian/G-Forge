@@ -1,11 +1,13 @@
 ## D · Code Quality
 
 **SOLID**
-- **Single Responsibility (SRP)** — one reason to change per module/class/function. A unit that handles data access *and* business logic needs splitting. Symptom: the name contains "and" or "also", or the file has two clearly separable sections.
-- **Open/Closed (OCP)** — extend behaviour by adding new code, not by modifying existing code. A switch/if-else chain that must be edited every time a new type is added is a violation — replace with a strategy map, polymorphic dispatch, or registry.
-- **Liskov Substitution (LSP)** — subtypes must honour the full contract of their supertype. An override that throws where the base returns a value, accepts a narrower input type, or silently ignores part of the supertype's behaviour is a violation. Prefer composition over inheritance to sidestep LSP traps.
-- **Interface Segregation (ISP)** — depend only on what you use. A function that receives a large object and reads two fields out of ten should accept a narrower type or destructured params. A class that implements an interface but leaves half the methods as `throw new Error('not implemented')` needs the interface split.
-- **Dependency Inversion (DIP)** — high-level modules depend on abstractions, not concrete implementations. Business logic must not `new` its own services — receive them via constructor/function injection. An import of a concrete adapter (database driver, HTTP client, third-party SDK) inside a domain or business-logic module is a DIP violation; wrap it behind an interface and inject it.
+- **Single Responsibility (SRP)** — one reason to change per module/class/function. Symptom: the name contains "and"/"also", or the file has two clearly separable sections.
+- **Open/Closed (OCP)** — extend by adding new code, not modifying existing code. A switch/if-else chain edited for every new type → strategy map, polymorphic dispatch, or registry.
+- **Liskov Substitution (LSP)** — subtypes honour the full supertype contract: no overrides that throw where the base returns, narrow the input type, or silently ignore behaviour. Prefer composition over inheritance.
+- **Interface Segregation (ISP)** — depend only on what you use: narrow types/destructured params over fat objects; split any interface half-implemented with `not implemented` stubs.
+- **Dependency Inversion (DIP)** — business logic never `new`s its own services or imports concrete adapters (database driver, HTTP client, third-party SDK); wrap behind an interface and inject via constructor/function.
+
+Borderline calls and worked examples: `.claude/rules/references/code-quality-notes.md`.
 
 **Style**
 - `const` everywhere; `let` only when reassignment is unavoidable; never `var`
@@ -58,40 +60,17 @@ Composable export matches filename: `useFoo.ts` → `export function useFoo`.
 
 **Versioning & release flow**
 
-The project uses [Semantic Versioning](https://semver.org/) (semver) with an optional hotfix suffix. Versions are milestone-scoped — every milestone gets a target version at planning time, and the bump happens when the milestone closes.
+The project uses [Semantic Versioning](https://semver.org/) with an optional hotfix suffix. Versions are milestone-scoped — every milestone gets a target version at planning time (`/g-roadmap` Step 3, developer-confirmed), and the bump happens when the milestone closes: `/g-review` prompts it, the developer decides and commits — never auto-bumped.
 
-*Version format:* `MAJOR.MINOR.PATCH[a]`
-- **MINOR** bump (`x.Y.0`) — new user-facing capability, new public API, new skill/command, new profile
-- **PATCH** bump (`x.y.Z`) — bug fixes, internal refactors, polish, dependency updates, doc-only changes
-- **MAJOR** bump (`X.0.0`) — breaking change to public API or incompatible behaviour change
-- **Hotfix suffix** (`a`) — appended to patch for out-of-band fixes after a release (e.g. `0.3.3a`, `0.3.5a`). Used when a critical fix must ship without bundling into the next planned release. Resets on next planned version.
+*Version format:* `MAJOR.MINOR.PATCH[a]` — **MINOR** (`x.Y.0`): new user-facing capability, public API, skill/command, or profile · **PATCH** (`x.y.Z`): bug fixes, internal refactors, polish, dependency updates, doc-only changes · **MAJOR** (`X.0.0`): breaking change · **hotfix suffix** (`a`): out-of-band fix after a release (e.g. `0.3.3a`); resets on next planned version.
 
-*Version sources — must always agree:*
+*Version sources — must always agree, updated in the same commit; disagreement is a release-blocking defect:*
 
 | File | Field |
 |------|-------|
 | `.claude-plugin/plugin.json` | `version` |
 | `.claude-plugin/marketplace.json` | `plugins[0].version` |
 
-Both files are updated in the same commit. Disagreement between them is a release-blocking defect.
+*Version never changes mid-milestone.* If scope creep changes the bump type, update the milestone's `**Version:**` field in `g-docs/ROADMAP.md` and note the reason before continuing.
 
-*When to bump:*
-- `/g-roadmap` assigns a target version to each milestone at planning time (Step 3). The developer confirms before milestones are written.
-- `/g-review` prompts a version bump when all tasks in a milestone are closed. The developer decides and commits it — never auto-bumped.
-- Hotfix patches (`a` suffix) bypass the milestone cycle: fix on `main`, bump `PATCH` + append `a`, commit, push.
-
-*Release commit sequence:*
-1. All milestone work merged to `main` and MERGE READY
-2. Update version in `plugin.json` and `marketplace.json`
-3. Add CHANGELOG entry under the new version heading (Keep a Changelog format)
-4. Update README if skill/profile counts, command lists, or capability descriptions changed
-5. Grep the literal fact being released (old version string, "candidate"/"pending"/status word, milestone token) across every live surface — never walk a typed site list (ADR-012, ADR-013). The v2.4.1 cut missed live carriers this way.
-6. Single commit: `chore: bump to vX.Y.Z` or `vX.Y.Z — <milestone summary>`
-7. Push immediately — never leave a version bump unpushed
-8. Run `/g-update` on any downstream projects to sync installed files
-9. If this repo self-hosts the plugin, resolve any `Installed-copy drift:` line flagged by the review record before tagging — realign `.claude/` from source (`/g-update`) or hand-sync the drifted file; never tag a release over unresolved self-host drift
-10. Tag the release commit `vX.Y.Z` (lightweight) and cut the GitHub release with that version's CHANGELOG section as the body — from v2.4.0 onward, per the *Git tags* note below
-
-*Version never changes mid-milestone.* If scope creeps enough to change the bump type (e.g. patch → minor), update the milestone's `**Version:**` field in `g-docs/ROADMAP.md` and note the reason before continuing.
-
-*Git tags:* used from **v2.4.0 onward**, for GitHub releases only. Tag the release commit as `vX.Y.Z` (lightweight tag, no GPG) and cut the release with the CHANGELOG section for that version as the body. The CHANGELOG heading `## [X.Y.Z] — YYYY-MM-DD` remains the **authoritative** version record; the tag is a convenience for `git describe` and the GitHub releases page, never a second source of truth. Versions released before v2.4.0 are deliberately un-tagged and un-released — backfilling them would notify watchers with fictional dates.
+**At release time (version bump / milestone close / hotfix), read `.claude/rules/references/release-flow.md` and follow its release commit sequence — it is mandatory at that moment, including the grep-the-released-fact sweep (ADR-012/ADR-013) and the git-tag rules.**

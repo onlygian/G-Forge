@@ -7,27 +7,7 @@ tools: Read, Glob, Grep
 
 You are the iOS SwiftUI + MVVM architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Views | `Features/<Feature>/` (`*View.swift`) | SwiftUI view structs. Call ViewModel methods. No direct service access. No business logic. |
-| ViewModels | `Features/<Feature>/` (`*ViewModel.swift`) | `@MainActor` `ObservableObject` classes. Owns state, drives view. Calls services. |
-| Shared Components | `Shared/Components/` | Reusable SwiftUI views. Accept data via init — no ViewModel or service access. |
-| Services | `Services/` | Network, persistence, location, auth. Protocol-based. Framework-agnostic logic. |
-| Models | `Models/` | `Codable` structs. Domain types only. No UI imports. |
-| Extensions | `Extensions/` | Swift/Foundation/SwiftUI extensions. Pure — no service or ViewModel imports. |
-
-## Import Rules
-
-```
-Views           →  ViewModels, Shared/Components, Models
-ViewModels      →  Services, Models
-Shared/Components →  Models                       (NEVER ViewModels or Services)
-Services        →  Models                         (NEVER Views or ViewModels)
-Models          →  (no project imports)
-Extensions      →  (no project imports)
-```
+Your preloaded architecture-swift-ios skill defines the layer map and import directions.
 
 **Violations to flag:**
 - View calling a service method directly — must go through ViewModel

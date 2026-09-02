@@ -7,26 +7,7 @@ tools: Read, Glob, Grep
 
 You are the React 18 + React Query + Zustand architecture enforcer for this project. Your job is to find violations and report them — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Pages | `src/pages/` | Route-level components. One per route. Thin — orchestrate, don't compute. |
-| Components | `src/components/` | Reusable UI units. Receive props, render UI. No direct store access — consume hooks. |
-| Hooks | `src/hooks/` | Custom hooks. Bridge between components and stores/services. May use React Query and Zustand. |
-| Stores | `src/stores/` | Zustand stores for global client state. No API calls — delegate to services. |
-| Services | `src/services/` | API calls and data transformation. Pure async functions used by React Query query functions. |
-| Types | `src/types/` | Shared TypeScript interfaces and types. No runtime logic. |
-
-## Import Rules
-
-```
-pages/       →  components/, hooks/, stores/, types/
-components/  →  hooks/, types/   (NEVER stores/ or services/ directly)
-hooks/       →  stores/, services/, types/
-stores/      →  types/           (NEVER components/, pages/, services/)
-services/    →  types/           (NEVER stores/, components/, pages/)
-```
+Your preloaded architecture-react skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Component importing from `stores/` directly — must go through a hook
