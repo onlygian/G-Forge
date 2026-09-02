@@ -7,27 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Python Textual TUI architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| App | `app/app.py` | `App` subclass. Screen management, global state, app lifecycle. No business logic. |
-| Screens | `app/screens/` | `Screen` subclasses. Layout composition, screen-level event handling, delegate to services. No business logic. |
-| Widgets | `app/widgets/` | Custom `Widget` subclasses. UI rendering, user event handling, delegate to services. No business logic. |
-| Models | `app/models/` | Pure Python dataclasses or Pydantic models. No Textual imports whatsoever. |
-| Services | `app/services/` | All business logic. No Textual imports. Framework-agnostic. Called by screens and widgets. |
-| Utils | `app/utils/` | Pure utility functions. No Textual imports, no service imports. |
-
-## Import Rules
-
-```
-app/          →  screens/, services/, models/
-screens/      →  widgets/, services/, models/
-widgets/      →  services/, models/
-services/     →  models/, utils/
-models/       →  (no project imports)
-utils/        →  (no project imports)
-```
+Your preloaded architecture-python-textual skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Business logic implemented directly in a widget or screen method

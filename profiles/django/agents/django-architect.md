@@ -7,29 +7,14 @@ tools: Read, Glob, Grep
 
 You are the Django + DRF architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
+Your preloaded architecture-django skill defines the layer map and import directions. Also enforce these, which that card does not carry:
 
 | Layer | Directory | Owns |
 |-------|-----------|------|
-| Views | `apps/<feature>/views.py` | DRF ViewSets or APIViews. Parse request, call service, return serialized response. No business logic. |
-| Serializers | `apps/<feature>/serializers.py` | Input validation and output serialization only. No business logic, no DB queries beyond field-level checks. |
-| Services | `apps/<feature>/services.py` | All business logic. Called by views. Returns domain objects or raises domain exceptions. No HTTP awareness. |
-| Models | `apps/<feature>/models.py` | Django ORM models. Relationships, field definitions, computed properties via `@property`. No business logic methods. |
-| URLs | `apps/<feature>/urls.py` | URL routing for the feature. Wires router or urlpatterns to views. |
-| Config | `config/settings/` | Django settings split by environment. All env var access via `django-environ` or `python-decouple` here only. |
 | Config URLs | `config/urls.py` | Root URL conf. Includes per-feature URL modules. |
-| Utils | `apps/common/utils.py` or `utils/` | Pure utility functions. No Django ORM imports, no HTTP. |
-
-## Import Rules
 
 ```
-views/        →  services/, serializers/
-serializers/  →  models/ (for field references only)
-services/     →  models/, utils/
-models/       →  (no project imports)
 urls/         →  views/
-config/       →  (no project imports)
-utils/        →  (no project imports)
 ```
 
 **Violations to flag:**

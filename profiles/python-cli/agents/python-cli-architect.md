@@ -7,26 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Python CLI architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| CLI Entry | `cli/main.py` | Click/Typer app definition. Group registration. Entry point only. |
-| Commands | `cli/commands/` | One file per command group. Parse args, validate inputs, call service, format output via Rich. No business logic. |
-| Services | `services/` | All business logic. Framework-agnostic. Returns data objects — never strings or formatted output. |
-| Models | `models/` | Pydantic models or dataclasses. Schema for data flowing through the system. |
-| Config | `config/` | Pydantic `BaseSettings` subclass. All env var and config file access. |
-| Utils | `utils/` | Pure utility functions. No Click/Typer imports, no service imports. |
-
-## Import Rules
-
-```
-cli/commands/ →  services/, models/, config/, utils/
-services/     →  models/, config/, utils/
-models/       →  (no project imports)
-config/       →  (no project imports — reads env only)
-utils/        →  (no project imports)
-```
+Your preloaded architecture-python-cli skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Command function containing business logic (>5 lines beyond arg parsing, service call, output)

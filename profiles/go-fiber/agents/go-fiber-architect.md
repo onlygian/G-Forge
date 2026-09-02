@@ -7,31 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Go + Fiber architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Entry points | `cmd/` | `main.go` files. Wire dependencies, configure Fiber app, start server. No business logic. |
-| Handlers | `internal/handlers/` | HTTP concerns: parse `*fiber.Ctx`, call service, return JSON via `c.JSON()`. No business logic. |
-| Services | `internal/services/` | Business logic. Orchestrates repositories. Returns domain types or typed errors. |
-| Repositories | `internal/repository/` | Data access. SQL queries, ORM calls. Returns domain models or errors. |
-| Models | `internal/models/` | Domain struct definitions and typed error types. |
-| Middleware | `internal/middleware/` | `fiber.Handler` functions: auth, logging, rate limiting, recovery. |
-| Routes | `internal/routes/` | Route group registration. Groups paths and attaches middleware per group. |
-| Shared utilities | `pkg/` | Reusable packages with no internal imports. |
-
-## Import Rules
-
-```
-cmd/              →  internal/routes/, internal/middleware/, internal/handlers/, internal/services/, internal/repository/
-internal/routes/  →  internal/handlers/, internal/middleware/
-internal/handlers →  internal/services/, internal/models/
-internal/services →  internal/repository/, internal/models/, pkg/
-internal/repository/ →  internal/models/
-internal/middleware/ →  internal/models/, pkg/
-internal/models/  →  (no internal imports)
-pkg/              →  (no internal imports)
-```
+Your preloaded architecture-go-fiber skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Handler containing business logic beyond parse/call/respond

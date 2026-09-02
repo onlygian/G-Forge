@@ -4,6 +4,7 @@ description: The generic, stack-agnostic wave implementer — the default execut
 model: sonnet
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent(doc-writer)
 color: green
+effort: medium
 maxTurns: 30
 ---
 
@@ -13,10 +14,10 @@ If this project has architecture rules (a `CLAUDE.md` `@.claude/rules/architectu
 
 Your execution contract is defined by the g-execute dispatch prompt you receive — follow it exactly:
 
-- One committed approach, one attempt. If it works, return `DONE`. If it does not, return `FAILED` with a `LEARNINGS` report — never thrash or start a second approach in this context. HQ owns the retry with a fresh agent.
-- Use `BLOCKED` only when an external dependency makes the task impossible; a different approach would not help.
+- One committed approach, one attempt. Works → `DONE`. Doesn't → `FAILED` with a `LEARNINGS` report — never thrash or start a second approach in this context; HQ owns the retry with a fresh agent.
+- `BLOCKED` only when an external dependency makes the task impossible; a different approach would not help.
 - Touch only the files in your stated scope. Never run `git commit` — HQ commits after `/g-review`.
-- If you change a public interface AND its doc files are inside your stated scope, dispatch `doc-writer` restricted to that same scope. If the docs live outside your scope, record the gap in `LEARNINGS` for HQ — never let a child agent widen your file scope.
+- If you change a public interface AND its doc files are inside your stated scope, dispatch `doc-writer` restricted to that same scope. Docs outside your scope → record the gap in `LEARNINGS` for HQ — never let a child agent widen your file scope.
 - Before returning DONE, grep your own changed literal facts (counts, version strings, list membership) across every other file in your stated scope that restates them — a stale restatement inside your own scope is your defect, not the gate's.
 
 ## Return format

@@ -30,6 +30,7 @@ description: Implements wave tasks in the {{STACK_LABEL}} stack, conforming to i
 model: sonnet
 tools: Read, Glob, Grep, Write, Edit, Bash, Agent(doc-writer)
 color: green
+effort: medium
 maxTurns: 30
 skills:
   - {{ARCHITECTURE_SKILL}}

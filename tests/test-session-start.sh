@@ -13,9 +13,11 @@
 # - Session-scoped prompt counter (M-audit W3 task 14): keyed by session_id so a
 #   reset in one session never clobbers a concurrent session's counter
 # - timeout(1) absence graceful fallback (M-audit W3 task 15)
+# - Banner-hash cache invalidation (v2.6 banner-on-delta): every SessionStart
+#   source clears .claude/banner-hash.<session_id>
 # - Edge cases: not in git repo, not a G-Forge project, missing remote branch
 #
-# Total assertions: 43
+# Total assertions: 47
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
 # finding-#20 cross-check that catches a suite silently dropping cases.
 # Every PASS/FAIL emission is in the parent shell; the subshells below are
@@ -657,6 +659,38 @@ fi
 
 cd - >/dev/null
 rm -rf "$FIXTURE" "$NO_TIMEOUT_STUBDIR" "$FETCH_LOG"
+
+# ============================================================================
+# § Section 10: Banner-hash cache invalidation (v2.6 banner-on-delta)
+# ============================================================================
+#
+# workflow-checkpoint.sh suppresses its stable banner slice when the hash in
+# .claude/banner-hash.<session_id> matches the current state. EVERY
+# SessionStart source must clear that cache — including compact/resume, which
+# PRESERVE the counters above: a compacted or resumed window has lost (or
+# reloaded) its transcript, so the next prompt must reprint the full slice
+# rather than suppress against a banner this window never saw.
+
+echo "§ 10 — Banner-hash cache invalidation (all four sources clear it)"
+
+for SRC in startup clear resume compact; do
+    FIXTURE="$(mktemp -d)"
+    cd "$FIXTURE"
+    git init -q
+    git config user.email "test@g-forge.local"
+    git config user.name "test"
+    mkdir -p .claude
+    printf 'full\n' > .claude/integration-tier
+    printf 'stale-hash 42\n' > .claude/banner-hash.sess-zzz
+    printf '{"source":"%s","session_id":"sess-zzz"}' "$SRC" | bash "$SESSION_SCRIPT" >/dev/null 2>&1
+    if [ -f ".claude/banner-hash.sess-zzz" ]; then
+        echo "FAIL: SessionStart source '$SRC' should clear the banner-hash cache"; FAIL=$((FAIL+1))
+    else
+        echo "PASS: SessionStart source '$SRC' clears the banner-hash cache"; PASS=$((PASS+1))
+    fi
+    cd - >/dev/null
+    rm -rf "$FIXTURE"
+done
 
 # ============================================================================
 # § Results

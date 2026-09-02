@@ -7,25 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Godot 4 C# architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Scenes | `Scenes/<Feature>/` | Scene files (`.tscn`) and partial node classes. Self-contained. |
-| Core Systems | `Scripts/Core/` | Plain C# classes for game logic: state machines, AI, physics helpers. No Node inheritance. |
-| Nodes | `Scripts/Nodes/` | `Node` subclasses used as reusable components. Thin coordinators — delegate to Core. |
-| Data | `Scripts/Data/` | `Resource` subclasses for configuration. `[Export]`-decorated properties only. |
-| UI | `Scripts/UI/` | `Control`/`CanvasLayer` subclasses. No game logic. Reads state via signals or injected data. |
-
-## Import Rules
-
-```
-Scenes/<Feature>/  →  Scripts/Nodes/, Scripts/Core/, Scripts/Data/
-Scripts/Nodes/     →  Scripts/Core/, Scripts/Data/
-Scripts/UI/        →  Scripts/Data/  (no Scenes/ or Scripts/Nodes/ direct calls)
-Scripts/Core/      →  Scripts/Data/
-Scripts/Data/      →  (no project imports)
-```
+Your preloaded architecture-godot-csharp skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Scene script using `GetNode<T>("../../SomeDistantNode")` — require typed references or service locator

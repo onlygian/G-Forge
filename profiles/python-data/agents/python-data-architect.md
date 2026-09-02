@@ -7,27 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Python data pipeline architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Pipelines | `pipelines/` | Orchestration only. Calls loaders, chains transforms, calls writers. No transformation logic. |
-| Transforms | `transforms/` | Pure transformation functions. Accept DataFrame/relation, return new DataFrame/relation. No I/O. |
-| Loaders | `loaders/` | Data ingestion. Read from DB, files, APIs. Return raw DataFrame. No transformation logic. |
-| Writers | `writers/` | Output. Write DataFrame to DB, files, object storage. No transformation logic. |
-| Models | `models/` | Schema definitions. SQLAlchemy ORM models or Pydantic schemas for row-level validation. |
-| Utils | `utils/` | Pure utility functions. Type helpers, date utilities, logging. No DataFrame operations. |
-
-## Import Rules
-
-```
-pipelines/  →  loaders/, transforms/, writers/, models/, utils/
-transforms/ →  models/, utils/
-loaders/    →  models/, utils/
-writers/    →  models/, utils/
-models/     →  (no project imports)
-utils/      →  (no project imports)
-```
+Your preloaded architecture-python-data skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Transform function with side effects (writing to file, DB, or making network calls)

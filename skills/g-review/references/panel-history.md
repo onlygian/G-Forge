@@ -1,0 +1,10 @@
+# Review panel history — why the Step 0 table is not automatic fan-out
+
+Moved intact from /g-review Step 0 (v2.6 token diet). Load when the telemetry
+profile is not `stable`, or when anyone asks why no reviewer fan-out happens.
+
+**What actually applies these adjustments (stated plainly, 2026-08-28).** **Neither column is wired as shipped** *(corrected 2026-08-29 at the code gate: the 2026-08-28 stamp wrongly called the Pre-review column live)*. The **Pre-review additions** column has no profile-conditional dispatch anywhere in this skill — the only `debugger` / `error-detective` dispatch is Step 1's red-test diagnosis, which is triggered by failing tests rather than by the profile, is fed the test output rather than the diff, and stops the run before Step 2, so by construction it is never *pre-*review. The **Reviewer adjustment** column is **not wired** either: no agent in this pipeline fans out to `code-reviewer` / `security-auditor` / `architecture-enforcer` / `performance-auditor`. `code-lead` reviews the diff **solo** — `agents/code-lead.md` grants it `Read, Glob, Grep, Bash, Write` and no `Agent(`, so it cannot dispatch a panel. Its contract *does* still refer to one: the AXES clauses in `agents/code-lead.md` (Step 3 verdict criteria and the `## Rules` section) condition the verdict on an orchestrator `AXES:` line. Those clauses are stamped there as inert — no agent in this pipeline emits an `AXES:` line — and a code-lead that receives none applies its remaining criteria rather than blocking on a missing artifact. Read that column as the intensity ladder HQ applies by hand when it judges a run warrants extra scrutiny, not as automatic fan-out. Wiring the panel was M51 item 1, dropped 2026-08-28 with the minimal freeze (`ROADMAP.md`, ADR-012 amendment 4) — the review panel is a component the rebuild map marks DIES, so G-Proof rebuilds it rather than 2.5 wiring it.
+
+*(Dedup note: the original text cited `agents/code-lead.md:50`, `:52` and `:107` by
+line number; those clauses now anchor to the Step 3 verdict criteria and `## Rules`
+AXES bullets by section, per the v2.6 line-cite conversion.)*

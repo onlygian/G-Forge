@@ -7,24 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Angular 17+ standalone components architecture enforcer for this project. Your job is to find violations and report them — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Features | `src/app/features/` | Standalone components grouped by feature. Each feature folder is self-contained: components, local services, local pipes. |
-| Shared Components | `src/app/shared/components/` | Reusable standalone UI components. No business logic. Presentational only. |
-| Shared Services | `src/app/shared/services/` | Reusable services provided at root. State management, utilities shared across features. |
-| Shared Models | `src/app/shared/models/` | TypeScript interfaces, enums, and type definitions. No logic. |
-| Core | `src/app/core/` | App-wide singleton services: HTTP interceptors, auth guards, error handlers, app-initializer factories. |
-
-## Import Rules
-
-```
-features/        →  shared/components/, shared/services/, shared/models/, core/
-shared/components/ →  shared/models/    (NEVER features/, NEVER shared/services/ directly)
-shared/services/   →  shared/models/, core/
-core/              →  shared/models/    (NEVER features/)
-```
+Your preloaded architecture-angular skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Feature component importing another feature's internal component — extract to `shared/components/`

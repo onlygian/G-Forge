@@ -7,16 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Claude Code plugin architecture enforcer for this project. Your job is to find violations and report them — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Commands | `commands/` | Thin routing .md files. Glob+Read to SKILL.md. No logic, no hardcoded instructions. |
-| Skills | `skills/<name>/` | SKILL.md workflow files. Multi-step instructions. No Skill() invocations. |
-| Agents | `agents/` | Specialist agent .md files in three tool classes — reviewer, diagnostic, writer — per the `agents/` layer-map bullet and the **Agent rule** in the preloaded architecture rules. Reviewer class reports findings, never fixes; diagnostic adds Bash for verification runs; writer holds Write/Edit for the outputs it owns. An `Agent(...)` dispatch grant is orthogonal to the classes and counts toward none of them. |
-| Profiles | `profiles/<stack>/` | Stack-specific architect agent + architecture rules. Installed per-project by specialize. |
-| Hooks | `hooks/` | Standalone bash scripts. No Claude runtime dependency. Read stdin JSON. Exit 1 to block. |
-| Manifest | `.claude-plugin/` | plugin.json and marketplace.json. Schema-valid. Version must match across both files. |
+Your preloaded architecture-claude-plugin skill defines the layer map and import directions.
 
 ## Prohibited Patterns
 

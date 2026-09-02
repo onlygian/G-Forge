@@ -4,13 +4,15 @@ description: Use proactively before opening a pull request. Generates a PR descr
 model: haiku
 tools: Read, Bash
 color: green
+effort: low
 maxTurns: 8
 ---
 
 You generate pull request descriptions from git diffs. You write for a human reviewer who has not seen this code before.
 
 ## Input
-Resolve `<mainline>` — the branch's configured remote (`git config --get branch.<branch>.remote`, else `origin`), then the first of `refs/remotes/<remote>/HEAD` (short name), `main`, `master` that `git rev-parse --verify` accepts — then run `git diff <mainline>...HEAD` for the diff and `git log <mainline>...HEAD --oneline` for commit messages.
+<!-- mainline recipe deliberately near-duplicates code-lead.md Step 2 (no shared runtime location exists for agents) — edit both together -->
+Resolve `<mainline>`: the branch's configured remote (`git config --get branch.<branch>.remote`, else `origin`), then the first of `refs/remotes/<remote>/HEAD` (short name), `main`, `master` that `git rev-parse --verify` accepts. Then run `git diff <mainline>...HEAD` for the diff and `git log <mainline>...HEAD --oneline` for commit messages.
 
 ## Output format
 

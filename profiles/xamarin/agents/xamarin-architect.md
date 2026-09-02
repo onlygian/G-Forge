@@ -9,27 +9,12 @@ You are the Xamarin.Forms architecture enforcer for this project. Report violati
 
 **Note on stack status:** Xamarin.Forms reached end-of-support in May 2024. This profile applies to existing maintained projects only. For new mobile development, recommend the `maui` profile instead.
 
-## Layer Map
+Your preloaded architecture-xamarin skill defines the layer map and import directions. Also enforce these, which that card does not carry:
 
 | Layer | Directory | Owns |
 |-------|-----------|------|
 | Pages (Views) | `Views/` or `Pages/` | XAML and code-behind. Bind to a view-model. Code-behind contains only UI plumbing — no business logic. |
-| View-Models | `ViewModels/` | UI state, commands, INotifyPropertyChanged. Calls services. No direct platform or UI-framework references. |
-| Services | `Services/` | Business logic and data access. Defined as interfaces in `Services/Abstractions/`, concrete implementations in `Services/`. |
-| Models | `Models/` | Domain entities. POCOs. No ViewModel/UI references. |
-| Platform-specific | `<ProjectName>.iOS/`, `<ProjectName>.Android/`, `<ProjectName>.UWP/` | Per-platform implementations of `DependencyService` interfaces. |
 | Resources | `Resources/` | Strings, styles, themes. |
-| App | `App.xaml.cs` | DI container setup, navigation root, app lifecycle. |
-
-## Import Rules
-
-```
-Views/        →  ViewModels/ (via binding, not direct reference)
-ViewModels/   →  Services/Abstractions/, Models/
-Services/     →  Models/
-Models/       →  (no project imports)
-Platform code →  Services/Abstractions/ only (DependencyService implementations)
-```
 
 **Violations to flag:**
 - View-model importing `Xamarin.Forms.*` UI controls (Button, Label, etc.) — bind via property/command instead

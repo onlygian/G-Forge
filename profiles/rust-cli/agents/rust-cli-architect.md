@@ -7,27 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Rust CLI architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | File / Directory | Owns |
-|-------|-----------------|------|
-| Entry | `src/main.rs` | CLI entry point. Initialise async runtime. Parse top-level args. Route to CLI layer. No business logic. |
-| CLI | `src/cli/` | Clap structs and command routing. Map CLI args to service calls. Return exit codes. |
-| Commands | `src/commands/` | One file per subcommand. Thin — validate input, call service, format output. |
-| Services | `src/services/` | Business logic. Pure domain operations. No Clap types, no I/O formatting. |
-| Models | `src/models/` | Domain types: structs, enums, value objects. No logic beyond `impl` display/conversion. |
-| Errors | `src/errors.rs` | `thiserror`-derived error enum. All error variants defined here or per-module. |
-
-## Import Rules
-
-```
-main.rs      →  cli/
-cli/         →  commands/
-commands/    →  services/, models/, errors
-services/    →  models/, errors
-models/      →  (std + serde only)
-errors.rs    →  (std + thiserror only)
-```
+Your preloaded architecture-rust-cli skill defines the layer map and import directions.
 
 **Violations to flag:**
 - `commands/` importing `clap` types beyond what was parsed and passed in — Clap belongs in `cli/`

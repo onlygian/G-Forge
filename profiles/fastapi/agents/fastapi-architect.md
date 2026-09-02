@@ -7,31 +7,7 @@ tools: Read, Glob, Grep
 
 You are the FastAPI architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Routers | `app/routers/` | FastAPI route definitions. Validates input via Pydantic, calls services, returns response schemas. No business logic. |
-| Services | `app/services/` | Business logic. Calls repositories. Returns domain objects or raises domain exceptions. Framework-agnostic. |
-| Repositories | `app/repositories/` | Database access. SQLAlchemy queries or ORM calls. No business logic. |
-| Schemas | `app/schemas/` | Pydantic models for request/response validation. No database models. |
-| Models | `app/models/` | SQLAlchemy ORM models (database table definitions). No Pydantic. |
-| Dependencies | `app/dependencies/` | FastAPI `Depends()` callables: auth, db session, pagination, rate limiting. |
-| Core | `app/core/` | App-wide config, logging setup, exception handlers, lifespan events. |
-| Utils | `app/utils/` | Pure utility functions. No FastAPI imports, no DB access. |
-
-## Import Rules
-
-```
-routers/      →  services/, schemas/, dependencies/
-services/     →  repositories/, schemas/, models/, utils/
-repositories/ →  models/, core/config
-dependencies/ →  services/, core/, models/
-schemas/      →  (no project imports)
-models/       →  (no project imports)
-core/         →  (no project imports)
-utils/        →  (no project imports)
-```
+Your preloaded architecture-fastapi skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Router endpoint containing business logic (>5 lines beyond validate/call/return)

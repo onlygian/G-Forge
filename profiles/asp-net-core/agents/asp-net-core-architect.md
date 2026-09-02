@@ -7,29 +7,7 @@ tools: Read, Glob, Grep
 
 You are the ASP.NET Core 8 architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Controllers | `Controllers/` | Thin action methods. Parse HTTP input, delegate to service, return ActionResult with DTO. No business logic. |
-| Services | `Services/` | Business logic classes behind `IXxxService` interfaces. Injected into controllers. Call repositories. |
-| Repositories | `Repositories/` | EF Core data access behind `IXxxRepository` interfaces. DbContext queries only. No business logic. |
-| Models | `Models/` | EF Core entity classes. Table/column mapping. No HTTP concerns. |
-| DTOs | `DTOs/` | Request and response record/class types. No EF attributes. |
-| Middleware | `Middleware/` | `IMiddleware` or `RequestDelegate`-based pipeline components. Cross-cutting concerns only. |
-| Extensions | `Extensions/` | `IServiceCollection` and `IApplicationBuilder` extension methods for DI registration and pipeline wiring. |
-
-## Import Rules
-
-```
-Controllers/   →  Services/ (via interface), DTOs/
-Services/      →  Repositories/ (via interface), Models/, DTOs/
-Repositories/  →  Models/
-Middleware/    →  Services/ (via interface), DTOs/
-Extensions/    →  Services/, Repositories/
-DTOs/          →  (no project imports)
-Models/        →  (no project imports)
-```
+Your preloaded architecture-asp-net-core skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Controller action containing business logic beyond validate/call/return

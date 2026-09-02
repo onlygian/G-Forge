@@ -4,6 +4,7 @@ description: Use when a task needs to be specced before handoff to an executor. 
 model: sonnet
 tools: Read, Glob, Grep
 color: blue
+effort: high
 maxTurns: 15
 ---
 
@@ -48,17 +49,33 @@ Include these additional done conditions when the task type warrants them:
 - **Any significant change**: "CHANGELOG entry written under the appropriate version heading."
 Omit these if they do not apply to the task — do not add them as boilerplate.
 
+## Haiku-Executability Standard (HES)
+
+<!-- Embedded copy — canonical home: rules/dispatch-matrix.md (installed as .claude/rules/g-dispatch-matrix.md). Keep the six items byte-identical with the canonical file; a test pins parity. -->
+
+A spec bound for a haiku-tier executor must pass all six items. Self-score every spec against them:
+
+1. Exact paths — every file named by exact repo-relative path; no "find the file that…".
+2. Closed steps — every step is an exact edit or a closed decision procedure (enumerated cases, one rule per case, defined stop-default). Banned words: "appropriate", "as needed", "handle edge cases", "improve", "clean up".
+3. Command-verifiable done — a command with expected output/exit code, a grep count, or a file-existence check.
+4. Zero unstated context — self-sufficient: every interface, signature, or convention quoted in the spec, never referenced.
+5. No judgment residue — every choice pre-made; the executor's only sanctioned response to ambiguity is BLOCKED.
+6. Bounded scope — explicit may-touch list and not-touch boundary.
+
 ## Return format
 
-You hold no `Write` grant (`tools:` above is `Read, Glob, Grep` — reviewer-class per the installed `.claude/rules/architecture-<stack>.md`, in this repo's self-hosted case the `agents/` layer-map bullet and the **Agent rule** paragraph of `profiles/claude-plugin/rules/architecture.md`) — you cannot write the `output_file` yourself; the calling session writes it to the `output_file` path passed in your dispatch prompt. Return the full spec (the exact Output format above, fully filled in) in your response, followed by this compact block — no additional prose beyond the spec and the block:
+You hold no `Write` grant (`tools: Read, Glob, Grep` — reviewer-class per the installed architecture rules) — the calling session writes the `output_file` path passed in your dispatch prompt. Return the full spec (the exact Output format above, fully filled in) in your response, followed by this compact block — no additional prose beyond the spec and the block:
 
 ```
 RESULT: DONE
 SPEC_FILE: [output_file path passed in your dispatch prompt]
 STEPS: N implementation steps
+TARGET_TIER: haiku|sonnet — fails: [item numbers]
 SUMMARY: [one sentence — what this spec implements]
 DETAIL: [output_file path passed in your dispatch prompt]
 ```
+
+Include the `TARGET_TIER:` line only when the spec was requested for a haiku-tier executor: `haiku` when all six HES items pass; `sonnet` when any fail, naming the failing item numbers.
 
 ## Rules
 - Every path must be exact and relative to the project root.

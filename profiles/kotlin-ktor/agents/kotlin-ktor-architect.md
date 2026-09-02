@@ -7,29 +7,7 @@ tools: Read, Glob, Grep
 
 You are the Ktor + Kotlin architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
-
-| Layer | Directory | Owns |
-|-------|-----------|------|
-| Routes | `src/main/kotlin/.../routes/` | Ktor routing DSL blocks. Map HTTP to service calls. Parse request, call service, respond. No business logic. |
-| Services | `src/main/kotlin/.../services/` | Business logic. Suspend functions. Returns `Result<T>` or sealed class. Calls repositories. |
-| Repositories | `src/main/kotlin/.../repositories/` | Data access. Exposed (SQL) or other DB library calls. No business logic. |
-| Models | `src/main/kotlin/.../models/` | Domain data classes. Pure Kotlin — no framework annotations. |
-| DTOs | `src/main/kotlin/.../dto/` | Request and response data classes for API surface. Kotlinx serialization annotations live here. |
-| Plugins | `src/main/kotlin/.../plugins/` | Ktor plugin installation (`install(ContentNegotiation)`, routing wiring, auth, CORS). |
-| DI | `src/main/kotlin/.../di/` | Koin module definitions. No logic — binding only. |
-
-## Import Rules
-
-```
-routes/       →  services/, dto/
-services/     →  repositories/, models/, dto/
-repositories/ →  models/
-plugins/      →  routes/, services/ (for module wiring)
-di/           →  services/, repositories/
-dto/          →  (no project imports)
-models/       →  (no project imports)
-```
+Your preloaded architecture-kotlin-ktor skill defines the layer map and import directions.
 
 **Violations to flag:**
 - Route block containing business logic beyond request parsing + service call + response

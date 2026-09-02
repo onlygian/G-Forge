@@ -7,27 +7,11 @@ tools: Read, Glob, Grep
 
 You are the Rust + Axum architecture enforcer for this project. Report violations — never fix them yourself.
 
-## Layer Map
+Your preloaded architecture-rust-axum skill defines the layer map and import directions. Also enforce these, which that card does not carry:
 
 | Layer | Directory | Owns |
 |-------|-----------|------|
-| Routes | `src/routes/` | Axum handler functions and router definitions. Extract state/params, call service, return response. |
-| Services | `src/services/` | Business logic. Calls repositories. Returns `Result<T, AppError>`. |
-| Repositories | `src/repositories/` | DB access via `sqlx` or `diesel`. Returns `Result<T, AppError>`. No business logic. |
-| Models | `src/models/` | Domain structs, `Serialize`/`Deserialize` derives, no business logic methods. |
-| Errors | `src/errors/` | `AppError` enum implementing `IntoResponse`. All error variants mapped to HTTP responses here. |
 | State | `src/state.rs` or `src/app_state.rs` | `AppState` struct holding DB pool, config, shared resources. Derived `Clone`. |
-
-## Import Rules
-
-```
-routes/       →  services/, models/, errors/, state
-services/     →  repositories/, models/, errors/
-repositories/ →  models/, errors/
-models/       →  (no project imports)
-errors/       →  (no project imports beyond axum/http)
-state         →  repositories/ (for pool types), models/
-```
 
 **Violations to flag:**
 - Handler containing business logic beyond extraction/call/return
