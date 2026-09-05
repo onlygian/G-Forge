@@ -292,7 +292,7 @@ G-Forge ready ✓
   ✓ G-RULES.md — installed
   ✓ .claude/rules/g-rules-*.md — [RULES_INSTALLED] rule section files installed
   ✓ g-docs/ROADMAP.md — created with the Active Session handoff (or already existed)
-  ✓ g-docs/milestones/M1.md — created (or already existed)
+  ✓ <the M1 milestone file scaffold.sh reported> — created (or already existed)
   ✓ g-docs/todo.md — created (or already existed)
   ✓ .gitignore — project artifacts excluded, project record tracked
   ✓ .claude/hooks/ — hooks + lib/ scripts installed (canonical from plugin cache)
@@ -303,7 +303,7 @@ G-Forge ready ✓
   ✓ .claude/integration-tier — [chosen tier]
   ✓ Stack — [specialized: <stack> architect + rules installed | no stack detected yet — run /g-specialize once it exists]
 
-You're set up and ready to work. Next: run /g-plan with your first feature request, or edit g-docs/milestones/M1.md to define your scope.
+You're set up and ready to work. Next: run /g-plan with your first feature request, or edit the M1 milestone file above to define your scope.
 Tip: run /g-wiki anytime to start a human-facing project wiki in g-wiki/ — it's also refreshed automatically at the end of every milestone.
 ```
 
@@ -311,6 +311,6 @@ Then print the MCP recommendations from `references/recommended-mcps.md`.
 
 ## Rules
 - Never create a file that already exists without reading it first (the scripts follow the same rule — skeletons are create-only, G-Forge-managed copies overwrite).
-- If g-docs/project_brief.md exists at the project root, use its content to pre-fill g-docs/ROADMAP.md and g-docs/milestones/M1.md.
+- If g-docs/project_brief.md exists at the project root, use its content to pre-fill g-docs/ROADMAP.md and the M1 milestone file scaffold.sh reported (`CREATED:`/`EXISTS:`) — never a hardcoded `g-docs/milestones/M1.md`, which re-mints a duplicate beside an existing slugged `M1-*.md`.
 - Settings.json merge must never drop existing hooks — read before writing.
 - Step 1a's self-host detection is the single source-root resolution point — `[plugin-root]` is resolved there and reused everywhere; never hardcode `~/.claude/plugins/cache/...` outside that step's fallback branch.

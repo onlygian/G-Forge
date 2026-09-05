@@ -14,7 +14,9 @@
 #   hook-grepped handoff literals ('## Active Session', '━' banner,
 #   'Active context:') written raw into g-docs/ROADMAP.md, and the
 #   /g-onboard skip preference (--skip-rules/--skip-agents → SKIPPED lines,
-#   no rules installed, skeletons still written)
+#   no rules installed, skeletons still written), and the M1 milestone
+#   guard recognizing a pre-existing slugged file (M1-*.md, not just the
+#   literal M1.md) so it is reported EXISTS rather than duplicated
 # - merge-gitignore: created/updated/unchanged, idempotency, developer
 #   entries preserved, banner-hash pattern present
 # - install-hooks: tier marker written BEFORE hooks copy, disk-derived
@@ -26,7 +28,7 @@
 #   yields MISSING; a cache missing one sourced lib yields a per-file
 #   MISSING — proving both MISSING paths can actually fire
 #
-# Total assertions: 59
+# Total assertions: 62
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -169,6 +171,21 @@ else
     bad "scaffold: --skip-rules still installed rules files"
 fi
 has "$OUT" "CREATED: g-docs/ROADMAP.md" "scaffold: skip flags do not block g-docs skeletons"
+rm -rf "$DIR"
+
+# Task: M1 guard recognizes a slugged milestone file (M1-foundation.md), not
+# just the literal M1.md — a pre-existing M1-*.md must not spawn a duplicate
+# literal M1.md skeleton beside it (2026-09-02 dogfood defect).
+DIR=$(mktemp -d)
+mkdir -p "$DIR/g-docs/milestones"
+printf '# M1 — Foundation\n' > "$DIR/g-docs/milestones/M1-foundation.md"
+OUT=$(cd "$DIR" && bash "$SCRIPTS/scaffold.sh" "$PROOT"); RC=$?
+[ $RC -eq 0 ] && ok "scaffold: exit 0 with pre-seeded M1-foundation.md" || bad "scaffold: exit $RC with pre-seeded M1-foundation.md"
+has "$OUT" "EXISTS: g-docs/milestones/M1-foundation.md" "scaffold: slugged M1 milestone reported EXISTS"
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-09-03
+[ ! -f "$DIR/g-docs/milestones/M1.md" ] \
+    && ok "scaffold: no duplicate literal M1.md created beside M1-foundation.md" \
+    || bad "scaffold: duplicate M1.md created beside M1-foundation.md"
 rm -rf "$DIR"
 
 # ── merge-gitignore.sh ─────────────────────────────────────────────────────

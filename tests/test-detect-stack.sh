@@ -186,6 +186,15 @@ printf '{"name": "x", "version": "0.0.1"}\n' > "$D/.claude-plugin/plugin.json"
 run_in "$D"
 assert_has ".claude-plugin/plugin.json → claude-plugin" "STACK: claude-plugin source=deps"
 
+# ── roadmap dropped as a detection source ───────────────────────────────────
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-09-03
+
+D="$ROOT/roadmap-catalog"; mkdir -p "$D/g-docs"
+printf 'Supported stacks: react, vue-pinia, django, flask, rust-axum, tauri\n' > "$D/g-docs/ROADMAP.md"
+run_in "$D"
+assert_not "ROADMAP.md naming stacks the project does not use → no source=roadmap" "STACK: .* source=roadmap"
+assert_has "no brief + no deps + roadmap-only mentions → still CONFLICT" "CONFLICT: no brief and no dependency files found — ask the developer which profiles to apply"
+
 # ── brief scan, boundary rule, conflict ─────────────────────────────────────
 
 D="$ROOT/brief"; mkdir -p "$D/g-docs"
