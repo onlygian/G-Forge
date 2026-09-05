@@ -27,8 +27,8 @@
 #                            a detection source — g-docs/ROADMAP.md documents
 #                            the supported-stack catalog by name, so grepping
 #                            it fires on projects that merely describe a stack
-#                            rather than use one (12-stack false-positive
-#                            report, 2026-09-02)
+#                            rather than use one (12 detections, 11 of them
+#                            false positives, 2026-09-02)
 #   UNSUPPORTED: <name>      candidate arg not in the supported closed set
 #   CONFLICT: <text>         ambiguity the skill must resolve (code-lead
 #                            consult or developer question per the core) —

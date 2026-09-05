@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.6.2] — 2026-09-05
+
+Four defects found by dogfooding the plugin on its own repository. No new capability, no adopter-facing contract change — but note the new contributor obligation under the first entry below.
+
+- **Consumers:** picked up like any update — `/plugins`, then `/g-update`. The agent-roster fix takes effect on the next plugin load; if you still see `g-forge:references:*` agent types afterwards, the cache has not resynced.
+
+### Fixed
+
+- **`agents/references/` no longer registers as 15 dispatchable agents.** The plugin loader treats everything under `agents/` as an agent, so the 15 reference documents surfaced as `g-forge:references:*` agent types — 34 agent files loaded where 19 are real. `.claude-plugin/plugin.json` now declares its agents explicitly via the manifest's `agents` key, which turns off the `agents/` directory scan. Nothing moved: `agents/references/` stays where it is, so the three-homes reference layer (`skills/*/references/`, `rules/references/`, `agents/references/`) is unchanged. **Adding a new agent now requires listing it in `plugin.json` `agents[]`** — `tests/test-agents-manifest.sh` fails if the manifest and `ls agents/*.md` disagree.
+- **`/g-init` no longer creates a duplicate `M1.md`** beside an existing slugged milestone. `skills/g-init/scripts/scaffold.sh` tested for the literal path `g-docs/milestones/M1.md` rather than an `M1-*.md` glob, so any project whose first milestone carries a descriptive filename got a spurious empty skeleton. The guard now resolves either form, and the skill's report, next-step line, and pre-fill rule defer to the file the script reports instead of hardcoding the default name.
+- **`/g-specialize` no longer reports stacks a project merely mentions.** `skills/g-specialize/scripts/detect-stack.sh` counted ROADMAP keyword matches as detections, so a project documenting a technology was indistinguishable from one using it — on this repository that produced 12 detections where 1 was real (re-derived 2026-09-05 by running the pre-fix script from `c24d594` — 12 `STACK:` lines — against the fixed one, which emits `claude-plugin source=deps` alone). `roadmap` is dropped as a detection source; `arg`, `brief` and `deps` are unchanged.
+
+### Known
+
+- **`.claude/voice-profile` is written but not honoured.** Diagnosed, not yet fixed: the general conversational surface — ordinary PM and skill replies — has no read site at all, so the profile cannot affect it. Individual skills do read the file, and some branch their own output on it. G-RULES §B nevertheless states that *every* skill output honours the profile, which no code implements. The fix is deferred pending a decision on what the contract should be.
+
 ## [2.6.1] — 2026-09-02
 
 ### Added

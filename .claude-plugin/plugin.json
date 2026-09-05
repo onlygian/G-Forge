@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "g-forge",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "description": "Educated, enforced project management for AI development - a PM layer, parallel implementation waves, and a git-hook commit gate that can't be skipped. Make any model ship like a senior team.",
   "author": {
     "name": "onlygian"

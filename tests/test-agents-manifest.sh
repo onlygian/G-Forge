@@ -5,8 +5,9 @@
 # schema's declared mechanism for turning off the plugin loader's directory
 # auto-scan; this suite is the pin that makes the typed list legitimate).
 #
-# WHY this matters: the plugin loader treats every .md file directly under
-# agents/ as a dispatchable agent unless "agents" is explicitly set in
+# WHY this matters: the plugin loader treats every .md file anywhere under
+# agents/ — subdirectories included, which is the whole defect — as a
+# dispatchable agent unless "agents" is explicitly set in
 # plugin.json — at which point auto-load is disabled and only the listed
 # paths register. agents/references/*.md holds 15 reference documents that
 # must never register as agents; declaring the 19 real agents here is what
