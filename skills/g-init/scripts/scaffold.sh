@@ -103,10 +103,20 @@ out "RULES_INSTALLED: $RULES_N"
 # ── Steps 3/4/5 — g-docs skeletons (create only if absent) ──────────────────
 mkdir -p g-docs g-docs/milestones
 
+# M1_FILE — any existing M1 milestone file, literal or slugged (M1-*.md);
+# falls back to the literal default when none exists yet. Computed once so
+# the ROADMAP handoff, the milestone guard, and todo.md all point at the
+# same file rather than a hardcoded M1.md that goes stale next to a slugged
+# milestone (e.g. M1-foundation.md) and gets duplicated.
+M1_FILE=$(ls -1 g-docs/milestones/M1.md g-docs/milestones/M1-*.md 2>/dev/null | head -n1)
+if [ -z "$M1_FILE" ]; then
+    M1_FILE="g-docs/milestones/M1.md"
+fi
+
 if [ -f g-docs/ROADMAP.md ]; then
     out "EXISTS: g-docs/ROADMAP.md"
 else
-    cat > g-docs/ROADMAP.md <<'GF_EOF'
+    cat > g-docs/ROADMAP.md <<GF_EOF
 # Roadmap
 
 ## Active Session
@@ -115,7 +125,7 @@ else
 HANDOFF — [project] | branch: [branch]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Done this pass:   · (nothing yet)
-Next up:          · Define M1 scope in g-docs/milestones/M1.md
+Next up:          · Define M1 scope in $M1_FILE
 Active context:   · Fresh project, just initialized
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -133,10 +143,10 @@ GF_EOF
     out "CREATED: g-docs/ROADMAP.md"
 fi
 
-if [ -f g-docs/milestones/M1.md ]; then
-    out "EXISTS: g-docs/milestones/M1.md"
+if [ -f "$M1_FILE" ]; then
+    out "EXISTS: $M1_FILE"
 else
-    cat > g-docs/milestones/M1.md <<'GF_EOF'
+    cat > "$M1_FILE" <<'GF_EOF'
 # M1 — [Milestone Name]
 
 ## Goal
@@ -152,17 +162,17 @@ else
 ## Status
 🔄 In progress
 GF_EOF
-    out "CREATED: g-docs/milestones/M1.md"
+    out "CREATED: $M1_FILE"
 fi
 
 if [ -f g-docs/todo.md ]; then
     out "EXISTS: g-docs/todo.md"
 else
-    cat > g-docs/todo.md <<'GF_EOF'
+    cat > g-docs/todo.md <<GF_EOF
 ## Tasks
 | # | Task | Notes |
 |---|------|-------|
-| 1 | Define M1 scope | Update g-docs/milestones/M1.md |
+| 1 | Define M1 scope | Update $M1_FILE |
 
 ## Details
 GF_EOF
