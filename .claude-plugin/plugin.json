@@ -8,5 +8,26 @@
   },
   "homepage": "https://github.com/onlygian/g-forge",
   "repository": "https://github.com/onlygian/g-forge",
-  "license": "GPL-3.0"
+  "license": "GPL-3.0",
+  "agents": [
+    "./agents/architecture-enforcer.md",
+    "./agents/code-lead.md",
+    "./agents/code-reviewer.md",
+    "./agents/debugger.md",
+    "./agents/dependency-auditor.md",
+    "./agents/doc-reviewer.md",
+    "./agents/doc-writer.md",
+    "./agents/error-detective.md",
+    "./agents/feature-implementer.md",
+    "./agents/performance-auditor.md",
+    "./agents/project-manager.md",
+    "./agents/pr-writer.md",
+    "./agents/refactor-executor.md",
+    "./agents/review-orchestrator.md",
+    "./agents/security-auditor.md",
+    "./agents/spec-writer.md",
+    "./agents/task-decomposer.md",
+    "./agents/test-writer.md",
+    "./agents/wave-planner.md"
+  ]
 }

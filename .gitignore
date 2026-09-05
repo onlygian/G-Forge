@@ -65,3 +65,31 @@ tests/.scratch-*
 
 # G-Proof planning — local-only per ADR-012, carried to the fork by hand
 # g-docs/g-proof-roadmap.md — un-ignored 2026-08-21 (gaps A9: 42KB single-copy planning doc, known-fatal pattern; developer directive)
+
+# ── OS / editor ──
+*.swp
+
+# ── Secrets / local env ──
+.env.*
+!.env.example
+
+# ── G-Forge runtime state (per-developer / ephemeral — never shared) ──
+.claude/g-forge-approved
+.claude/g-forge-docs-approved
+.claude/journal/
+.claude/compact-state.md
+.claude/reentry.md
+.claude/session-prompt-count*
+.claude/session-compaction-count
+.claude/banner-hash.*
+.claude/context-threshold-offset
+.claude/review-holds
+.claude/tier3-active
+.claude/training-mode
+.claude/training-progress.md
+.claude/telemetry-coverage
+.claude/last-trim
+.claude/last-align
+.claude/coverage-nudge-stamp
+.claude/coverage-nudge-index
+.claude/agent-memory-local/
