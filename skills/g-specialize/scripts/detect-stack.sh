@@ -14,16 +14,21 @@
 #
 # Usage: detect-stack.sh [candidate-stack ...]
 #   Candidate args are stack names the model extracted from prose (an explicit
-#   /g-specialize argument, or brief/roadmap wording the grep cannot catch).
+#   /g-specialize argument, or brief wording the grep cannot catch).
 #   Each is validated against the supported closed set: valid → STACK line
 #   (source=arg), invalid → UNSUPPORTED line.
 #
 # Output contract:
-#   STACK: <name> source=<arg|brief|deps|roadmap>
+#   STACK: <name> source=<arg|brief|deps>
 #                            detected stack; <name> is from the supported
 #                            closed set, byte-identical to the frontmatter
 #                            description list; first source wins on duplicates
-#                            (priority: arg > brief > deps > roadmap)
+#                            (priority: arg > brief > deps). roadmap dropped as
+#                            a detection source — g-docs/ROADMAP.md documents
+#                            the supported-stack catalog by name, so grepping
+#                            it fires on projects that merely describe a stack
+#                            rather than use one (12-stack false-positive
+#                            report, 2026-09-02)
 #   UNSUPPORTED: <name>      candidate arg not in the supported closed set
 #   CONFLICT: <text>         ambiguity the skill must resolve (code-lead
 #                            consult or developer question per the core) —
@@ -88,7 +93,7 @@ if [ -f "$BRIEF" ]; then
     done
 fi
 
-# ── Source 3 — dependency files ──────────────────────────────────────────────
+# ── Source 2 — dependency files ──────────────────────────────────────────────
 DEPS_SET=""
 DEP_FILES_FOUND=0
 dep_add() {
@@ -249,20 +254,10 @@ elif [ -f plugin.json ] && grep -q '"\$schema".*claude-code-plugin' plugin.json;
     dep_add claude-plugin
 fi
 
-# ── Source 2 — g-docs/ROADMAP.md ─────────────────────────────────────────────
-ROADMAP=g-docs/ROADMAP.md
-ROADMAP_SET=""
-if [ -f "$ROADMAP" ]; then
-    for s in $SUPPORTED; do
-        name_in_file "$s" "$ROADMAP" && ROADMAP_SET="$ROADMAP_SET $s"
-    done
-fi
-
-# ── emit STACK lines (first source wins: arg > brief > deps > roadmap) ───────
+# ── emit STACK lines (first source wins: arg > brief > deps) ─────────────────
 for s in $ARG_STACKS;   do emit_stack "$s" arg; done
 for s in $BRIEF_SET;    do emit_stack "$s" brief; done
 for s in $DEPS_SET;     do emit_stack "$s" deps; done
-for s in $ROADMAP_SET;  do emit_stack "$s" roadmap; done
 
 # ── conflicts ────────────────────────────────────────────────────────────────
 if [ "$DEP_FILES_FOUND" -eq 1 ]; then
