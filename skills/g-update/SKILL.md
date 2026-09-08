@@ -13,7 +13,7 @@ You are first updating the plugin cache from GitHub, then syncing G-Forge-manage
 
 1. Fetch the latest version from GitHub:
    ```bash
-   curl -sf --max-time 10 https://raw.githubusercontent.com/hllrm/G-Forge/main/.claude-plugin/plugin.json | grep '"version"'
+   curl -sf --max-time 10 https://raw.githubusercontent.com/onlygian/G-Forge/main/.claude-plugin/plugin.json | grep '"version"'
    ```
    If curl fails (no network, timeout), report: "⚠ Could not reach GitHub — skipping version check, syncing from installed cache." and continue to Step 1.
 

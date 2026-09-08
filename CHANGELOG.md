@@ -198,7 +198,7 @@ shippability pass: no leftover cruft, no stale docs, no claims the repo doesn't 
 
 ### Fixed
 
-- **Stale `g-team` install commands and identifiers — completed the `g-forge` rename** — `/g-init`, `/g-update`, and `/g-specialize` told users to run `/plugin install g-team` / `/plugin update g-team`, which fail because the plugin id is `g-forge`; corrected to `g-forge`. Fixed a stale `hllrm/g-team` version-check URL to `hllrm/G-Forge`.
+- **Stale `g-team` install commands and identifiers — completed the `g-forge` rename** — `/g-init`, `/g-update`, and `/g-specialize` told users to run `/plugin install g-team` / `/plugin update g-team`, which fail because the plugin id is `g-forge`; corrected to `g-forge`. Fixed a stale `onlygian/g-team` version-check URL to `onlygian/G-Forge`.
 - **Renamed internal sentinel/state files to `g-forge-*`** — the commit-gate sentinel (`.claude/g-team-approved` → `.claude/g-forge-approved`), agent log, and self-update cache/stamp files were renamed consistently across hooks, `/g-review`, `/g-status`, `/g-doctor`, `/g-help`, `/g-afk`, the G-RULES, and docs. The writer (`/g-review`), readers (`check-commit.sh`, `workflow-checkpoint.sh`), and cleanup (`post-commit-cleanup.sh`) stay in sync; commit-gate self-test passes. Existing installs: an in-flight `/g-review` approval made before updating is ignored once — just re-run `/g-review`.
 - **Tidied stale product-name prose and old skill names** — "g-team skill/project/managed/architect/content/hooks" → "G-Forge"; old `g-team-plan`/`g-team-execute`/`g-team-review` references in docs corrected to `g-plan`/`g-execute`/`g-review`. The `/g-team` umbrella command and its `commands/g-team.md` router file are intentionally unchanged.
 
@@ -332,7 +332,7 @@ shippability pass: no leftover cruft, no stale docs, no claims the repo doesn't 
 - **Auto-trigger rule scoped to `full`** — `G-RULES.md` §B updated: auto-triggers fire only when the tier is `full`. The LLM reads the `Tier:` line in `workflow-checkpoint.sh` output and honors the rule.
 
 ### Changed
-- Self-update URL in `workflow-checkpoint.sh` migrated from `hllrm/g-team` to `hllrm/G-Forge` to match the renamed GitHub repository.
+- Self-update URL in `workflow-checkpoint.sh` migrated from `onlygian/g-team` to `onlygian/G-Forge` to match the renamed GitHub repository.
 - Hook output header renamed from `[G-Team Workflow Checkpoint]` to `[G-Forge Workflow Checkpoint]` for consistency with the post-M9 G-Forge rename.
 
 ## [0.15.0] — 2026-05-19

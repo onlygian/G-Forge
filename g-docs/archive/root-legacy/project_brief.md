@@ -9,7 +9,7 @@
 **Architecture:** `commands/` (router) → `skills/` (skill logic) → `agents/` (specialists) → `profiles/` (44 stack configs) → `hooks/` (enforcement)
 **Tests:** None — skills and agents are validated manually by deploying and using
 **Entry point:** `commands/g-team.md` (routes subcommands to skill SKILL.md files via Glob+Read)
-**Version:** 0.3.1 (published to Claude Code marketplace as hllrm/g-team)
+**Version:** 0.3.1 (published to Claude Code marketplace as onlygian/g-team)
 
 ## Problem / Goal
 

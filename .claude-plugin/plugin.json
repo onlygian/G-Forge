@@ -4,9 +4,9 @@
   "version": "2.2.1",
   "description": "Educated, enforced project management for AI development - a PM layer, parallel implementation waves, and a git-hook commit gate that can't be skipped. Make any model ship like a senior team.",
   "author": {
-    "name": "hllrm"
+    "name": "onlygian"
   },
-  "homepage": "https://github.com/hllrm/g-forge",
-  "repository": "https://github.com/hllrm/g-forge",
+  "homepage": "https://github.com/onlygian/g-forge",
+  "repository": "https://github.com/onlygian/g-forge",
   "license": "GPL-3.0"
 }

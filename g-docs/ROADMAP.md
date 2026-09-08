@@ -2,6 +2,15 @@
 
 > Multi-agent Claude Code plugin — planned execution, production architecture, enforced review.
 
+> **⚠ Open chore — check the global git identity** *(added 2026-08-13; delete once verified)*
+>
+> GitHub handle changed from `hllrm` to `onlygian`. This repo's remote and its per-repo `user.name`
+> are already corrected. `~/.gitconfig` is the gap — it was out of reach during the rename sweep and
+> is probably still on the old handle. Per-repo settings do nothing for a repo that does not exist yet,
+> so the first fresh clone reintroduces the problem.
+>
+> Check `git config --global user.name`; if it reads `hllrm`, set it to `onlygian`.
+
 ## Active Session
 
 ```

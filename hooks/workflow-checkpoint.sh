@@ -291,7 +291,7 @@ if [ -f "$INSTALLED_MANIFEST" ]; then
 
     if [ "$NEEDS_CHECK" = true ]; then
         (curl -sf --max-time 5 \
-          "https://raw.githubusercontent.com/hllrm/G-Forge/main/.claude-plugin/plugin.json" \
+          "https://raw.githubusercontent.com/onlygian/G-Forge/main/.claude-plugin/plugin.json" \
           | grep '"version"' | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?[a-zA-Z0-9]*' | head -1 \
           > "$VERSION_CACHE" && touch "$CHECK_STAMP") >/dev/null 2>&1 &
     fi

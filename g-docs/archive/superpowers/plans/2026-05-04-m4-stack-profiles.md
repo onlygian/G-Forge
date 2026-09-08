@@ -86,7 +86,7 @@ The profile files live in the g-team plugin directory. The base directory of thi
 
 Navigate from that path: go up two directory levels to reach the plugin root, then look in `profiles/[stack]/`.
 
-For example, if the base directory is `/home/user/.claude/plugins/cache/hllrm-g-team/skills/g-team-specialize`, the plugin root is `/home/user/.claude/plugins/cache/hllrm-g-team/` and the vue-pinia profile is at `/home/user/.claude/plugins/cache/hllrm-g-team/profiles/vue-pinia/`.
+For example, if the base directory is `/home/user/.claude/plugins/cache/onlygian-g-team/skills/g-team-specialize`, the plugin root is `/home/user/.claude/plugins/cache/onlygian-g-team/` and the vue-pinia profile is at `/home/user/.claude/plugins/cache/onlygian-g-team/profiles/vue-pinia/`.
 
 Read:
 - `profiles/[stack]/agents/[agent-name].md` — the architect agent file

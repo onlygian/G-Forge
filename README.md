@@ -100,7 +100,7 @@ The observer is a passive recorder, not a participant. As you work, it appends a
 `/plugin` is only available in the Claude Code CLI. Open a terminal and run `claude`, then:
 
 ```bash
-/plugin marketplace add hllrm/g-forge
+/plugin marketplace add onlygian/g-forge
 /plugin install g-forge
 ```
 
@@ -113,7 +113,7 @@ All **19** G-Forge agents, **38** skills, 48 stack profiles, 7 combo profiles, a
 ```bash
 # In a terminal:
 claude
-/plugin marketplace add hllrm/g-forge
+/plugin marketplace add onlygian/g-forge
 /plugin install g-forge
 ```
 
@@ -136,7 +136,7 @@ G-Forge also checks for updates automatically. The `workflow-checkpoint.sh` hook
 If `/g-update`'s git pull fails (cache is not a git clone), it will tell you to reinstall manually:
 
 ```bash
-/plugin marketplace add hllrm/g-forge
+/plugin marketplace add onlygian/g-forge
 /plugin install g-forge
 ```
 
@@ -145,7 +145,7 @@ If `/g-update`'s git pull fails (cache is not a git clone), it will tell you to 
 For development or one-off use, load directly via the `--plugin-dir` flag:
 
 ```bash
-git clone https://github.com/hllrm/g-forge.git
+git clone https://github.com/onlygian/g-forge.git
 claude --plugin-dir ./g-forge
 ```
 

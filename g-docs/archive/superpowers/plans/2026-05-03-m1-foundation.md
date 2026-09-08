@@ -55,7 +55,7 @@ Thumbs.db
 
 Install:
 ```bash
-/plugin marketplace add hllrm/g-team
+/plugin marketplace add onlygian/g-team
 /plugin install g-team
 ```
 
@@ -89,7 +89,7 @@ Create `.claude-plugin/plugin.json`:
   "name": "g-team",
   "version": "0.1.0",
   "description": "Specialized multi-agent system for code quality, production architecture, and planned execution",
-  "repository": "https://github.com/hllrm/g-team",
+  "repository": "https://github.com/onlygian/g-team",
   "license": "MIT",
   "agents": "./agents/",
   "skills": "./skills/",
