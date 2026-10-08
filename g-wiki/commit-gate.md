@@ -41,6 +41,8 @@ The gate runs in **two places**, and the second one is authoritative (see ADR-00
 
 Fires in Claude Code **before** git stages anything. Parses the invoked command via `hooks/lib/commit-detect.sh` to detect `git commit`, then checks for a sentinel file. If missing, it denies the tool call with a rich, model-facing reason.
 
+**Timing consequence — stamp and commit in separate tool calls.** The gate evaluates *before* the Bash command runs, so a single invocation that stamps a sentinel and then commits (`… && git commit`) is always denied: the sentinel does not exist yet when the gate looks. Run `/g-review` / `/g-doc-review` to completion first, then commit in a later call.
+
 **Why this isn't enough:** PreToolUse fires before staging, so it can't see what `git commit -a` or `git commit -p` (interactive) actually adds to the index—it would hash the wrong tree. It also doesn't fire on raw-terminal commits.
 
 ### 2. Native git `pre-commit` hook (`hooks/pre-commit`)
@@ -63,6 +65,8 @@ File classification happens in the shared lib `hooks/lib/classify-changeset.sh`,
 - **Code class:** executable files, instructions (scripts, configs, source code) — including **nested** `.md` files like `skills/*/SKILL.md` and `agents/*.md`, which are plugin behavior, not prose
 - **Doc class:** narrative documentation — root-level `*.md`/`README*`/`CHANGELOG*`/`LICENSE*` and the `g-docs/`, `g-wiki/`, `docs/` trees only
 - **Mixed:** both present in the staged set
+
+**Known false-positive: nested `README*`.** Only *root-level* `README*`/`CHANGELOG*`/`LICENSE*` are doc class; a nested one (e.g. a provenance note at `benchmarks/quality-eval/README.md`) is code class, deliberately — fail toward the stricter gate. A pass that only edits such a file is therefore a **mixed** commit needing both `/g-review` and `/g-doc-review` sign-offs. Data-directory provenance notes are the common trigger. To keep a doc-only pass doc-class, put the note under `g-docs/`, `g-wiki/` or `docs/` (or at the repo root) and link to it from the data directory. The classifier has no carve-out for them.
 - **None:** empty or unknown (falls back to code class, the stricter gate)
 
 ## Why two sites despite the redundancy?

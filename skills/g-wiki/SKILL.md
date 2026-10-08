@@ -45,12 +45,23 @@ If a page would describe something that doesn't exist in the code yet, mark it c
 
 For each page in scope, dispatch the **`doc-writer`** agent with the gathered sources and the target file. `doc-writer` writes the WHY — constraints, invariants, non-obvious decisions — not a restatement of the code. Give it: the page's purpose (from Step 2), the relevant files, and the ADR/brief context.
 
+**Dispatch shape — `doc-writer` has a 10-turn ceiling** (`maxTurns: 10`), and a read-everything-then-write run exhausts it after reading and before (or mid-) writing. So:
+- **One page per dispatch.** A multi-section page is split into sequential dispatches, one section each, each told which sections already exist.
+- **Tell it to write early and iterate:** create the page skeleton after the first source is read, then fill and correct it as it reads — never hold the whole page until every source is read.
+- Pages are independent, so dispatch them in parallel; do not trust any of the output yet — Step 4b is what makes it trustworthy.
+
 Pages must be:
 - **Accurate** — every claim traceable to the code, ROADMAP, brief, or an ADR. No invented behavior.
 - **Navigable** — every page linked from `g-wiki/README.md`'s table of contents; cross-link related pages.
 - **Current** — when refreshing, reconcile against the code and flag anything that drifted (a page describing a removed/renamed thing) for correction rather than leaving it stale.
 
 After writing the pages, update `g-wiki/README.md`'s index so the new/changed pages are linked.
+
+## Step 4b — Verify (default-on)
+
+Reference documentation is where plausible-but-wrong is most dangerous, and parallel `doc-writer` runs produce it confidently (a dogfooding pass of six parallel dispatches yielded 14 blocking accuracy findings: invented mechanics, fabricated figures, a documented command the tool cannot perform). So before reporting, run `/g-doc-review` over the wiki change — use Glob to find `skills/g-doc-review/SKILL.md` and follow it. On **DOCS HOLD**, re-dispatch `doc-writer` with the blocking findings (same dispatch shape as Step 4), then re-run `/g-doc-review`; repeat until **DOCS READY**. Do not fix findings yourself, and never report the wiki as updated on a HOLD.
+
+Skipping the review is allowed only when the developer explicitly says so in this run; the Step 5 report must then say `review: skipped (developer waived)`.
 
 ## Step 5 — Report
 
@@ -64,13 +75,16 @@ g-wiki updated ✓  (scope: [incremental | <area> | full])
   Index: g-wiki/README.md — [N pages linked]
 ```
 
-Committing is the developer's choice (the wiki is committed content, but `/g-wiki` doesn't bypass the commit gate). State that the wiki is ready to review and commit.
+Add the review line to the report: `Review: DOCS READY (rN)` (or `skipped (developer waived)`).
+
+Committing is the developer's choice (the wiki is committed content, but `/g-wiki` doesn't bypass the commit gate). State that the wiki is ready to commit — the `/g-doc-review` run in Step 4b already stamped the doc sentinel the gate checks.
 
 ## When this runs
 
 - **Anytime**, manually: `/g-wiki [area]`.
 - **Offered at `/g-init`** as part of project setup (optional — the wiki can start empty and grow).
 - **End of every milestone**: milestone close queues a `/g-wiki` task so the wiki tracks the product as it ships. Running it then keeps `architecture.md` and the area pages honest against what the milestone actually built.
+- **Every session (per-project opt-in)**: a project that keeps its wiki under a stricter currency rule than milestone-close sets `.claude/wiki-cadence` to the single word `session`. `/g-retro` (the session-end ritual) then runs an incremental `/g-wiki` after writing the retro. Absent file, empty file, or `milestone` → the default above; any other value is treated as the default. The override only adds refreshes — milestone close always refreshes regardless.
 
 ## Rules
 

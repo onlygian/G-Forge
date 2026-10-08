@@ -87,7 +87,13 @@ compute_tree() {
     local idx tmp tree
     idx=$(git rev-parse --git-path index)
     tmp=$(mktemp) || return 1
-    [ -f "$idx" ] && cp "$idx" "$tmp" 2>/dev/null
+    # cp -p, not cp: git decides whether an index entry is "racy" (edited in the
+    # same second the index was written) by comparing the entry's mtime to the
+    # INDEX FILE's mtime. A plain copy gets a fresh, later mtime, so a same-size
+    # edit made in the commit's own second reads as unchanged and `add -u` drops
+    # it — the pack tree then flips between calls (~20% of test-review-pack.sh
+    # runs red). Preserving the mtime keeps git's racy-entry re-hash working.
+    [ -f "$idx" ] && cp -p "$idx" "$tmp" 2>/dev/null
     if [ -n "${1:-}" ]; then
         GIT_INDEX_FILE=$tmp git add -u -- "$1" 2>/dev/null
     else

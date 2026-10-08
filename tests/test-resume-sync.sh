@@ -301,6 +301,10 @@ git init -q -b develop "$FIX/work"; gcfg "$FIX/work"
 mkdir -p "$FIX/work/g-docs"; printf 'x\n' > "$FIX/work/g-docs/ROADMAP.md"
 git -C "$FIX/work" add -A; git -C "$FIX/work" commit -qm init
 git -C "$FIX/work" remote add origin "$FIX/up.git"
+# git >= 2.48 defaults remote.<name>.followRemoteHEAD=create, so the script's own
+# fetch would create origin/HEAD -> develop and defeat this fixture (red on
+# ubuntu-latest, git 2.55; green on git 2.43). Older git ignores the key.
+git -C "$FIX/work" config remote.origin.followRemoteHEAD never
 git -C "$FIX/work" push -qu origin develop 2>/dev/null
 git -C "$FIX/work" checkout -qb feat/y
 git -C "$FIX/work" push -qu origin feat/y 2>/dev/null

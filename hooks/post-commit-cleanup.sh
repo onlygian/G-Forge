@@ -1,7 +1,8 @@
 #!/bin/bash
 # G-Forge post-commit cleanup — PostToolUse hook.
 # Clears both .claude/g-forge-approved (commit sentinel) and
-# .claude/g-forge-docs-approved (docs sentinel) after a successful git commit.
+# .claude/g-forge-docs-approved (docs sentinel) after a git commit that landed
+# (HEAD moved past the sentinel's stamped head); a failed commit keeps them.
 # Input: Claude Code PostToolUse JSON on stdin.
 
 # Sources shared lib helpers so commit detection and worktree resolution
@@ -19,6 +20,8 @@ _GF_HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$_GF_HOOK_DIR/lib/worktree-resolve.sh"
 # shellcheck source=lib/stdin-read.sh
 [ -f "$_GF_HOOK_DIR/lib/stdin-read.sh" ] && . "$_GF_HOOK_DIR/lib/stdin-read.sh"
+# shellcheck source=lib/sentinel-read.sh
+[ -f "$_GF_HOOK_DIR/lib/sentinel-read.sh" ] && . "$_GF_HOOK_DIR/lib/sentinel-read.sh"
 
 # Extract the tool command from a PostToolUse JSON payload.
 # Never trust a lone interpreter whose failure we've silenced: probe each
@@ -99,9 +102,29 @@ CMD=$(extract_cmd "$INPUT")
 # No parser yielded a command (missing/stubbed) → grep the raw payload.
 [ -z "$CMD" ] && CMD="$INPUT"
 
+# A sentinel is cleared only if the commit actually landed. This hook keys on
+# the command string, which is also true of a commit git aborted before
+# creating anything (field report: "Author identity unknown", exit 128) —
+# clearing then erased valid sign-offs and forced a full re-review (#37).
+# Landed-or-not is read from the stamp itself: commit_sentinel_head is the
+# HEAD the review was stamped against, so HEAD still equal to it means no
+# commit has been created since. Anything unprovable (missing/unparseable
+# stamp, no sentinel-read lib) falls back to the old behaviour and clears —
+# never retain an approval this hook cannot reason about.
+gf_commit_landed_for() {
+    local file="$1" head=""
+    command -v gf_parse_stamp >/dev/null 2>&1 || return 0
+    gf_parse_stamp "$file" || return 0
+    if git rev-parse --verify -q HEAD >/dev/null 2>&1; then
+        head=$(git rev-parse HEAD 2>/dev/null)
+    fi
+    [ "$head" != "$STAMP_HEAD" ]
+}
+
 if is_git_commit "$CMD"; then
-    rm -f "$GF_CLAUDE_DIR/g-forge-approved"
-    rm -f "$GF_CLAUDE_DIR/g-forge-docs-approved"
+    for _gf_s in "$GF_CLAUDE_DIR/g-forge-approved" "$GF_CLAUDE_DIR/g-forge-docs-approved"; do
+        gf_commit_landed_for "$_gf_s" && rm -f "$_gf_s"
+    done
 fi
 
 # Non-gating hooks never exit non-zero (ADR-008). Without this, a failed

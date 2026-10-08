@@ -79,6 +79,10 @@ Do not add extra sections.
 
 **The whole block is ≤150 words** (Done this pass ≤1 line; Next up 1 imperative line; Active context ≤2 lines — `workflow-checkpoint.sh` re-reads the Active context line every prompt, so its length is a per-prompt tax). If no `## Active Session` block exists, insert one directly after the top `# ` title. Committing is the developer's choice; writing the block is not. The §A7 reset, `/g-review`'s milestone close, and `/g-adr` all run `/g-retro` and delegate this write here (the one exception: a plain end-of-pass update with no retro, done directly per §A3).
 
+## Step 5c — Wiki currency (per-project opt-in)
+
+Read `.claude/wiki-cadence` (missing → skip silently). If it reads `session`, run `/g-wiki` incremental scope now (use Glob to find `skills/g-wiki/SKILL.md` and follow it, including its Step 4b review) and add one line to the Step 6 surface: `wiki: refreshed (cadence: session)`. Any other value or no file → do nothing and print nothing; milestone close refreshes the wiki either way (`/g-wiki` "When this runs").
+
 ## Step 6 — Surface for verification
 
 Report the path and print the **Cold-start context** and **Patterns** sections verbatim so the developer can correct the synthesis:

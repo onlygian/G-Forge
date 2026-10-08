@@ -84,7 +84,7 @@ document what this milestone built and reconcile existing pages against the
 code). The wiki is committed project content; refreshing it at each milestone
 close is what stops it going stale. If the developer would rather defer, note
 `Refresh g-wiki for [milestone]` as a pending task in `g-docs/todo.md` instead
-of running it now.
+of running it now. (A project that sets `.claude/wiki-cadence` to `session` also gets a refresh from every `/g-retro`; this milestone-close refresh still runs.)
 
 ## Every-other-milestone health check
 Read `.claude/milestone-count` if it exists (contains an integer, default 0 if

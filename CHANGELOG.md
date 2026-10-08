@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`/g-wiki` sharp edges from the v2.4.1 dogfooding report (#37).** Skill and docs text, no hook or classifier change.
+  - `/g-wiki` now has a default-on **Step 4b**: it runs `/g-doc-review` over the written pages and loops `doc-writer` fixes until DOCS READY before reporting. Skipping needs an explicit developer waiver, which the report states.
+  - Its dispatch advice now fits `doc-writer`'s 10-turn ceiling: one page per dispatch, multi-section pages split into sequential dispatches, write the skeleton early and iterate.
+  - New per-project override `.claude/wiki-cadence` (`session` → `/g-retro` runs an incremental `/g-wiki` after the retro; absent/`milestone`/anything else → unchanged). It has a read site in `/g-retro` Step 5c and only adds refreshes; milestone close still always refreshes.
+  - `g-wiki/commit-gate.md` now documents two things that cost a dogfooding project round trips: the PreToolUse gate evaluates before the command runs, so stamping and committing in one call can never work; and a nested `README*` is code class, so a doc-only pass touching one becomes a mixed commit (workaround: keep the note under `g-docs/`, `g-wiki/`, `docs/` or the repo root). The classifier is unchanged.
+  - Pinned by `tests/test-g-wiki-contract.sh` (12 assertions, including that `/g-retro` actually reads the new knob and that the nested-README note is true of the shipped classifier).
+- **`post-commit-cleanup.sh` no longer clears sentinels on a commit that did not land.** It matched on the command string alone, so a commit git aborted before creating anything (e.g. "Author identity unknown", exit 128) still deleted `.claude/g-forge-approved` and `.claude/g-forge-docs-approved` and forced a full re-review (#37). Each sentinel is now cleared only if its stamp's `commit_sentinel_head` no longer equals the current `HEAD`; a missing or unparseable stamp falls back to the old clear-always behaviour. Pinned by five new cases in `tests/test-post-commit-cleanup.sh`. Not covered: the native `pre-commit` hook consumes sentinels on gate success, before git finishes the commit, so a failure after that point still costs the sign-off.
+- **`build-review-pack.sh` no longer computes a different `PACK_TREE` for the same working tree.** `compute_tree` copied the index with plain `cp`, giving the copy a fresh mtime; git's racy-entry check compares entry mtimes to the index file's mtime, so a same-size edit made in the second of the last commit was dropped by `add -u` on later calls, and `--check` reported `PACK: stale` / `--reuse` declined on an unchanged tree. Now `cp -p`. Observed as ~20% of local `test-review-pack.sh` runs red (9/40 before, 0/80 after) and as an intermittent CI failure. No deterministic regression test: the race needs a same-second edit and a later-second call, so the suite's existing `--check`/`--reuse` cases are the (probabilistic) guard.
+- **`tests/test-resume-sync.sh` test 24 no longer fails on git ≥ 2.48.** git's default `remote.<name>.followRemoteHEAD=create` made `sync-check.sh`'s own fetch create `origin/HEAD`, so the "record branch could not be resolved" fixture resolved instead. The fixture now pins the key to `never`. This was the sole cause of the red `tests` workflow on every push since v2.6.0 (#38); it was not a timing bound.
+
 ## [2.6.2] — 2026-09-05
 
 Four defects found by dogfooding the plugin on its own repository. No new capability, no adopter-facing contract change — but note the new contributor obligation under the first entry below.
