@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **`post-commit-cleanup.sh` no longer clears sentinels on a commit that did not land.** It matched on the command string alone, so a commit git aborted before creating anything (e.g. "Author identity unknown", exit 128) still deleted `.claude/g-forge-approved` and `.claude/g-forge-docs-approved` and forced a full re-review (#37). Each sentinel is now cleared only if its stamp's `commit_sentinel_head` no longer equals the current `HEAD`; a missing or unparseable stamp falls back to the old clear-always behaviour. Pinned by five new cases in `tests/test-post-commit-cleanup.sh`. Not covered: the native `pre-commit` hook consumes sentinels on gate success, before git finishes the commit, so a failure after that point still costs the sign-off.
+- **`tests/test-resume-sync.sh` test 24 no longer fails on git ≥ 2.48.** git's default `remote.<name>.followRemoteHEAD=create` made `sync-check.sh`'s own fetch create `origin/HEAD`, so the "record branch could not be resolved" fixture resolved instead. The fixture now pins the key to `never`. This was the sole cause of the red `tests` workflow on every push since v2.6.0 (#38); it was not a timing bound.
+
 ## [2.6.2] — 2026-09-05
 
 Four defects found by dogfooding the plugin on its own repository. No new capability, no adopter-facing contract change — but note the new contributor obligation under the first entry below.

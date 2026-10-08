@@ -5,7 +5,7 @@
 # Runs entirely inside a throwaway fixture dir so the suite never mutates
 # the repo's own .claude/ state.
 #
-# Total assertions: 6
+# Total assertions: 11
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line — the
 # finding-#20 cross-check that catches a suite silently dropping cases.
 
@@ -94,6 +94,49 @@ run "git commit removes both sentinels" \
 # 4: npm test (non-commit command) → sentinels remain
 run_no_cleanup "non-commit command leaves sentinels intact" \
     '{"tool_name":"Bash","tool_input":{"command":"npm test"}}'
+
+# ── Failed-commit retention (#37 bug 1) ──────────────────────────────────
+# A sentinel stamped against the CURRENT HEAD means no commit has landed since
+# the review, so a git-aborted commit (identity unknown, exit 128) must not
+# erase it. A moved HEAD means the commit landed and the sentinel is spent.
+GIT_COMMIT_PAYLOAD='{"tool_name":"Bash","tool_input":{"command":"git commit -m \"x\""}}'
+stamp() { printf 'commit_sentinel_ts=%s commit_sentinel_head=%s commit_sentinel_worktree=%s\n' "deadbeef" "$1" "$PWD"; }
+check_state() { # <name> <expect: kept|cleared>
+    local name="$1" expect="$2" got_c="cleared" got_d="cleared"
+    [ -f "$SENTINEL_CODE" ] && got_c="kept"
+    [ -f "$SENTINEL_DOCS" ] && got_d="kept"
+    if [ "$got_c" = "$expect" ] && [ "$got_d" = "$expect" ]; then
+        echo "PASS: $name"; PASS=$((PASS+1))
+    else
+        echo "FAIL: $name (expected $expect; g-forge-approved=$got_c, g-forge-docs-approved=$got_d)"; FAIL=$((FAIL+1))
+    fi
+}
+
+# 6: unborn repo, stamp head empty, HEAD still unborn → commit did not land
+stamp "" > "$SENTINEL_CODE"; stamp "" > "$SENTINEL_DOCS"
+printf '%s' "$GIT_COMMIT_PAYLOAD" | bash "$SCRIPT" >/dev/null 2>&1
+check_state "failed first commit (HEAD still unborn) keeps both sentinels" kept
+
+# 7: first commit landed → HEAD now exists, stamp head empty → cleared
+printf 'a\n' > f.txt; git add f.txt; git commit -qm first 2>/dev/null
+printf '%s' "$GIT_COMMIT_PAYLOAD" | bash "$SCRIPT" >/dev/null 2>&1
+check_state "landed first commit (HEAD born since stamp) clears both sentinels" cleared
+
+# 8: stamp head == current HEAD → commit aborted → kept
+HEAD_NOW=$(git rev-parse HEAD)
+stamp "$HEAD_NOW" > "$SENTINEL_CODE"; stamp "$HEAD_NOW" > "$SENTINEL_DOCS"
+printf '%s' "$GIT_COMMIT_PAYLOAD" | bash "$SCRIPT" >/dev/null 2>&1
+check_state "aborted commit (HEAD unchanged since stamp) keeps both sentinels" kept
+
+# 9: HEAD moved past the stamp → landed → cleared
+printf 'b\n' > f.txt; git commit -qam second 2>/dev/null
+printf '%s' "$GIT_COMMIT_PAYLOAD" | bash "$SCRIPT" >/dev/null 2>&1
+check_state "landed commit (HEAD moved past stamp) clears both sentinels" cleared
+
+# 10: unparseable stamp → cannot reason about it → old behaviour, cleared
+printf 'garbage\n' > "$SENTINEL_CODE"; printf 'garbage\n' > "$SENTINEL_DOCS"
+printf '%s' "$GIT_COMMIT_PAYLOAD" | bash "$SCRIPT" >/dev/null 2>&1
+check_state "unparseable stamp falls back to clearing" cleared
 
 # ── Sed-tier fallback parity (W1.4) ───────────────────────────────────────
 # When jq/python3/node are all unavailable, extract_cmd() must fall back to
