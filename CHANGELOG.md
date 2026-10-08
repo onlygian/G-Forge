@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.6.3] — 2026-10-08
+
+Hotfix for the dogfooding reports #37 and #38, plus a second CI flake found while fixing them. PATCH, following the 2.6.1/2.6.2 precedent: the one additive piece, the opt-in `.claude/wiki-cadence` override, does nothing unless a project sets it.
+
+- **Consumers:** picked up like any update — `/plugins`, then `/g-update`. The `post-commit-cleanup.sh` fix reaches a project only after that resync (installed-copy seam).
+
 ### Fixed
 
 - **`/g-wiki` sharp edges from the v2.4.1 dogfooding report (#37).** Skill and docs text, no hook or classifier change.
