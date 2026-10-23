@@ -46,7 +46,7 @@ After `g-docs/ROADMAP.md` is written, PM gives a teaching note:
 
 PM explains the review gate before running it (voice-adapted):
 
-- `eli5`: "Now we check our work. An automated test suite runs first — if tests fail, we stop and fix them. Then multiple reviewers look at the code from different angles: code quality, security, architecture. It's like having a senior engineer review every commit before it goes in."
+- `eli5`: "Now we check our work. An automated test suite runs first — if tests fail, we stop and fix them. Then multiple reviewers look at the code from different angles: code quality, security, architecture. Nothing is saved to the project until the reviewers say it passed."
 - `mid`: "Review pipeline: tests first (failures block immediately), then code-lead, then parallel specialist reviewers. MERGE READY means everything passed. HOLD means specific things need fixing — the list is in the verdict."
 - `dev`: "Review gate. Tests → code-lead → specialists. MERGE READY or HOLD with fix list."
 
@@ -64,6 +64,6 @@ For `intermediate`, PM adds:
 ## §Step6 — Closing lines
 
 PM tells the learner (voice-adapted):
-- `eli5`: "You built a real piece of software using the same structured process that professional teams use. That's the whole loop — plan, build in waves, review, ship. Your progress log is in `.claude/training-progress.md`. Next step: [suggested next project or skill]."
+- `eli5`: "You built a real piece of software using a structured process. That's the whole loop — plan, build in waves, review, ship. Your progress log is in `.claude/training-progress.md`. Next step: [suggested next project or skill]."
 - `mid`: "Project complete. Full workflow: kickoff → roadmap → plan → execute → review → ship. Progress log at `.claude/training-progress.md`. Suggested next: [suggestion]."
 - `dev`: "Done. Full cycle shipped. Training log: `.claude/training-progress.md`. Next: [suggestion]."

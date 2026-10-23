@@ -1,6 +1,6 @@
 # G-Forge
 
-> **Educated, enforced project management for AI development.** Make any model ship like a senior team — planned, reviewed, and context-clean.
+> **Educated, enforced project management for AI development.** Planned, reviewed, and context-clean.
 
 **Version 2.6.3** · [Changelog](CHANGELOG.md) · [Roadmap](g-docs/ROADMAP.md)
 

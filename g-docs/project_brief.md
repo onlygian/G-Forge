@@ -5,7 +5,7 @@
 
 ## What this builds
 
-G-Forge is an opinionated multi-agent **Claude Code plugin** that wraps an *educated, enforced project-management* layer around Claude: planned execution, production architecture, enforced review, and context/hallucination control. It lets a solo developer — or a small team — get disciplined, senior-engineer-grade delivery out of an LLM: the machine runs the **process** (decompose → wave-dispatch → review-gate → commit-gate → retro), the human owns the **judgment**. The point is to let models *punch above their weight* while keeping the human the most valuable part of the loop. It is an **empowerment tool**, not a human-replacement — "simpler for humans," not "minimal."
+G-Forge is an opinionated multi-agent **Claude Code plugin** that wraps an *educated, enforced project-management* layer around Claude: planned execution, production architecture, enforced review, and context/hallucination control. It lets a solo developer — or a small team — get disciplined, reviewed delivery out of an LLM: the machine runs the **process** (decompose → wave-dispatch → review-gate → commit-gate → retro), the human owns the **judgment**. The point is to let models *punch above their weight* while keeping the human the most valuable part of the loop. It is an **empowerment tool**, not a human-replacement — "simpler for humans," not "minimal."
 
 ## Goals
 
