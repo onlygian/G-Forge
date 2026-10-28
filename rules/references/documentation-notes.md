@@ -1,6 +1,6 @@
 # Documentation standards — rationale (G-RULES §G companion)
 
-Load trigger: read this when a doc-scope judgment call comes up — whether something needs documenting, or why the ownership rule points at the implementer. The normative rules live in `.claude/rules/g-rules-G-documentation.md`; this file holds the reasoning moved out of them (v2.6 token diet).
+Load trigger: read this when a doc-scope judgment call comes up — whether something needs documenting, or why the ownership rule points at the implementer. The normative rules live in `.claude/g-rules/G-documentation.md`; this file holds the reasoning moved out of them (v2.6 token diet).
 
 ## Why documentation is a delivery requirement
 

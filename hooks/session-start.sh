@@ -59,7 +59,7 @@ GF_CLAUDE_DIR=$(gf_guard_claude_dir) || exit 0
 # Integration tier — mirrors the read idiom in hooks/workflow-checkpoint.sh
 # (lines 59-67): `full` (default) and `balanced` behave exactly as before;
 # `light` is manual mode and must stay fully silent per the tier model in
-# g-rules-B-workflow.md ("light = workflow-checkpoint only, G-Forge silent").
+# G-RULES §B (rules/g-rules/B-workflow.md: "light = workflow-checkpoint only, G-Forge silent").
 # Read via GF_CLAUDE_DIR (not a bare local path) so a linked worktree's tier
 # decision matches the project guard it was just resolved against above.
 TIER="full"

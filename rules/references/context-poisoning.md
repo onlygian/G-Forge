@@ -1,6 +1,6 @@
 # Context poisoning — the doctrine behind single-use agents (G-RULES §C companion)
 
-Load trigger: read this when a retry loop engages (an agent returned `FAILED`), when tempted to re-prompt or reuse an agent, or before running high-stakes deliberation in HQ. The normative rules live in `.claude/rules/g-rules-C-agent-discipline.md`; this file holds the reasoning and incident history moved out of them (v2.6 token diet).
+Load trigger: read this when a retry loop engages (an agent returned `FAILED`), when tempted to re-prompt or reuse an agent, or before running high-stakes deliberation in HQ. The normative rules live in `.claude/g-rules/C-agent-discipline.md`; this file holds the reasoning and incident history moved out of them (v2.6 token diet).
 
 ## Why — context poisoning
 

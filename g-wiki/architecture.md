@@ -55,7 +55,7 @@ G-Forge enforcement lives in **`hooks/`** — standalone POSIX bash scripts with
 
 ### Enforcement travels in the repo
 
-G-Forge's spine is **enforcement that travels**: every clone of the repo inherits the gate from committed `.claude/settings.json` + `.claude/rules/` + `.claude/hooks/` (via `/g-init` synchronization). A project cannot opt out of the gate by ignoring a prompt — the gate is automatic on every commit. This is the load-bearing differentiator vs. advisory process. (ADR-003 documents why Cowork, which doesn't fire hooks, cannot host G-Forge.)
+G-Forge's spine is **enforcement that travels**: every clone of the repo inherits the gate from committed `.claude/settings.json` + `.claude/g-rules/` + `.claude/rules/` + `.claude/hooks/` (via `/g-init` synchronization). A project cannot opt out of the gate by ignoring a prompt — the gate is automatic on every commit. This is the load-bearing differentiator vs. advisory process. (ADR-003 documents why Cowork, which doesn't fire hooks, cannot host G-Forge.)
 
 ### Dogfooding the plugin itself
 

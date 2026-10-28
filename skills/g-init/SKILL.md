@@ -50,14 +50,14 @@ Run `scripts/scaffold.sh [plugin-root]` now — it also performs Steps 2a/3/4/5;
 
 ## Step 2a — Install G-RULES.md and rule section files
 
-Unless `--skip-rules` was passed (on `SKIPPED: rules`, report `⚠ rules install skipped (onboarding preference)` and continue to Step 3), `scripts/scaffold.sh` already copied (overwriting — G-Forge managed): `[plugin-root]/G-RULES.md` → project root; every `rules/g-rules/*.md` → `.claude/rules/g-rules-<name>.md`; `rules/references/*.md` → `.claude/rules/references/` (NOT @-imported — loaded on demand); `rules/dispatch-matrix.md` → `.claude/rules/g-dispatch-matrix.md` (NOT @-imported).
+Unless `--skip-rules` was passed (on `SKIPPED: rules`, report `⚠ rules install skipped (onboarding preference)` and continue to Step 3), `scripts/scaffold.sh` already copied (overwriting — G-Forge managed): `[plugin-root]/G-RULES.md` → project root; every `rules/g-rules/*.md` → `.claude/g-rules/<name>.md` (loaded only through `G-RULES.md`'s `@`-imports); `rules/references/*.md` → `.claude/g-references/` and `rules/dispatch-matrix.md` → `.claude/g-references/dispatch-matrix.md` (never `@`-imported — read on demand). Nothing is installed under `.claude/rules/`: Claude Code auto-loads every `.md` there each session, which would defeat both the on-demand references and selective section loading (ADR-017).
 
 Ensure `CLAUDE.md` contains `@G-RULES.md` near the top (after the title, before any other content) — the one @-import the scaffold requires (`CLAUDEMD: no-import` means it's absent).
 
 Report:
 ```
 ✓ G-RULES.md — installed
-✓ .claude/rules/g-rules-*.md — [RULES_INSTALLED] rule section files installed
+✓ .claude/g-rules/*.md — [RULES_INSTALLED] rule section files installed
 ```
 
 ## Step 3 — Create g-docs/ROADMAP.md
@@ -78,7 +78,7 @@ Created by the script if absent. It is the tactical task ledger only — **no ha
 
 Run `scripts/merge-gitignore.sh`. It appends only missing patterns under a labelled block (exact-pattern match) and never removes or reorders a developer's existing entries; interpret `GITIGNORE:` / `ADDED:` / `PRESENT:` lines. The boundary in one sentence: the **tracked project record** (source, CLAUDE.md/G-RULES.md, the `g-docs/` record, `g-wiki/`, shared `.claude/` config) stays committed; **per-developer/ephemeral runtime state and regenerable output** are ignored. If the developer questions the boundary or an existing `.gitignore` conflicts, read `references/tracked-vs-ignored.md`.
 
-Always surface this note to the developer: shared G-Forge config (`.claude/hooks/`, `.claude/settings.json`, `.claude/rules/`, `.claude/agents/`) is intentionally **left tracked** so the whole team inherits the same hooks and gates. If this project prefers each developer to run `/g-init` themselves, they can add `.claude/` to `.gitignore` — but then teammates won't get the commit gate from a clone.
+Always surface this note to the developer: shared G-Forge config (`.claude/hooks/`, `.claude/settings.json`, `.claude/rules/`, `.claude/g-rules/`, `.claude/g-references/`, `.claude/agents/`) is intentionally **left tracked** so the whole team inherits the same hooks and gates. If this project prefers each developer to run `/g-init` themselves, they can add `.claude/` to `.gitignore` — but then teammates won't get the commit gate from a clone.
 
 Report: `✓ .gitignore — project artifacts excluded, project record tracked`
 
@@ -290,7 +290,7 @@ G-Forge ready ✓
   ✓ g-docs/project_brief.md — [via /g-onboard | via /g-kickoff | already present]
   ✓ CLAUDE.md — G-Forge rules injected
   ✓ G-RULES.md — installed
-  ✓ .claude/rules/g-rules-*.md — [RULES_INSTALLED] rule section files installed
+  ✓ .claude/g-rules/*.md — [RULES_INSTALLED] rule section files installed
   ✓ g-docs/ROADMAP.md — created with the Active Session handoff (or already existed)
   ✓ <the M1 milestone file scaffold.sh reported> — created (or already existed)
   ✓ g-docs/todo.md — created (or already existed)

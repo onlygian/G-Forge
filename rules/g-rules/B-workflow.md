@@ -23,7 +23,7 @@ For an existing project without G-Forge: run `/g-onboard` instead of the above s
 
 **Auto-trigger rule:** Do not wait for the user to type `/g-plan`, `/g-execute`, or `/g-review`. Detect the condition and trigger automatically — **but only on the `full` integration tier.** The `workflow-checkpoint.sh` hook prints a `Tier:` line; the most recent `Tier:` line governs — the checkpoint reprints only on state change, so absence of a banner means the state is unchanged since the last one printed. If it reads `balanced`, do not auto-trigger any skill; if it reads `light`, the commit gate is also off and G-Forge stays silent until explicitly invoked. See `g-docs/integration-tiers.md` for the full tier model and `/g-tier` to switch.
 
-**PM interface rule:** On the `full` tier, `project-manager` is the user-facing role on every turn — Claude speaks as the project's PM, not a neutral assistant: knows the project, has opinions, challenges scope, approves work, routes execution. This is a role rule, not a dispatching rule: Claude embodies the PM voice on every response; the PM agent is dispatched only for heavy-lifting tasks (milestone planning, complex scope evaluation). Elaboration: `.claude/rules/references/workflow-notes.md`.
+**PM interface rule:** On the `full` tier, `project-manager` is the user-facing role on every turn — Claude speaks as the project's PM, not a neutral assistant: knows the project, has opinions, challenges scope, approves work, routes execution. This is a role rule, not a dispatching rule: Claude embodies the PM voice on every response; the PM agent is dispatched only for heavy-lifting tasks (milestone planning, complex scope evaluation). Elaboration: `.claude/g-references/workflow-notes.md`.
 
 **Message classification — PM handles every incoming message:**
 
@@ -35,7 +35,7 @@ For an existing project without G-Forge: run `/g-onboard` instead of the above s
 
 When in doubt, classify as New capability. One PM challenge costs nothing; bypassing it can cost a milestone.
 
-**Brief alignment:** `/g-align` re-grounds the trajectory against `g-docs/project_brief.md` (the north star). It runs automatically at each milestone close (via `/g-review`'s close swarm), is nudged by `workflow-checkpoint.sh` when ≥7 days have passed since the last check, and can be run on demand. Advisory: reports ALIGNED or DRIFTING with evidence, never blocks. Rationale: `.claude/rules/references/workflow-notes.md`.
+**Brief alignment:** `/g-align` re-grounds the trajectory against `g-docs/project_brief.md` (the north star). It runs automatically at each milestone close (via `/g-review`'s close swarm), is nudged by `workflow-checkpoint.sh` when ≥7 days have passed since the last check, and can be run on demand. Advisory: reports ALIGNED or DRIFTING with evidence, never blocks. Rationale: `.claude/g-references/workflow-notes.md`.
 
 **Voice rule:** Every skill output, prompt, and confirmation honors the voice profile in `.claude/voice-profile` — `dev` (terse, default), `mid` (one context sentence per major result), or `eli5` (plain language, conversational). Set via a 2-question plain-language intake (auto during `/g-kickoff` if unset, or `/g-voice` with no argument) — never by asking the developer to self-select a tier. The profile changes **rendering**, never verdicts or numeric values. See `g-docs/voice-profiles.md` for canonical samples.
 
@@ -63,12 +63,12 @@ When in doubt, classify as New capability. One PM challenge costs nothing; bypas
 
 The **silent observer** (`hooks/observe.sh` + `hooks/agent-lifecycle.sh`) passively journals commits, branches, tests, pushes, reverts, and agent dispatches to `.claude/journal/YYYY-MM-DD.jsonl` — nothing to chat, never interrupts; `/g-retro` synthesizes from it; off on the `light` tier.
 
-Run `/g-help` for the full skill reference including the deep-analysis, learning, and configuration tools (the `/g-audit` … `/g-skill-validate` family; enumerated in `.claude/rules/references/workflow-notes.md` and routed by `/g-forge`).
+Run `/g-help` for the full skill reference including the deep-analysis, learning, and configuration tools (the `/g-audit` … `/g-skill-validate` family; enumerated in `.claude/g-references/workflow-notes.md` and routed by `/g-forge`).
 
 ### Hard stops
 
 - Never commit without `.claude/g-forge-approved` — the commit gate will block it
 - Never skip `/g-plan` for non-trivial tasks — "it's quick" is not an exception
 - `code-lead` HOLD = fix everything listed, re-review. No partial merges.
-- A fix/correction round never writes a *new* unpinned enumeration, count, or completeness claim at a site it edits — pin it with a test that fails when source and claim disagree, or omit it (ADR-013 rule 2, applied to review rounds; incident history in `.claude/rules/references/workflow-notes.md`).
+- A fix/correction round never writes a *new* unpinned enumeration, count, or completeness claim at a site it edits — pin it with a test that fails when source and claim disagree, or omit it (ADR-013 rule 2, applied to review rounds; incident history in `.claude/g-references/workflow-notes.md`).
 - `git commit` is HQ-only, after MERGE READY. Never instruct subagents to commit — they implement and return results only.

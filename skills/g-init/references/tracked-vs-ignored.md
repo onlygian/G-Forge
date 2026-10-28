@@ -9,7 +9,7 @@ G-Forge generates two kinds of files, and the `.gitignore` is what keeps them st
 - `CLAUDE.md`, `G-RULES.md`, `CHANGELOG.md`, `README.md`.
 - The `g-docs/` project record: `g-docs/ROADMAP.md`, `g-docs/todo.md`, `g-docs/todo-done.md`, `g-docs/milestones/`, `g-docs/project_brief.md`, and `g-docs/decisions/ retros/ forecasts/ telemetry/ blast-radius/ alignment/ patterns/ inbox/adversarial/`.
 - `g-wiki/` — committed human-facing content.
-- Shared G-Forge config so teammates inherit the same gates: `.claude/hooks/`, `.claude/settings.json`, `.claude/rules/`, `.claude/agents/`.
+- Shared G-Forge config so teammates inherit the same gates: `.claude/hooks/`, `.claude/settings.json`, `.claude/rules/`, `.claude/g-rules/`, `.claude/g-references/`, `.claude/agents/`.
 
 **Ignore — runtime/dev artifacts:**
 - OS/editor: `.DS_Store`, `Thumbs.db`, `*.swp`.
@@ -20,4 +20,4 @@ G-Forge generates two kinds of files, and the `.gitignore` is what keeps them st
 
 **Merge behavior:** the script adds only patterns not already present (matching on the exact pattern), appends under a labelled block, and never removes or reorders a developer's existing entries — and never ignores a tracked-by-design path above.
 
-**Note for the developer:** shared G-Forge config (`.claude/hooks/`, `.claude/settings.json`, `.claude/rules/`, `.claude/agents/`) is intentionally **left tracked** so the whole team inherits the same hooks and gates. If this project prefers each developer to run `/g-init` themselves, they can add `.claude/` to `.gitignore` — but then teammates won't get the commit gate from a clone.
+**Note for the developer:** shared G-Forge config (`.claude/hooks/`, `.claude/settings.json`, `.claude/rules/`, `.claude/g-rules/`, `.claude/g-references/`, `.claude/agents/`) is intentionally **left tracked** so the whole team inherits the same hooks and gates. If this project prefers each developer to run `/g-init` themselves, they can add `.claude/` to `.gitignore` — but then teammates won't get the commit gate from a clone.

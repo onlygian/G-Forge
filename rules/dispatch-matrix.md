@@ -1,6 +1,6 @@
 # Dispatch Matrix — model & effort economy (canonical)
 
-Installed by `/g-init` as `.claude/rules/g-dispatch-matrix.md`. Deliberately **not** @-imported — skills Read this file lazily at routing or escalation time (G-RULES §A1 names it).
+Installed by `/g-init` as `.claude/g-references/dispatch-matrix.md`. Deliberately **not** @-imported — skills Read this file lazily at routing or escalation time (G-RULES §A1 names it).
 
 **Degrade gracefully:** `model:` and `effort:` are recommendations the harness applies to dispatched subagents; a session on any model runs every skill unchanged; unknown frontmatter keys are ignored.
 

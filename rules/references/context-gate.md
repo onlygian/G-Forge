@@ -1,6 +1,6 @@
 # Context gate — rationale and mechanics (G-RULES §A7 companion)
 
-Load trigger: read this when the §A7 gate fires (amber or red), when a compaction occurs, or when editing the gate's thresholds or reset path. The normative rule lives in `.claude/rules/g-rules-A-session.md` §A7; this file holds the reasoning moved out of it (v2.6 token diet).
+Load trigger: read this when the §A7 gate fires (amber or red), when a compaction occurs, or when editing the gate's thresholds or reset path. The normative rule lives in `.claude/g-rules/A-session.md` §A7; this file holds the reasoning moved out of it (v2.6 token diet).
 
 ## Why the exchange count is only a proxy
 

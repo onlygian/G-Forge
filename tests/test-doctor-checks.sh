@@ -28,6 +28,11 @@
 #               into the report on advisory branches too, not a NOTE)
 #   Tests 29-30: Check 20 outside a git repo — literal-pattern fallback still
 #               verifies both lists (clean passes; over-broad bare pattern warns)
+#   Tests 31-38: Check 16 rules layout (ADR-017) — sections checked at
+#               .claude/g-rules/; pre-v2.7 copies under .claude/rules/ fail
+#               with the legacy literal; entry-file imports of old section
+#               paths are counted; project-owned and unshipped files never
+#               flagged (same name set /g-update Step 2a migrates)
 #
 # Falsifiability: probed in a scratch copy (never the production tree) —
 # blanking a cascade line in a scratch checks.sh turns Tests 21-23 red;
@@ -75,8 +80,9 @@ build_fixture() {
     git init -q 2>/dev/null
     cp "$REPO_ROOT"/hooks/*.sh .claude/hooks/
     cp "$REPO_ROOT"/hooks/lib/*.sh .claude/hooks/lib/
+    mkdir -p .claude/g-rules
     for f in "$REPO_ROOT"/rules/g-rules/*.md; do
-        cp "$f" ".claude/rules/g-rules-$(basename "$f")"
+        cp "$f" ".claude/g-rules/$(basename "$f")"
     done
     cat > .claude/settings.json <<'JSON'
 {
@@ -353,6 +359,50 @@ OUT=$(run_checks)
 has_line "check20 non-git: over-broad bare pattern caught without git" "$OUT" "LINE: ⚠ .gitignore ignores g-docs/todo.md — project record won't be committed"
 
 cd / && rm -rf "$FIX11"
+
+# ────────────────────────────────────────────────────────────────────────────
+# Tests 31-38: Check 16 rules layout (ADR-017) — sections are checked at
+# .claude/g-rules/, and pre-v2.7 copies under the auto-loaded .claude/rules/
+# fail with the legacy literal; a non-G-Forge file there is never flagged.
+
+echo "Tests 31-38: Check 16 g-rules install site + legacy auto-loaded copies"
+FIX12=$(mktemp -d)
+build_fixture "$FIX12"
+OUT=$(run_checks)
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-10-28
+if printf '%s\n' "$OUT" | grep -qF 'legacy auto-loaded copy'; then
+    echo "FAIL: layout: healthy fixture must carry no legacy-copy line"; FAIL=$((FAIL+1))
+else
+    echo "PASS: layout: healthy fixture carries no legacy-copy line"; PASS=$((PASS+1))
+fi
+rm .claude/g-rules/J-memory.md
+mkdir -p .claude/rules/references
+cp "$REPO_ROOT/rules/g-rules/A-session.md" .claude/rules/g-rules-A-session.md
+cp "$REPO_ROOT/rules/dispatch-matrix.md" .claude/rules/g-dispatch-matrix.md
+cp "$REPO_ROOT/rules/references/release-flow.md" .claude/rules/references/release-flow.md
+printf 'project-owned note\n' > .claude/rules/references/mine.md
+printf '# not shipped\n' > .claude/rules/g-rules-K-retired.md
+printf '  - @.claude/rules/g-rules-D-code-quality.md\n' >> CLAUDE.md
+OUT=$(run_checks)
+has_line "layout: missing section reported at the .claude/g-rules/ site" "$OUT" "LINE: ✗ .claude/g-rules/J-memory.md missing from installed copy (drift)"
+has_line "layout: legacy section copy flagged" "$OUT" "LINE: ✗ .claude/rules/g-rules-A-session.md is a legacy auto-loaded copy (loads every session — pre-v2.7 layout)"
+has_line "layout: legacy dispatch-matrix copy flagged" "$OUT" "LINE: ✗ .claude/rules/g-dispatch-matrix.md is a legacy auto-loaded copy (loads every session — pre-v2.7 layout)"
+has_line "layout: legacy shipped-reference copy flagged" "$OUT" "LINE: ✗ .claude/rules/references/release-flow.md is a legacy auto-loaded copy (loads every session — pre-v2.7 layout)"
+if printf '%s\n' "$OUT" | grep -qF '.claude/rules/references/mine.md'; then
+    echo "FAIL: layout: project-owned file under .claude/rules/references/ must not be flagged"; FAIL=$((FAIL+1))
+else
+    echo "PASS: layout: project-owned file under .claude/rules/references/ not flagged"; PASS=$((PASS+1))
+fi
+
+has_line "layout: CLAUDE.md import of an old section path flagged (count only)" "$OUT" "LINE: ✗ CLAUDE.md has 1 import(s) of a pre-v2.7 section path — those sections no longer load"
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-10-28
+if printf '%s\n' "$OUT" | grep -qF 'g-rules-K-retired.md'; then
+    echo "FAIL: layout: unshipped g-rules- file must not be flagged (/g-update would never clear it)"; FAIL=$((FAIL+1))
+else
+    echo "PASS: layout: unshipped g-rules- file not flagged (same name set /g-update migrates)"; PASS=$((PASS+1))
+fi
+
+cd / && rm -rf "$FIX12"
 
 # ────────────────────────────────────────────────────────────────────────────
 # Summary

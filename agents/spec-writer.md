@@ -51,7 +51,7 @@ Omit these if they do not apply to the task — do not add them as boilerplate.
 
 ## Haiku-Executability Standard (HES)
 
-<!-- Embedded copy — canonical home: rules/dispatch-matrix.md (installed as .claude/rules/g-dispatch-matrix.md). Keep the six items byte-identical with the canonical file; a test pins parity. -->
+<!-- Embedded copy — canonical home: rules/dispatch-matrix.md (installed as .claude/g-references/dispatch-matrix.md). Keep the six items byte-identical with the canonical file; a test pins parity. -->
 
 A spec bound for a haiku-tier executor must pass all six items. Self-score every spec against them:
 

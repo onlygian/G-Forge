@@ -369,19 +369,54 @@ else
     fi
 fi
 
-# (e) g-rules section files — 10-file flat-rename mapping
+# (e) g-rules section files — 10-file mapping (ADR-017 install site)
 for x in A-session B-workflow C-agent-discipline D-code-quality E-architecture-gate F-design-patterns G-documentation H-testing I-project-tracking J-memory; do
-    src="$PLUGIN_ROOT/rules/g-rules/$x.md"; inst=".claude/rules/g-rules-$x.md"
+    src="$PLUGIN_ROOT/rules/g-rules/$x.md"; inst=".claude/g-rules/$x.md"
     if [ ! -f "$src" ]; then
         bnote "plugin source rules/g-rules/$x.md missing — cannot verify"; continue
     fi
     if [ ! -f "$inst" ]; then
-        bline "✗ g-rules-$x.md missing from installed copy (drift)"
-        bfix 'Run `/g-update` to re-sync rules/g-rules/ into .claude/rules/.'
+        bline "✗ .claude/g-rules/$x.md missing from installed copy (drift)"
+        bfix 'Run `/g-update` to re-sync rules/g-rules/ into .claude/g-rules/.'
         c16=FAIL
     elif [ "$(hash_file "$src")" != "$(hash_file "$inst")" ]; then
-        bline "✗ g-rules-$x.md installed copy differs from plugin source (drift)"
-        bfix 'Run `/g-update` to re-sync rules/g-rules/ into .claude/rules/.'
+        bline "✗ .claude/g-rules/$x.md installed copy differs from plugin source (drift)"
+        bfix 'Run `/g-update` to re-sync rules/g-rules/ into .claude/g-rules/.'
+        c16=FAIL
+    fi
+done
+
+# (e2) legacy auto-loaded copies (pre-ADR-017 layout). Claude Code loads every
+# .md under .claude/rules/ at launch, so an old section copy double-loads and
+# defeats a trimmed preset, and an old reference/matrix copy is never "on
+# demand". Only names the plugin ships are flagged (derived from disk) — the
+# same set /g-update's migrate-rules-layout.sh moves, so the fix always clears
+# what this flags. Entry files still importing an old section path are
+# counted, never echoed (CLAUDE.md content stays out of the output).
+legacy=""
+for src in "$PLUGIN_ROOT"/rules/g-rules/*.md; do
+    [ -f "$src" ] || continue
+    f=".claude/rules/g-rules-$(basename "$src")"
+    [ -f "$f" ] && legacy="$legacy $f"
+done
+[ -f "$PLUGIN_ROOT/rules/dispatch-matrix.md" ] && [ -f .claude/rules/g-dispatch-matrix.md ] \
+    && legacy="$legacy .claude/rules/g-dispatch-matrix.md"
+for src in "$PLUGIN_ROOT"/rules/references/*.md; do
+    [ -f "$src" ] || continue
+    f=".claude/rules/references/$(basename "$src")"
+    [ -f "$f" ] && legacy="$legacy $f"
+done
+for f in $legacy; do
+    bline "✗ $f is a legacy auto-loaded copy (loads every session — pre-v2.7 layout)"
+    bfix 'Run `/g-update` to migrate it to .claude/g-rules/ or .claude/g-references/ (Step 2a).'
+    c16=FAIL
+done
+for doc in G-RULES.md CLAUDE.md .claude/CLAUDE.md CLAUDE.local.md; do
+    [ -f "$doc" ] || continue
+    n=$(grep -cE '^[[:space:]]*([-*+][[:space:]]+)?@\.claude/rules/g-rules-' "$doc" 2>/dev/null)
+    if [ "${n:-0}" -gt 0 ]; then
+        bline "✗ $doc has $n import(s) of a pre-v2.7 section path — those sections no longer load"
+        bfix 'Run `/g-update` to repoint them to .claude/g-rules/ (Step 2a).'
         c16=FAIL
     fi
 done

@@ -1,6 +1,6 @@
 # Project tracking — incident history and Roundtable design (G-RULES §I companion)
 
-Load trigger: read this when deciding whether a record is worth committing, when binding or editing the Roundtable, or when editing §I. The normative rules live in `.claude/rules/g-rules-I-project-tracking.md`; this file holds the incident history and design detail moved out of them (v2.6 token diet).
+Load trigger: read this when deciding whether a record is worth committing, when binding or editing the Roundtable, or when editing §I. The normative rules live in `.claude/g-rules/I-project-tracking.md`; this file holds the incident history and design detail moved out of them (v2.6 token diet).
 
 ## Roundtable design detail (M33)
 

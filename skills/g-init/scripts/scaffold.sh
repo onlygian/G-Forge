@@ -10,6 +10,12 @@
 #                   agents (that is /g-specialize, Step 7b); accepted so the
 #                   skill can pass both preferences in one call
 #
+# Install layout (ADR-017): sections -> .claude/g-rules/<X-name>.md (loaded
+# only via G-RULES.md @-imports); references + dispatch matrix ->
+# .claude/g-references/ (read on demand). Nothing goes under .claude/rules/,
+# which Claude Code auto-loads. Old-layout copies are migrated by /g-update
+# (skills/g-update/scripts/migrate-rules-layout.sh), not here.
+#
 # Run from the project root. Prints KEY: value lines for the skill to
 # interpret; always exits 0 — every outcome is in the output, never the
 # exit code. CLAUDE.md creation/injection itself stays model-side (the
@@ -74,30 +80,30 @@ elif [ -n "$PLUGIN_ROOT" ]; then
         out "NOTE: $PLUGIN_ROOT/G-RULES.md not found — skipped"
     fi
 
-    mkdir -p .claude/rules
+    # Install sites sit OUTSIDE .claude/rules/ on purpose (ADR-017): Claude
+    # Code auto-loads every .md under .claude/rules/ at launch, so a section
+    # there loads whether or not CLAUDE.md imports it, and a reference there
+    # is never "on demand". .claude/g-rules/ loads only through G-RULES.md's
+    # @-imports; .claude/g-references/ loads only when a rule says to read it.
+    mkdir -p .claude/g-rules
     for f in "$PLUGIN_ROOT"/rules/g-rules/*.md; do
         [ -f "$f" ] || continue
-        managed_copy "$f" ".claude/rules/g-rules-$(basename "$f")"
+        managed_copy "$f" ".claude/g-rules/$(basename "$f")"
     done
 
-    # Lazy rule references — installed alongside the sections, NOT @-imported
-    # (loaded on demand by the rules that name them).
-    if [ -d "$PLUGIN_ROOT/rules/references" ]; then
-        mkdir -p .claude/rules/references
-        for f in "$PLUGIN_ROOT"/rules/references/*.md; do
-            [ -f "$f" ] || continue
-            managed_copy "$f" ".claude/rules/references/$(basename "$f")"
-        done
-    fi
-
-    # Dispatch matrix — installed as g-dispatch-matrix.md, NOT @-imported.
+    # Lazy rule references + the dispatch matrix — never @-imported.
+    mkdir -p .claude/g-references
+    for f in "$PLUGIN_ROOT"/rules/references/*.md; do
+        [ -f "$f" ] || continue
+        managed_copy "$f" ".claude/g-references/$(basename "$f")"
+    done
     if [ -f "$PLUGIN_ROOT/rules/dispatch-matrix.md" ]; then
-        managed_copy "$PLUGIN_ROOT/rules/dispatch-matrix.md" ".claude/rules/g-dispatch-matrix.md"
+        managed_copy "$PLUGIN_ROOT/rules/dispatch-matrix.md" ".claude/g-references/dispatch-matrix.md"
     fi
 fi
 
 # Counted from disk, never typed (ADR-011 derive-don't-type).
-RULES_N=$(ls -1 .claude/rules/g-rules-*.md 2>/dev/null | wc -l | tr -d ' ')
+RULES_N=$(ls -1 .claude/g-rules/*.md 2>/dev/null | wc -l | tr -d ' ')
 out "RULES_INSTALLED: $RULES_N"
 
 # ── Steps 3/4/5 — g-docs skeletons (create only if absent) ──────────────────

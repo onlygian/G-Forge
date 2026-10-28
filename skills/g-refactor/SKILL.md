@@ -117,7 +117,7 @@ Wait for explicit approval. Do not proceed without it.
 
 ## Step 7 — Execute in waves
 
-**Tier gate (before any refactor-executor dispatch):** if refactor-executor is tagged to a haiku-tier model, verify the approved spec against the six Haiku-Executability Standard items (read them lazily from `.claude/rules/g-dispatch-matrix.md`). Use spec-writer's `TARGET_TIER:` line as the verdict when present; check the six items yourself when it is absent.
+**Tier gate (before any refactor-executor dispatch):** if refactor-executor is tagged to a haiku-tier model, verify the approved spec against the six Haiku-Executability Standard items (read them lazily from `.claude/g-references/dispatch-matrix.md`). Use spec-writer's `TARGET_TIER:` line as the verdict when present; check the six items yourself when it is absent.
 
 - **Passes**: dispatch as planned.
 - **Fails**: run one spec-tightening round — re-dispatch spec-writer with the failing item numbers and a new `output_file` path (Step 6 "edit" convention), re-present for approval (Step 6 abbreviated), re-check.
