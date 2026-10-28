@@ -6,6 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [Unreleased]
 
+## [2.7.0] — 2026-10-28
+
+G-Forge's installed rules now load the way the rules say they do. Claude Code auto-loads every `.md` under `.claude/rules/` at launch, and an `@`-import loads in full with the file that imports it ([memory docs](https://code.claude.com/docs/en/memory)). Up to 2.6.3, `/g-init` put the G-Rules sections there **and** imported them from `G-RULES.md`, and put the "on-demand" rationale references and the dispatch matrix there too, so every session loaded all of them and a trimmed section preset trimmed nothing. MINOR: the install layout consumers see changes and `/g-update` gains a migration step; no rule's meaning or threshold changes. Decision record: [ADR-017](g-docs/decisions/017-install-g-rules-outside-auto-loaded-rules-dir.md).
+
+- **Consumers:** run `/plugins` to update the plugin, then `/g-update`. Its new Step 2a moves the old copies out of `.claude/rules/` — `g-rules-<X>.md` → `.claude/g-rules/<X>.md`, `references/*.md` and `g-dispatch-matrix.md` → `.claude/g-references/` — and repoints any section import line (`@.claude/rules/g-rules-<X>.md`) in `G-RULES.md`, `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md` in the same run. Only names the plugin ships are touched. A copy that differs from one already at the new site is left in place and reported as `CONFLICT:`; diff it and delete it by hand. Commit the two new directories: they are shared config, like `.claude/rules/`. Until you run `/g-update`, `/g-doctor` Check 16 fails on each leftover copy and on each old-path import.
+
+### Changed
+
+- **Rule sections install to `.claude/g-rules/`, references and the dispatch matrix to `.claude/g-references/`.** Nothing G-Forge ships lands under `.claude/rules/` any more except the per-stack `architecture-<stack>.md` that `/g-specialize` writes. Sections load only through `@`-imports, so replacing `@G-RULES.md` in `CLAUDE.md` with a few section imports now actually loads fewer sections. References load only when a rule says to read them. Every rule, reference, skill, README and wiki mention of an installed path moved with it; source paths in this repository are unchanged.
+- **`templates/CLAUDE.md` asks for constraints, not layout.** A maintainer-only block comment, which Claude Code strips before injection, gives the under-200-lines target and notes that imports load in full. It says what to write (constraints, pitfalls, the why behind non-default conventions) and what to leave out (directory layouts, dependency lists, architecture overviews). The "Architecture" placeholder is now "Architecture constraints".
+- **README: G-RULES selective loading.** The section now says plainly that an import does not reduce context and that you load less by importing fewer sections. The unpinned token estimates were dropped.
+
+### Added
+
+- **`/g-update` Step 2a — rules layout migration** (`skills/g-update/scripts/migrate-rules-layout.sh`). It runs before `G-RULES.md` is rewritten, so no entry file ever imports a section that has already moved. It is idempotent and reports `MOVED` / `REMOVED` / `CONFLICT` / `KEPT` / `REWROTE_IMPORT` lines. The Step 2 inventory now lists `.claude/g-rules/` and `.claude/g-references/`.
+- **`/g-doctor` Check 16 legacy detection.** Sections are checked at `.claude/g-rules/`. Leftover copies of shipped names under `.claude/rules/`, and lines in an entry file that import an old section path, each fail with a `/g-update` fix. The check reports only a count for those lines and never echoes CLAUDE.md content.
+- **`tests/test-rules-load-layout.sh`** pins the layout. It checks that `G-RULES.md` imports resolve and cover every section exactly once, and that a real `scaffold.sh` run installs nothing under `.claude/rules/` and no section is both imported and auto-loaded. It also checks that the always-loaded sources are each under 200 lines and that installed paths named on live surfaces resolve, with old paths allowed only at the legacy-handling sites. Each new guard was proven red against a neutered scratch copy.
+
+### Fixed
+
+- **`tests/README.md` no longer carries a stale typed suite count.** The count lives only in `test-run-all.sh`'s `EXPECTED_SUITE_COUNT`.
+
+### Known
+
+- `/g-specialize` still installs `.claude/rules/architecture-<stack>.md` and `@`-imports it from CLAUDE.md. Those rules are meant to load every session either way. The documentation does not say whether a file that is both auto-loaded and imported is injected twice, so this is left for a check with `/context` in a live session.
+- The loading behaviour above is taken from Claude Code's documentation; it was not observed with `/context` while making this release.
+
 ## [2.6.3] — 2026-10-08
 
 Hotfix for the dogfooding reports #37 and #38, plus a second CI flake found while fixing them. PATCH, following the 2.6.1/2.6.2 precedent: the one additive piece, the opt-in `.claude/wiki-cadence` override, does nothing unless a project sets it.
