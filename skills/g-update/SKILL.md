@@ -37,11 +37,17 @@ Installed G-Forge content:
 
   .claude/agents/:         [vue-architect.md, fastapi-architect.md, ... / none]
   .claude/rules/:          [architecture-vue-pinia.md, ... / none]
+  .claude/g-rules/:        [A-session.md, ... / none]
+  .claude/g-references/:   [release-flow.md, dispatch-matrix.md, ... / none]
   .claude/hooks/:          [check-commit.sh present / not found] [workflow-checkpoint.sh present / not found]
   G-RULES.md:              [present / not found]
 ```
 
 Ask: **"Ready to update all of the above to the current plugin version? (y/n)"** — wait for confirmation.
+
+## Step 2a — Migrate the rules layout (ADR-017)
+
+Run `scripts/migrate-rules-layout.sh [plugin-root]` from the project root and reprint every `MOVED:` / `REMOVED:` / `CONFLICT:` / `KEPT:` / `REWROTE_IMPORT:` / `NOTE:` line. It moves pre-v2.7 copies out of `.claude/rules/` — which Claude Code auto-loads every session — into `.claude/g-rules/` (sections) and `.claude/g-references/` (references + dispatch matrix), and in the same run repoints old-path section import lines in `G-RULES.md`, `CLAUDE.md`, `.claude/CLAUDE.md` and `CLAUDE.local.md`, so no entry file ever imports a section that has already moved. It runs before Step 3a for that reason. It touches only names the plugin ships, never deletes a copy that differs from the new one (`CONFLICT:` — tell the developer to diff it and delete it by hand), and leaves `KEPT:` files alone. On `MIGRATION: done`, report `✓ rules layout migrated — .claude/rules/ no longer carries G-Rules copies`; on `none`, nothing.
 
 ## Step 3 — Update G-Forge Rules block in CLAUDE.md
 
@@ -69,15 +75,15 @@ Content updates happen in Step 6.
 
 Report: `✓ .claude/agents/[filename] — updated` for each agent.
 
-## Step 6 — Update .claude/rules/ files
+## Step 6 — Update rule files
 
-**6a** — for each file in `[plugin-root]/rules/g-rules/`, overwrite the project copy at `.claude/rules/g-rules-<letter>-<name>.md` — only sections already installed (a trimmed preset keeps its trim). Report: `✓ .claude/rules/g-rules-*.md — [N] rule section files updated`
+**6a** — for each file in `[plugin-root]/rules/g-rules/`, overwrite the project copy at `.claude/g-rules/<letter>-<name>.md` — only sections already installed (a trimmed preset keeps its trim). Report: `✓ .claude/g-rules/*.md — [N] rule section files updated`
 
 **6b** — match each remaining `.claude/rules/` file to `[plugin-root]/profiles/*/rules/architecture.md` by content signature (first heading / stack keywords); replace if matched, else report: "Skipping `.claude/rules/[filename]` — does not appear to be G-Forge managed." Report `✓ .claude/rules/[filename] — updated` per update.
 
 **6c** — installed architecture-skill copies at `.claude/skills/architecture-[stack]/SKILL.md` (written by `/g-specialize`, its "Also after writing each agent file" step). Enumerate instances from disk — `ls -d .claude/skills/architecture-*/` — never from a stack list. Per instance: keep the existing frontmatter (through the closing `---`), replace the body verbatim with `[plugin-root]/profiles/<stack>/rules/architecture.md`. Missing profile → "Could not find a current profile for `architecture-<stack>` — skipping. It may have been renamed or removed." No closing `---` fence → report it malformed and skip — don't guess; `/g-specialize` regenerates it cleanly. No instances → `ℹ no installed architecture skills — nothing to realign`. Report: `✓ .claude/skills/architecture-[stack]/SKILL.md — realigned` per update.
 
-Realign scope note: installed surfaces now also include skills' `scripts/` and `references/` directories, `rules/references/`, and `.claude/rules/g-dispatch-matrix.md` — realign plugin-managed copies of these the same overwrite-only-where-already-installed way.
+Realign scope note: installed surfaces now also include skills' `scripts/` and `references/` directories and `.claude/g-references/` (from `rules/references/*.md` and `rules/dispatch-matrix.md` → `.claude/g-references/dispatch-matrix.md`) — realign plugin-managed copies of these the same overwrite-only-where-already-installed way.
 
 ## Step 7 — Update hook scripts
 
@@ -125,7 +131,7 @@ The commit gate's authoritative enforcement site is the native git hook `[plugin
 ```
 g-forge update complete ✓
 
-  [one ✓ or [skipped] row per touched surface — exactly the report lines emitted in Steps 3–7a]
+  [one ✓ or [skipped] row per touched surface — exactly the report lines emitted in Steps 2a–7a]
 
 All G-Forge-managed content is now at plugin version [read version from plugin-root/.claude-plugin/plugin.json].
 ```
@@ -134,7 +140,7 @@ If nothing needed updating (all content already matched): "All G-Forge-managed c
 
 ## Rules
 
-- Never modify content outside G-Forge markers in CLAUDE.md.
+- Never modify content outside G-Forge markers in CLAUDE.md — G-Forge-authored lines excepted: the `@G-RULES.md` import (Step 3a) and Step 2a's repointing of a line that is solely an old-path section import.
 - Never delete or overwrite files not identified as G-Forge-managed.
 - Never run without developer confirmation from Step 2.
 - If the plugin root cannot be found, stop and tell the developer.

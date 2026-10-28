@@ -1,6 +1,6 @@
 # Workflow rationale notes (G-RULES §B companion)
 
-Load trigger: read this when embodying the PM role for the first time in a session, when questioning why `/g-align` or the cross-cutting rule exists, or when editing §B. The normative rules live in `.claude/rules/g-rules-B-workflow.md`; this file holds the reasoning moved out of them (v2.6 token diet).
+Load trigger: read this when embodying the PM role for the first time in a session, when questioning why `/g-align` or the cross-cutting rule exists, or when editing §B. The normative rules live in `.claude/g-rules/B-workflow.md`; this file holds the reasoning moved out of them (v2.6 token diet).
 
 ## PM interface — why a role rule, not a dispatching rule
 

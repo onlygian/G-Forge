@@ -11,10 +11,16 @@
 #
 # Cross-ref: g-dev/fixtures/g-update-staleness-preflight.sh sandbox-proves the
 # same decision logic; this suite pins the shipped script's output contract.
+#
+# Cases 11-13 pin the Step 2a layout migration (migrate-rules-layout.sh,
+# ADR-017): pre-v2.7 copies leave the auto-loaded .claude/rules/, a
+# hand-picked section import in CLAUDE.md is repointed, project-owned files
+# are left alone, and a second run is a no-op.
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 PREFLIGHT="$REPO/skills/g-update/scripts/preflight.sh"
 INVENTORY="$REPO/skills/g-update/scripts/inventory.sh"
+MIGRATE="$REPO/skills/g-update/scripts/migrate-rules-layout.sh"
 PASS=0
 FAIL=0
 
@@ -203,6 +209,67 @@ OUT=$(cd "$EPROJ" && bash "$INVENTORY" 2>&1); RC=$?
 has "empty inventory: rules block absent" "RULES_BLOCK: absent"
 has "empty inventory: G-RULES.md absent"  "GRULES_MD: absent"
 has_not "empty inventory: no agent rows"  "AGENT: "
+
+# ── Case 11: legacy layout migrates out of .claude/rules/ ─────────────────
+echo "Case 11: migrate-rules-layout moves pre-v2.7 copies"
+MPROJ="$BASE/proj-migrate"
+mkdir -p "$MPROJ/.claude/rules/references" "$MPROJ/.claude/g-rules"
+for f in "$REPO"/rules/g-rules/*.md; do cp "$f" "$MPROJ/.claude/rules/g-rules-$(basename "$f")"; done
+for f in "$REPO"/rules/references/*.md; do cp "$f" "$MPROJ/.claude/rules/references/"; done
+cp "$REPO/rules/dispatch-matrix.md" "$MPROJ/.claude/rules/g-dispatch-matrix.md"
+cp "$REPO/rules/g-rules/J-memory.md" "$MPROJ/.claude/g-rules/J-memory.md"   # already migrated once
+printf 'project note\n' > "$MPROJ/.claude/rules/references/mine.md"
+mkdir -p "$MPROJ/.claude/g-references"
+printf 'locally edited\n' > "$MPROJ/.claude/g-references/context-gate.md"   # differs from the old copy
+printf '# arch\n' > "$MPROJ/.claude/rules/architecture-vue-pinia.md"
+printf '# old\n' > "$MPROJ/.claude/rules/g-rules-K-retired.md"
+printf '# P\n@.claude/rules/g-rules-A-session.md\n  - @.claude/rules/g-rules-D-code-quality.md\r\nprose `@.claude/rules/g-rules-B-workflow.md` stays\n' > "$MPROJ/CLAUDE.md"
+printf '# G-Rules\n\n@.claude/rules/g-rules-C-agent-discipline.md\n' > "$MPROJ/G-RULES.md"
+OUT=$(cd "$MPROJ" && bash "$MIGRATE" "$REPO" 2>&1); RC=$?
+[ $RC -eq 0 ] && ok "migrate: exit 0" || bad "migrate: exit $RC"
+has "migrate: section moved to .claude/g-rules/" "MOVED: .claude/rules/g-rules-A-session.md -> .claude/g-rules/A-session.md"
+has "migrate: duplicate of an already-migrated section removed" "REMOVED: .claude/rules/g-rules-J-memory.md"
+has "migrate: matrix moved to .claude/g-references/" "MOVED: .claude/rules/g-dispatch-matrix.md -> .claude/g-references/dispatch-matrix.md"
+has "migrate: project-owned reference kept" "KEPT: .claude/rules/references/mine.md"
+has "migrate: CLAUDE.md section import repointed" "REWROTE_IMPORT: CLAUDE.md: @.claude/rules/g-rules-A-session.md -> @.claude/g-rules/A-session.md"
+has "migrate: indented bullet import with CRLF repointed" "REWROTE_IMPORT: CLAUDE.md: @.claude/rules/g-rules-D-code-quality.md -> @.claude/g-rules/D-code-quality.md"
+has "migrate: G-RULES.md imports repointed in the same run as the move" "REWROTE_IMPORT: G-RULES.md: @.claude/rules/g-rules-C-agent-discipline.md -> @.claude/g-rules/C-agent-discipline.md"
+has "migrate: leftover prose mention reported, not silently kept" "NOTE: CLAUDE.md still mentions .claude/rules/g-rules-*"
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-10-28
+has "migrate: differing copy never deleted" "CONFLICT: .claude/rules/references/context-gate.md"
+has "migrate: unshipped g-rules- file kept" "KEPT: .claude/rules/g-rules-K-retired.md"
+has "migrate: reports done" "MIGRATION: done"
+# Absence pins: after migration nothing G-Forge-shipped remains auto-loaded.
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-10-28
+LEFT=$(cd "$MPROJ" && find .claude/rules -name '*.md' | grep -v -e '^.claude/rules/architecture-vue-pinia.md$' -e '^.claude/rules/references/mine.md$' \
+       -e '^.claude/rules/references/context-gate.md$' -e '^.claude/rules/g-rules-K-retired.md$')
+[ -z "$LEFT" ] && ok "migrate: only project-owned, unshipped or conflicting files remain under .claude/rules/" \
+    || bad "migrate: G-Forge copies still auto-loaded: $LEFT"
+N_SEC=$(ls "$REPO"/rules/g-rules/*.md | wc -l | tr -d ' ')
+N_NEW=$(ls "$MPROJ"/.claude/g-rules/*.md | wc -l | tr -d ' ')
+[ "$N_SEC" = "$N_NEW" ] && ok "migrate: every shipped section now at .claude/g-rules/ ($N_NEW)" \
+    || bad "migrate: .claude/g-rules/ has $N_NEW sections, plugin ships $N_SEC"
+grep -qx '@.claude/g-rules/A-session.md' "$MPROJ/CLAUDE.md" \
+   && grep -qxF "  - @.claude/g-rules/D-code-quality.md$(printf '\r')" "$MPROJ/CLAUDE.md" \
+   && grep -qF 'prose `@.claude/rules/g-rules-B-workflow.md` stays' "$MPROJ/CLAUDE.md" \
+    && ok "migrate: import lines rewritten (bullet + CRLF kept), prose mention untouched" \
+    || bad "migrate: CLAUDE.md rewrite wrong: $(cat "$MPROJ/CLAUDE.md")"
+
+# ── Case 12: second run is a no-op ────────────────────────────────────────
+echo "Case 12: migrate-rules-layout is idempotent"
+OUT=$(cd "$MPROJ" && bash "$MIGRATE" "$REPO" 2>&1)
+has "migrate rerun: reports none" "MIGRATION: none"
+has_not "migrate rerun: moves nothing" "MOVED: "
+
+OUT=$(cd "$MPROJ" && bash "$INVENTORY" 2>&1)
+has "inventory: migrated section listed" "GRULES_SECTION: A-session.md"
+has "inventory: migrated reference listed" "GREFERENCE: dispatch-matrix.md"
+
+# ── Case 13: missing plugin root degrades, exit 0 ─────────────────────────
+echo "Case 13: migrate-rules-layout without a plugin root"
+OUT=$(cd "$MPROJ" && bash "$MIGRATE" "$BASE/no-such-root" 2>&1); RC=$?
+[ $RC -eq 0 ] && ok "migrate no-root: exit 0" || bad "migrate no-root: exit $RC"
+has "migrate no-root: reports skipped" "MIGRATION: skipped"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"

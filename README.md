@@ -222,9 +222,9 @@ Removes the plugin globally. Per-project commit hooks (installed in `.claude/hoo
 
 ## G-RULES.md
 
-`/g-init` installs `G-RULES.md` at the project root and references it from `CLAUDE.md` via `@G-RULES.md`. This gives Claude full session discipline without bloating `CLAUDE.md`.
+`/g-init` installs `G-RULES.md` at the project root and references it from `CLAUDE.md` via `@G-RULES.md`. This keeps the rules out of your own `CLAUDE.md` text — but an `@`-import still loads in full every session (imports organize context, they don't shrink it), so the way to load less is to import fewer sections, below.
 
-G-RULES.md has ten sections, each stored as a separate `@`-referenced file in `.claude/rules/`. This keeps the monolithic load optional — reference individual sections in `CLAUDE.md` to reduce per-session token cost. Common presets (full list and per-section import paths: `rules/references/install-presets.md`):
+G-RULES.md has ten sections, each installed as a separate file in `.claude/g-rules/` and loaded only through an `@`-import — `G-RULES.md` imports all of them. This keeps the monolithic load optional — import individual sections in `CLAUDE.md` instead of `@G-RULES.md` to reduce per-session token cost. Common presets (full list and per-section import paths: `rules/references/install-presets.md`):
 
 | Project type | Recommended sections |
 |---|---|
@@ -232,7 +232,9 @@ G-RULES.md has ten sections, each stored as a separate `@`-referenced file in `.
 | + architecture / patterns / docs / testing / tracking | + E / F / G / H / I as needed |
 | Full (all rules) | A–J (`@G-RULES.md`) |
 
-Since v2.6, each section is a normative core: the rationale essays behind the rules live in `rules/references/` (installed to `.claude/rules/references/`, never `@`-imported) and load only when the rule they explain actually fires.
+Since v2.6, each section is a normative core: the rationale essays behind the rules live in `rules/references/` (installed to `.claude/g-references/`, never `@`-imported) and load only when the rule they explain actually fires.
+
+Why not `.claude/rules/`: Claude Code auto-loads every `.md` under `.claude/rules/` at launch, imported or not. Installing the sections there made a trimmed preset load everything anyway, and installing the references there made them load every session instead of on demand. Since v2.7 G-Forge installs nothing under `.claude/rules/` except the per-stack `architecture-<stack>.md` that `/g-specialize` writes; `/g-update` migrates older installs and `/g-doctor` Check 16 flags leftovers ([ADR-017](g-docs/decisions/017-install-g-rules-outside-auto-loaded-rules-dir.md)).
 
 | Section | What it governs |
 |---------|----------------|
@@ -362,7 +364,7 @@ Projects that track `CLAUDE.md` as committed project record (consumer projects, 
 | `/g-forge execute [wave]` | Dispatch parallel agents per wave; hold boundary until each wave completes; resume from a specific wave |
 | `/g-forge review` | test suite → code-lead → Tier 3 smoke test (listen mode) → MERGE READY or HOLD → auto-closes milestone tasks |
 | `/g-forge doc-review` | Standalone documentation-review gate — own verdict (DOCS READY / DOCS HOLD), distinct from code review. Read-only `doc-reviewer` lens: accuracy-vs-code, currency (docs that contradict the code), completeness (public exports, README sections, env vars, ADR/CHANGELOG coverage), clarity, volatile in-flight state. Gates doc-only and mixed commits; may recommend `/g-docs`, never writes |
-| `/g-forge update` | **Staleness preflight** — verifies plugin cache is current (if not, stops with zero writes and directs to `/plugins`); then realigns all G-Forge-managed files (CLAUDE.md rules, G-RULES.md, agents, architecture rules, hooks) to the current version. Self-host mode skips preflight. For read-only version diagnosis, see `/g-doctor` Check 23. |
+| `/g-forge update` | **Staleness preflight** — verifies plugin cache is current (if not, stops with zero writes and directs to `/plugins`); then realigns all G-Forge-managed files (CLAUDE.md rules, G-RULES.md, agents, architecture rules, hooks) to the current version, moving pre-2.7 rule copies out of the auto-loaded `.claude/rules/`. Self-host mode skips preflight. For read-only version diagnosis, see `/g-doctor` Check 23. |
 | `/g-forge afk` | Autonomous milestone executor — runs all pending waves + review unattended. Requires approved plan. Safety net blocks remote push, recursive delete, and publish commands. Structured cycle-break report on any stop. |
 | `/g-forge listen` | Enter listen mode — collect notes, issues, or observations without acting; triage everything when you say "done" |
 | `/g-forge skill-design` | Design a new G-Forge skill from scratch — requirements gathering, step drafting, SKILL.md (the sole authored source, ADR-007) + bare-token router line |
@@ -453,7 +455,7 @@ Every agent targets the minimum model tier that can do its job reliably:
 
 Most implementation work lands on Sonnet. Opus is reserved for code-lead review where a missed critical issue is expensive.
 
-Since v2.6 the tiers are pinned, not vibes: every agent carries `model:` + `effort:` frontmatter, the canonical dispatch matrix ships at `rules/dispatch-matrix.md` (installed as `.claude/rules/g-dispatch-matrix.md`, read lazily — never `@`-imported), and a dispatch may target the Haiku tier only when its spec passes the six-item **Haiku-executability standard** — exact paths, closed steps, command-verifiable done condition, zero unstated context, no judgment residue, bounded scope. A spec that fails the check escalates the *model*, never degrades the *spec*. Telemetry profiles bump lanes up one tier at most, and the mechanical lane never inflates to Opus.
+Since v2.6 the tiers are pinned, not vibes: every agent carries `model:` + `effort:` frontmatter, the canonical dispatch matrix ships at `rules/dispatch-matrix.md` (installed as `.claude/g-references/dispatch-matrix.md`, read lazily — never `@`-imported), and a dispatch may target the Haiku tier only when its spec passes the six-item **Haiku-executability standard** — exact paths, closed steps, command-verifiable done condition, zero unstated context, no judgment residue, bounded scope. A spec that fails the check escalates the *model*, never degrades the *spec*. Telemetry profiles bump lanes up one tier at most, and the mechanical lane never inflates to Opus.
 
 ### The v2.6 diet — same checks, fewer tokens
 
@@ -466,7 +468,7 @@ v2.6 cut the harness's own weight without touching what it verifies (no gate rem
 
 ### G-RULES.md selective loading
 
-The full `G-RULES.md` is ~9,000 tokens and loads on every session that references `@G-RULES.md`. For projects that only need a subset of the rules, `/g-init` also installs each of the ten sections as a standalone `@`-referenced file in `.claude/rules/` (prefixed `g-rules-`). Reference only the sections your project needs in `CLAUDE.md` — a minimal project referencing `g-rules-A-session.md`, `g-rules-D-code-quality.md`, and `g-rules-I-project-tracking.md` saves ~5,400 tokens per session vs the full load.
+`@G-RULES.md` loads every section on every session. For projects that only need a subset of the rules, replace that import in `CLAUDE.md` with one `@`-import per section you want — for example `@.claude/g-rules/A-session.md`, `@.claude/g-rules/D-code-quality.md` and `@.claude/g-rules/I-project-tracking.md`. A section you don't import doesn't load: the files live in `.claude/g-rules/`, which Claude Code does not scan on its own. Check the result with `/context`.
 
 ### Agent compact returns
 

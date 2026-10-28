@@ -7,8 +7,9 @@ The suite **set** is never hand-typed here — `tests/run-all.sh` derives it fro
 the `tests/test-*.sh` glob at runtime, per [ADR-013](../g-docs/decisions/013-derive-in-consumers-keep-counts-in-prose.md)
 rule 1 (executable consumers derive their lists at runtime). This file is
 prose, not a consumer, so per the same ADR's rule 2 it keeps its concrete
-numbers rather than pointing at a directory: **24 suites** — pinned by
-`tests/test-run-all.sh`'s suite-count baseline (`EXPECTED_SUITE_COUNT`), which
+numbers rather than pointing at a directory — except the suite count, which
+lives in exactly one place: `tests/test-run-all.sh`'s suite-count baseline
+(`EXPECTED_SUITE_COUNT`; a typed copy here had drifted to a stale value), which
 goes red if a suite is added or removed without updating it (it did, when
 `test-telemetry-contract.sh` and then `test-readme-counts.sh` landed, both 2026-08-29) — carrying
 an assertion total that is **never typed here**: it is the runner's own

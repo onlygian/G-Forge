@@ -1,6 +1,6 @@
 # Testing protocol — rationale and edge cases (G-RULES §H companion)
 
-Load trigger: read this when introducing or reviewing a guard/negative test (the falsifiability WHY), or when Tier 3 targets a native/desktop app. The normative rules live in `.claude/rules/g-rules-H-testing.md`; this file holds the reasoning and walkthroughs moved out of them (v2.6 token diet).
+Load trigger: read this when introducing or reviewing a guard/negative test (the falsifiability WHY), or when Tier 3 targets a native/desktop app. The normative rules live in `.claude/g-rules/H-testing.md`; this file holds the reasoning and walkthroughs moved out of them (v2.6 token diet).
 
 ## Why the falsifiability rule exists
 

@@ -7,7 +7,7 @@
 - **Interface Segregation (ISP)** — depend only on what you use: narrow types/destructured params over fat objects; split any interface half-implemented with `not implemented` stubs.
 - **Dependency Inversion (DIP)** — business logic never `new`s its own services or imports concrete adapters (database driver, HTTP client, third-party SDK); wrap behind an interface and inject via constructor/function.
 
-Borderline calls and worked examples: `.claude/rules/references/code-quality-notes.md`.
+Borderline calls and worked examples: `.claude/g-references/code-quality-notes.md`.
 
 **Style**
 - `const` everywhere; `let` only when reassignment is unavoidable; never `var`
@@ -73,4 +73,4 @@ The project uses [Semantic Versioning](https://semver.org/) with an optional hot
 
 *Version never changes mid-milestone.* If scope creep changes the bump type, update the milestone's `**Version:**` field in `g-docs/ROADMAP.md` and note the reason before continuing.
 
-**At release time (version bump / milestone close / hotfix), read `.claude/rules/references/release-flow.md` and follow its release commit sequence — it is mandatory at that moment, including the grep-the-released-fact sweep (ADR-012/ADR-013) and the git-tag rules.**
+**At release time (version bump / milestone close / hotfix), read `.claude/g-references/release-flow.md` and follow its release commit sequence — it is mandatory at that moment, including the grep-the-released-fact sweep (ADR-012/ADR-013) and the git-tag rules.**

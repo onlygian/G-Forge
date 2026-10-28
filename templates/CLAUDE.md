@@ -1,5 +1,13 @@
 # [Project Name]
 
+<!--
+Maintainer note — Claude Code strips block-level HTML comments before this file reaches the model, so this costs no context.
+Keep this file under 200 lines: every line loads every session, and longer files are followed less reliably. Imported files load in full too — imports organize, they do not shrink.
+Write what Claude cannot derive from the code: constraints, pitfalls, the WHY behind conventions that differ from tool defaults.
+Leave out what it can read for itself: directory layouts, dependency lists, architecture overviews.
+Behaviour that must happen every time belongs in a hook, not in prose here.
+-->
+
 @G-RULES.md
 
 [One paragraph: what this project is, who it's for, and the core thing it does. Include any key design constraints or principles that should shape every decision.]
@@ -31,9 +39,9 @@
 
 ---
 
-## Architecture
+## Architecture constraints
 
-[Describe the layer map: what code lives where, what the main data flows are, and any structural invariants. Reference specific directories and the patterns that must hold across them.]
+[Invariants a reader cannot see from the tree: layer boundaries and import directions that must hold, who owns which state, where side effects may happen. Not the directory layout — Claude reads that itself.]
 
 ---
 

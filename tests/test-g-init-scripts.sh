@@ -28,7 +28,7 @@
 #   yields MISSING; a cache missing one sourced lib yields a per-file
 #   MISSING — proving both MISSING paths can actually fire
 #
-# Total assertions: 62
+# Total assertions: 63
 # Count is the RUNNER-OBSERVED total and must equal the `Results:` line.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -129,15 +129,22 @@ OUT=$(cd "$DIR" && bash "$SCRIPTS/scaffold.sh" "$PROOT"); RC=$?
 has "$OUT" "CREATED: g-docs/ROADMAP.md" "scaffold: ROADMAP created"
 has "$OUT" "RULES_INSTALLED: 2" "scaffold: rules count derived from disk (2)"
 has "$OUT" "CLAUDEMD: missing" "scaffold: CLAUDEMD missing reported"
-[ -f "$DIR/.claude/rules/g-rules-A-session.md" ] \
-    && ok "scaffold: g-rules section installed with g-rules- prefix" \
-    || bad "scaffold: g-rules-A-session.md not installed"
-[ -f "$DIR/.claude/rules/references/deep-dive.md" ] \
-    && ok "scaffold: rules/references installed (not @-imported)" \
-    || bad "scaffold: rules/references/deep-dive.md not installed"
-[ -f "$DIR/.claude/rules/g-dispatch-matrix.md" ] \
-    && ok "scaffold: dispatch matrix installed as g-dispatch-matrix.md" \
-    || bad "scaffold: g-dispatch-matrix.md not installed"
+[ -f "$DIR/.claude/g-rules/A-session.md" ] \
+    && ok "scaffold: g-rules section installed to .claude/g-rules/ (ADR-017)" \
+    || bad "scaffold: .claude/g-rules/A-session.md not installed"
+[ -f "$DIR/.claude/g-references/deep-dive.md" ] \
+    && ok "scaffold: rules/references installed to .claude/g-references/ (on demand)" \
+    || bad "scaffold: .claude/g-references/deep-dive.md not installed"
+[ -f "$DIR/.claude/g-references/dispatch-matrix.md" ] \
+    && ok "scaffold: dispatch matrix installed as .claude/g-references/dispatch-matrix.md" \
+    || bad "scaffold: .claude/g-references/dispatch-matrix.md not installed"
+# Absence pin: Claude Code auto-loads every .md under .claude/rules/, so the
+# scaffold must put nothing there (sections, references, matrix all moved).
+# falsifiability: guard neutered in scratch copy, test confirmed red — 2026-10-28
+N_AUTO=$(find "$DIR/.claude/rules" -name '*.md' 2>/dev/null | wc -l | tr -d ' ')
+[ "$N_AUTO" = 0 ] \
+    && ok "scaffold: nothing installed under auto-loaded .claude/rules/" \
+    || bad "scaffold: $N_AUTO .md file(s) installed under auto-loaded .claude/rules/"
 
 # Handoff literals hooks grep for — must be raw in the file, byte-identical.
 grep -qF '## Active Session' "$DIR/g-docs/ROADMAP.md" \
@@ -165,8 +172,8 @@ OUT=$(cd "$DIR" && bash "$SCRIPTS/scaffold.sh" --skip-rules --skip-agents "$PROO
 has "$OUT" "SKIPPED: rules" "scaffold: --skip-rules reports SKIPPED: rules"
 has "$OUT" "SKIPPED: agents" "scaffold: --skip-agents reports SKIPPED: agents"
 has "$OUT" "RULES_INSTALLED: 0" "scaffold: --skip-rules installs zero rules"
-if [ ! -f "$DIR/G-RULES.md" ] && [ ! -f "$DIR/.claude/rules/g-rules-A-session.md" ]; then
-    ok "scaffold: --skip-rules leaves G-RULES.md and .claude/rules/ untouched"
+if [ ! -f "$DIR/G-RULES.md" ] && [ ! -f "$DIR/.claude/g-rules/A-session.md" ]; then
+    ok "scaffold: --skip-rules leaves G-RULES.md and .claude/g-rules/ untouched"
 else
     bad "scaffold: --skip-rules still installed rules files"
 fi

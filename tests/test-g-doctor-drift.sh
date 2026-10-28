@@ -5,7 +5,7 @@
 #
 # Extended for W1.5g (M-audit tasks 3+4):
 #   Tests 1-3: Hook drift detection (3 assertions, existing)
-#   Tests 4-6: G-rules path drift (3 assertions, 10-file flat-rename mapping: rules/g-rules/*.md → .claude/rules/g-rules-*.md)
+#   Tests 4-6: G-rules path drift (3 assertions, 10-file mapping per ADR-017: rules/g-rules/*.md → .claude/g-rules/*.md)
 #   Tests 7-11: Agent classifier (6 assertions: profile-copied match/mismatch/missing, template-instantiated advisory-only, project-local *-dev.md excluded)
 # Extended for W3 task 3 (M-audit finding #23 / BUG-4):
 #   Tests 12-14: Check 21 stray-doc scan, fail-before/pass-after (5 assertions: old fixed 6-name
@@ -261,18 +261,18 @@ cd / && rm -rf "$FIXTURE3B"
 # Test 4: G-RULES IDENTICAL CONTENT → hashes equal → MATCH (no drift)
 # Scenario: canonical g-rules file and installed copy have identical content.
 # Expected: compare_hashes reports MATCH.
-# This verifies the 10-file flat-rename mapping: rules/g-rules/X-name.md → .claude/rules/g-rules-X-name.md
+# This verifies the 10-file mapping (ADR-017): rules/g-rules/X-name.md → .claude/g-rules/X-name.md
 #
 # Trace:
 #   - Create rules/g-rules/A-session.md with "## A · Session Rules\n..."
-#   - Copy it to .claude/rules/g-rules-A-session.md (bit-identical)
+#   - Copy it to .claude/g-rules/A-session.md (bit-identical)
 #   - Compute hash of both → identical hashes → MATCH ✓
 
 echo "Test 4: Identical g-rules file (no drift)"
 FIXTURE4=$(mktemp -d)
 cd "$FIXTURE4" || { echo "FAIL: could not create fixture"; exit 1; }
 
-mkdir -p rules/g-rules .claude/rules
+mkdir -p rules/g-rules .claude/g-rules
 
 # Fixed g-rules content (10-file mapping example: A-session.md)
 GRULES_CONTENT="## A · Session Rules
@@ -281,9 +281,9 @@ This is the canonical A-session rules file.
 Model selection, planning, execution, token optimisation.
 "
 printf '%s\n' "$GRULES_CONTENT" > rules/g-rules/A-session.md
-cp rules/g-rules/A-session.md .claude/rules/g-rules-A-session.md
+cp rules/g-rules/A-session.md .claude/g-rules/A-session.md
 
-RESULT=$(compare_hashes "rules/g-rules/A-session.md" ".claude/rules/g-rules-A-session.md")
+RESULT=$(compare_hashes "rules/g-rules/A-session.md" ".claude/g-rules/A-session.md")
 check "identical g-rules: hashes match (no drift)" "MATCH" "$RESULT"
 
 cd / && rm -rf "$FIXTURE4"
@@ -294,14 +294,14 @@ cd / && rm -rf "$FIXTURE4"
 #
 # Trace:
 #   - Create rules/g-rules/B-workflow.md with "## B · Workflow Rules\n..." (canonical, current)
-#   - Create .claude/rules/g-rules-B-workflow.md with old "## OLD Workflow\n..." (installed, staled)
+#   - Create .claude/g-rules/B-workflow.md with old "## OLD Workflow\n..." (installed, staled)
 #   - Compute hashes → different → MISMATCH ✓
 
 echo "Test 5: Different g-rules file (drift detected)"
 FIXTURE5=$(mktemp -d)
 cd "$FIXTURE5" || { echo "FAIL: could not create fixture"; exit 1; }
 
-mkdir -p rules/g-rules .claude/rules
+mkdir -p rules/g-rules .claude/g-rules
 
 # Canonical (current)
 CURRENT_GRULES="## B · Workflow Rules
@@ -317,9 +317,9 @@ STALED_GRULES="## B · OLD Workflow
 Legacy workflow rules (outdated).
 Do not use this version.
 "
-printf '%s\n' "$STALED_GRULES" > .claude/rules/g-rules-B-workflow.md
+printf '%s\n' "$STALED_GRULES" > .claude/g-rules/B-workflow.md
 
-RESULT=$(compare_hashes "rules/g-rules/B-workflow.md" ".claude/rules/g-rules-B-workflow.md")
+RESULT=$(compare_hashes "rules/g-rules/B-workflow.md" ".claude/g-rules/B-workflow.md")
 check "different g-rules: hashes differ (drift detected)" "MISMATCH" "$RESULT"
 
 cd / && rm -rf "$FIXTURE5"
@@ -330,7 +330,7 @@ cd / && rm -rf "$FIXTURE5"
 #
 # Trace:
 #   - Create rules/g-rules/C-agent-discipline.md (canonical)
-#   - Do NOT create .claude/rules/g-rules-C-agent-discipline.md (missing)
+#   - Do NOT create .claude/g-rules/C-agent-discipline.md (missing)
 #   - Check if installed copy exists → NO
 #   - Return MISSING without computing hashes ✓
 
@@ -338,16 +338,16 @@ echo "Test 6: Missing g-rules installed copy"
 FIXTURE6=$(mktemp -d)
 cd "$FIXTURE6" || { echo "FAIL: could not create fixture"; exit 1; }
 
-mkdir -p rules/g-rules .claude/rules
+mkdir -p rules/g-rules .claude/g-rules
 
 GRULES_CONTENT="## C · Agent Discipline
 
 Wave model, spawn decisions, agent caps.
 "
 printf '%s\n' "$GRULES_CONTENT" > rules/g-rules/C-agent-discipline.md
-# Intentionally do NOT create .claude/rules/g-rules-C-agent-discipline.md
+# Intentionally do NOT create .claude/g-rules/C-agent-discipline.md
 
-RESULT=$(compare_hashes "rules/g-rules/C-agent-discipline.md" ".claude/rules/g-rules-C-agent-discipline.md")
+RESULT=$(compare_hashes "rules/g-rules/C-agent-discipline.md" ".claude/g-rules/C-agent-discipline.md")
 check "missing g-rules installed copy: detected as MISSING" "MISSING" "$RESULT"
 
 cd / && rm -rf "$FIXTURE6"

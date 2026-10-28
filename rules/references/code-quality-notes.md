@@ -1,6 +1,6 @@
 # Code quality — expanded SOLID guidance (G-RULES §D companion)
 
-Load trigger: read this when judging a borderline SOLID call — the compact rules in `.claude/rules/g-rules-D-code-quality.md` name each principle and its primary symptom; this file holds the fuller walkthroughs moved out of them (v2.6 token diet).
+Load trigger: read this when judging a borderline SOLID call — the compact rules in `.claude/g-rules/D-code-quality.md` name each principle and its primary symptom; this file holds the fuller walkthroughs moved out of them (v2.6 token diet).
 
 - **SRP** — a unit that handles data access *and* business logic needs splitting. The test is "one reason to change": if two different stakeholders or concerns could each force an edit, the unit has two responsibilities.
 - **OCP** — extend behaviour by adding new code, not by modifying existing code. The canonical violation is a switch/if-else chain that must be edited every time a new type is added.

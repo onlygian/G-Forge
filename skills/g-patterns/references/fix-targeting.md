@@ -15,7 +15,7 @@ Load this at MINE Step 5 and RESOLVE Step 13 — the two points where an edit is
 
 Every target above exists in two places in a G-Forge plugin-source checkout, and in only one place in a consumer project. Detect which case you are in by checking whether a plugin source tree (`skills/` + `rules/g-rules/` + `profiles/` at the repo root) is present — never by assuming:
 
-- **Consumer project** (no plugin source tree): the installed copies under `.claude/` are the only targets and are the correct ones — `.claude/rules/g-rules-<X>.md`, `.claude/rules/architecture-<stack>.md`, `.claude/agents/<agent>.md`, and the installed skill file.
+- **Consumer project** (no plugin source tree): the installed copies under `.claude/` are the only targets and are the correct ones — `.claude/g-rules/<X>.md`, `.claude/rules/architecture-<stack>.md`, `.claude/agents/<agent>.md`, and the installed skill file.
 - **Plugin-source checkout**: target the **shipped source** — `rules/g-rules/<X>.md`, `profiles/<stack>/rules/architecture.md`, `agents/<agent>.md`, `skills/<name>/SKILL.md` — then mirror the same change into the corresponding `.claude/` copy so drift checks stay clean. The `.claude/` copies here are gitignored install artifacts that `/g-init` and `/g-update` overwrite wholesale: a fix applied only there is destroyed at the next resync, never reaches any consumer, and leaves the rule reading as fixed while the shipped source still carries the defect.
 
 A fix that cannot reach a release is not a fix. This resolution is also what Step 14's doc-currency step keys on — only a shipped-source target triggers it.

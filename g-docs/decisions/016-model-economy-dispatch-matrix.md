@@ -2,6 +2,7 @@
 
 **Date:** 2026-09-02
 **Status:** Accepted
+**Amended:** 2026-10-28 — install location only: the matrix now installs as `.claude/g-references/dispatch-matrix.md`, outside the auto-loaded `.claude/rules/` ([ADR-017](017-install-g-rules-outside-auto-loaded-rules-dir.md)); the `.claude/rules/g-dispatch-matrix.md` path in §1 below is the pre-v2.7 site.
 **Reversibility:** two-way door (frontmatter keys and rule text; reversing is an ordinary edit plus one test update).
 **Context:** v2.6, developer-requested: token preservation enforced at the model-suggestion level. Synthesized from two independent designs run from opposite priors (cost-first arguing agents up from haiku; quality-first arguing them down from top-tier), tie-broken by the v2.6 rule that quality outranks savings.
 

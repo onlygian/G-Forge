@@ -1,6 +1,6 @@
 ## G · Documentation Standards
 
-Documentation is a delivery requirement, not a post-delivery polish task. Rationale and edge guidance: `.claude/rules/references/documentation-notes.md` (read when a doc-scope judgment call comes up).
+Documentation is a delivery requirement, not a post-delivery polish task. Rationale and edge guidance: `.claude/g-references/documentation-notes.md` (read when a doc-scope judgment call comes up).
 
 ### What must be documented
 

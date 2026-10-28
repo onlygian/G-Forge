@@ -16,6 +16,8 @@
 #                                   feature-implementer classifies as other —
 #                                   it is not a per-stack implementer)
 #   RULES_FILE: <file>              0+ — one per .claude/rules/*.md
+#   GRULES_SECTION: <file>          0+ — one per .claude/g-rules/*.md (ADR-017)
+#   GREFERENCE: <file>              0+ — one per .claude/g-references/*.md
 #   HOOK: <file> present|absent     per check-commit.sh and workflow-checkpoint.sh
 #   GRULES_MD: present|absent       project-root G-RULES.md
 set -u
@@ -58,6 +60,13 @@ if [ -d .claude/rules ]; then
         [ -f "$f" ] && out "RULES_FILE: $(basename "$f")"
     done
 fi
+
+for f in .claude/g-rules/*.md; do
+    [ -f "$f" ] && out "GRULES_SECTION: $(basename "$f")"
+done
+for f in .claude/g-references/*.md; do
+    [ -f "$f" ] && out "GREFERENCE: $(basename "$f")"
+done
 
 # ── Hooks ──────────────────────────────────────────────────────────────────
 for h in check-commit.sh workflow-checkpoint.sh; do

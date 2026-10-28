@@ -144,11 +144,17 @@ Related canonical-vs-installed surfaces (why each rule is shaped this way: `chec
   - Fail (hash mismatch, file present): ✗ <hooks-dir>/lib/[file] installed copy differs from plugin source (drift)
     → Run `/g-update` to re-sync hooks/lib/ into <hooks-dir>/lib/.
 
-- `g-rules` section-file drift. For each of the 10 canonical g-rules section files in `rules/g-rules/` — `A-session.md`, `B-workflow.md`, `C-agent-discipline.md`, `D-code-quality.md`, `E-architecture-gate.md`, `F-design-patterns.md`, `G-documentation.md`, `H-testing.md`, `I-project-tracking.md`, `J-memory.md` — hash-compare against its installed counterpart using the same flat-rename mapping CLAUDE.md's own `@` references use: `rules/g-rules/X-name.md` (source) → `.claude/rules/g-rules-X-name.md` (installed).
-  - Fail (missing): ✗ g-rules-[X-name].md missing from installed copy (drift)
-    → Run `/g-update` to re-sync rules/g-rules/ into .claude/rules/.
-  - Fail (hash mismatch, file present): ✗ g-rules-[X-name].md installed copy differs from plugin source (drift)
-    → Run `/g-update` to re-sync rules/g-rules/ into .claude/rules/.
+- `g-rules` section-file drift. For each of the 10 canonical g-rules section files in `rules/g-rules/` — `A-session.md`, `B-workflow.md`, `C-agent-discipline.md`, `D-code-quality.md`, `E-architecture-gate.md`, `F-design-patterns.md`, `G-documentation.md`, `H-testing.md`, `I-project-tracking.md`, `J-memory.md` — hash-compare against its installed counterpart at the same name, the path `G-RULES.md`'s `@`-imports use: `rules/g-rules/X-name.md` (source) → `.claude/g-rules/X-name.md` (installed; ADR-017).
+  - Fail (missing): ✗ .claude/g-rules/[X-name].md missing from installed copy (drift)
+    → Run `/g-update` to re-sync rules/g-rules/ into .claude/g-rules/.
+  - Fail (hash mismatch, file present): ✗ .claude/g-rules/[X-name].md installed copy differs from plugin source (drift)
+    → Run `/g-update` to re-sync rules/g-rules/ into .claude/g-rules/.
+
+- Legacy auto-loaded copies (pre-ADR-017 layout). Claude Code loads every `.md` under `.claude/rules/` at launch, so old copies there load every session regardless of imports. Flag `.claude/rules/g-rules-<name>.md`, `.claude/rules/references/<name>.md` and `.claude/rules/g-dispatch-matrix.md` only for names the plugin ships (`rules/g-rules/`, `rules/references/`, `rules/dispatch-matrix.md`, enumerated from disk) — the set `/g-update` Step 2a migrates, so the fix always clears the finding.
+  - Fail (per file): ✗ [path] is a legacy auto-loaded copy (loads every session — pre-v2.7 layout)
+    → Run `/g-update` to migrate it to .claude/g-rules/ or .claude/g-references/ (Step 2a).
+  - Fail (per entry file — `G-RULES.md`, `CLAUDE.md`, `.claude/CLAUDE.md`, `CLAUDE.local.md` — with ≥1 line importing `@.claude/rules/g-rules-…`, optionally indented or bulleted; count only, content never echoed): ✗ [file] has [n] import(s) of a pre-v2.7 section path — those sections no longer load
+    → Run `/g-update` to repoint them to .claude/g-rules/ (Step 2a).
 
 - Installed-agents drift. For each file in `.claude/agents/`, classify its provenance first (three classes — full reasoning in `check-16-drift.md`), then apply that class's rule:
   1. Profile-copied (byte-canonical source under `profiles/<stack>/agents/<name>.md`) — hash-compare.

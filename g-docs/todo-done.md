@@ -1,5 +1,33 @@
 # Done — archive of closed tasks and pass reports
 
+## 2026-10-28 — v2.7.0 rules load layout (ADR-017), branch `refactor/claude-md-rules-load-layout`
+
+**Pass report.** Developer-authorised realignment of the CLAUDE.md template and G-RULES with Claude Code's documented memory loading (code.claude.com/docs/en/memory, read 2026-10-28). Findings verified against the doc: unscoped `.claude/rules/**/*.md` load at launch; `@`-imports load with the importer and do not reduce context; ~200-line per-file target. G-Forge installed its sections both in `.claude/rules/` and via `G-RULES.md` imports, and its "on-demand" references + dispatch matrix in `.claude/rules/` — all auto-loaded. Fix: sections → `.claude/g-rules/`, references + matrix → `.claude/g-references/`, `/g-update` Step 2a migration, `/g-doctor` Check 16 legacy detection, `tests/test-rules-load-layout.sh`. Loading behaviour inferred from the docs; not observed with `/context` (no live Claude Code session in the implementing environment).
+
+**Suite:** `bash tests/run-all.sh` — Grand total 1,438 passed, 0 failed across 41 suites (was 1,396/0 across 40; deltas g-init +1, doctor-checks +8, g-update-scripts +21, new rules-load-layout 12).
+
+**Falsifiability probes** (each in a scratch copy of the tree, production tree untouched, copy discarded):
+
+| Probe | Neuter | Result |
+|---|---|---|
+| P1 | scaffold.sh also copies sections to `.claude/rules/g-rules-*` | test-g-init-scripts 62/1 (`2 .md file(s) installed under auto-loaded .claude/rules/`); test-rules-load-layout 10/2 |
+| P2 | G-RULES.md imports old `.claude/rules/g-rules-*` paths | test-rules-load-layout 6/6 (form, bijection, auto-loaded import, unresolved, both, old-path sweep) |
+| P3 | templates/CLAUDE.md padded to 269 lines | test-rules-load-layout 11/1 (`templates/CLAUDE.md=269`) |
+| P4 | old reference path put back into rules/g-rules/D-code-quality.md | test-rules-load-layout 11/1 (old-path sweep) |
+| P5 | doctor legacy-copy loop emptied | test-doctor-checks 33/3 |
+| P6 | doctor legacy glob widened to all references + an installed section | test-doctor-checks 33/3 (healthy 16/16, healthy no-legacy line, project-owned not flagged) |
+| P7 | migrate `relocate()` made a no-op | test-g-update-scripts 60/5 (at the 65-assertion revision) |
+| P8 | doctor Check 16(e) pointed back at the old site | test-doctor-checks 35/1 (healthy 16/16) |
+| P9 | doctor legacy detection reverted to a `g-rules-*` glob | test-doctor-checks 37/1 (unshipped file flagged) |
+| P10 | doctor entry-file import detection removed | test-doctor-checks 37/1 |
+| P11 | migrate deletes a differing copy instead of CONFLICT | test-g-update-scripts 71/1 |
+| P12 | migrate rewrites CLAUDE.md only (not G-RULES.md) | test-g-update-scripts 71/1 |
+| P13 | scaffold also writes `g-rules-` prefixed copies | test-rules-load-layout 9/3 (incl. the "both imported and auto-loaded" assertion) |
+
+**Gates:** no G-Forge commit gate is installed in this clone (no `.claude/settings.json`, no native `pre-commit`), so no sentinel was involved and no `/g-review` code-lead MERGE READY verdict exists for this change. An independent diff review (code-review skill) raised 8 findings; all 8 were fixed before the layout commit (doctor/migration name-set mismatch, import-rewrite forms and entry files, migration ordering vs. G-RULES.md overwrite, inventory rows, no deletion of differing copies, a vacuous test assertion, two scaffold tidy-ups).
+
+**Follow-up (not done):** `/g-specialize` still installs `.claude/rules/architecture-<stack>.md` and also `@`-imports it from CLAUDE.md — possible double injection; verify with `/context` in a live session before deciding (ADR-017 Follow-up). Installed-copy drift on the self-hosting machine: run `/g-update` there after pulling.
+
 ## 2026-08-23 — M48e shipped (`7a6ea08`) — M48 family complete
 
 - **Task 10 CLOSED — commit gate misclassified doc-only heredoc commits as MIXED.** Fixed in `hooks/lib/commit-detect.sh` `_commit_detect_strip_heredocs`: the leak was the heredoc *operator token* (left in the opener line) and the *terminator line* (re-emitted), not the body — both walked as positional pathspecs defaulting to CODE. Live repro 2026-08-16; regression cases HEREDOC-k..o (both directions: fix works, no over-strip), revert-probes RED-proven. One archival correction to the original row: its "consumed by both `hooks/check-commit.sh:222` and the ADR-004 native `hooks/pre-commit`" claim was stale — sole consumer is `check-commit.sh:222` (grep-verified 2026-08-19 and re-verified 2026-08-23); `hooks/pre-commit` classifies from `git diff --cached --name-only` only and needed no change. Records: `g-docs/agent-output/m48e/`, review records `*-2026-08-23-m48e-r1.md` (r2/r3 in-file).

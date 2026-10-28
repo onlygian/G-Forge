@@ -45,7 +45,7 @@ Surfaces:
 - **`hooks/lib/` drift.** Enumerate the canonical lib set from disk — `ls [plugin-root]/hooks/lib/*.sh` — never from a list written here; hash-compare each `.sh` found against its `.claude/hooks/lib/` counterpart.
 - **Sourced-but-uninstalled libs (install-list completeness).** Derive the required set from the installed hooks' own `lib/` references; zero references is inconclusive ⚠, never Pass; one report line per missing lib — mechanics in checks.sh, rationale in `references/check-16-drift.md`.
 - Native `pre-commit` — resolve the dir with `git rev-parse --git-path hooks`; a G-Forge copy carries the `G-Forge commit gate` marker (a foreign one is advisory-only) — and, beside it, `<hooks-dir>/lib/*.sh` drift.
-- The 10 g-rules section files (flat rename: `rules/g-rules/X-name.md` → `.claude/rules/g-rules-X-name.md`).
+- The 10 g-rules section files (`rules/g-rules/X-name.md` → `.claude/g-rules/X-name.md`), plus legacy auto-loaded copies of shipped names left under `.claude/rules/` by the pre-ADR-017 layout (`g-rules-<name>.md`, `g-dispatch-matrix.md`, `references/<name>.md`) and entry-file imports of old section paths — each fails, fix: `/g-update` Step 2a.
 - Installed agents, by provenance class: profile-copied fail on drift / template-instantiated advisory-only / `*-dev.md` excluded.
 - Installed `.claude/skills/architecture-*/SKILL.md` bodies (frontmatter stripped) vs `profiles/<stack>/rules/architecture.md`.
 

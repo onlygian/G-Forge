@@ -1,6 +1,6 @@
 # Release flow — the full sequence (G-RULES §D companion)
 
-Load trigger: read this at release time — a version bump, a milestone close reaching MERGE READY, or a hotfix. Mandatory at that moment. The versioning core (format, bump rules, version sources) lives in `.claude/rules/g-rules-D-code-quality.md`; this file holds the release-time procedure moved out of it (v2.6 token diet).
+Load trigger: read this at release time — a version bump, a milestone close reaching MERGE READY, or a hotfix. Mandatory at that moment. The versioning core (format, bump rules, version sources) lives in `.claude/g-rules/D-code-quality.md`; this file holds the release-time procedure moved out of it (v2.6 token diet).
 
 ## Release commit sequence
 
